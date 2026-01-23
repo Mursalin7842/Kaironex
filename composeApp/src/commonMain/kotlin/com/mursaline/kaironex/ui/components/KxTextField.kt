@@ -61,20 +61,20 @@ fun KxTextField(
             disabledTextColor = KaironexColors.Slate500,
             errorTextColor = KaironexColors.Rose500,
             
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            disabledContainerColor = KaironexColors.Slate50,
-            errorContainerColor = Color.White,
+            focusedContainerColor = KaironexColors.CloudGray,
+            unfocusedContainerColor = KaironexColors.CloudGray,
+            disabledContainerColor = KaironexColors.CanvasWhite,
+            errorContainerColor = KaironexColors.CloudGray,
             
-            focusedBorderColor = KaironexColors.Indigo600,
-            unfocusedBorderColor = KaironexColors.Slate100, // Subtle border
-            disabledBorderColor = KaironexColors.Slate100,
-            errorBorderColor = KaironexColors.Rose500,
+            focusedBorderColor = KaironexColors.GeminiBlurple,
+            unfocusedBorderColor = Color.Transparent, // Clean look for "Cloud" inputs
+            disabledBorderColor = KaironexColors.BorderGray,
+            errorBorderColor = KaironexColors.AlertRed,
             
-            focusedLabelColor = KaironexColors.Indigo600,
-            unfocusedLabelColor = KaironexColors.Slate500,
-            disabledLabelColor = KaironexColors.Slate500,
-            errorLabelColor = KaironexColors.Rose500
+            focusedLabelColor = KaironexColors.GeminiBlurple,
+            unfocusedLabelColor = KaironexColors.SlateGray,
+            disabledLabelColor = KaironexColors.SlateGray,
+            errorLabelColor = KaironexColors.AlertRed
         )
     )
 }

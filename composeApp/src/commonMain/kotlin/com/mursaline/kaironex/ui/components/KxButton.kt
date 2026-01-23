@@ -35,7 +35,7 @@ fun KxButton(
     text: String? = null,
     variant: KxButtonVariant = KxButtonVariant.Primary,
     enabled: Boolean = true,
-    shape: Shape = RoundedCornerShape(12.dp),
+    shape: Shape = RoundedCornerShape(24.dp),
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit = {

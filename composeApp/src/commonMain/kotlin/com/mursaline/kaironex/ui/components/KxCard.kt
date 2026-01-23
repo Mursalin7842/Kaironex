@@ -23,7 +23,7 @@ enum class KxCardVariant {
 fun KxCard(
     modifier: Modifier = Modifier,
     variant: KxCardVariant = KxCardVariant.Elevated,
-    shape: Shape = RoundedCornerShape(16.dp),
+    shape: Shape = RoundedCornerShape(12.dp),
     backgroundColor: Color = Color.White,
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit

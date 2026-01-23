@@ -54,8 +54,11 @@ import com.mursaline.kaironex.ui.components.KxBadgeVariant
 import com.mursaline.kaironex.features.dashboard.components.ActiveAgentDeck
 import com.mursaline.kaironex.features.dashboard.components.PressureMap
 import com.mursaline.kaironex.features.dashboard.components.Agent
+import com.mursaline.kaironex.features.dashboard.components.OmniMenuDrawer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.Menu
 
 object DashboardScreen : Screen {
     private fun readResolve(): Any = DashboardScreen
@@ -64,80 +67,103 @@ object DashboardScreen : Screen {
     override fun Content() {
         var selectedTab by remember { mutableStateOf("Home") }
 
-        BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.Slate100)) {
-            val isMobile = maxWidth < 800.dp
-            val showRightPanel = maxWidth > 1200.dp // Desktop wide mode
-
-            Column(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.weight(1f)) {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        // SIDEBAR (Only on Desktop)
-                        if (!isMobile) {
-                            Sidebar(selectedTab) { selectedTab = it }
-                        }
-
-                        // MAIN CONTENT
-                        Column(modifier = Modifier.weight(1f).padding(if (isMobile) 16.dp else 24.dp)) {
-                            // Header
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "Good Morning, Student.",
-                                        style = if(isMobile) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = KaironexColors.Slate900
-                                    )
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                         Text(
-                                            text = "Your focus score is stable.",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = KaironexColors.Slate500
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        KxBadge("Routine", variant = KxBadgeVariant.Success)
-                                    }
-                                }
-                                
-                                // User Avatar / Profile
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = KaironexColors.Indigo600,
-                                    modifier = Modifier.size(if(isMobile) 32.dp else 40.dp),
-                                    shadowElevation = 2.dp
+        var isMenuOpen by remember { mutableStateOf(false) }
+        
+        OmniMenuDrawer(
+            isOpen = isMenuOpen,
+            onClose = { isMenuOpen = false },
+            onNavigate = { 
+                selectedTab = it // For now mapping to tabs, later to full routes
+                isMenuOpen = false
+            }
+        ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
+                val isMobile = maxWidth < 800.dp
+                val showRightPanel = maxWidth > 1200.dp // Desktop wide mode
+    
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            // No Static Sidebar anymore, handled by Drawer
+    
+                            // MAIN CONTENT
+                            Column(modifier = Modifier.weight(1f).padding(if (isMobile) 16.dp else 24.dp)) {
+                                // Header
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text("S", color = Color.White, fontWeight = FontWeight.Bold)
-                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        // Menu Trigger
+                                         androidx.compose.material3.IconButton(onClick = { isMenuOpen = true }) {
+                                             Icon(Icons.Filled.Menu, contentDescription = "Open Menu", tint = KaironexColors.InkBlack)
+                                         }
+                                         Spacer(Modifier.width(16.dp))
+                                         
+                                        Column {
+                                            Text(
+                                                text = "Good Morning, Student.",
+                                                style = if(isMobile) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = KaironexColors.InkBlack
+                                            )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Your focus score is stable.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = KaironexColors.SlateGray
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    KxBadge("Routine", variant = KxBadgeVariant.Success)
                                 }
                             }
-
-                            // Content Area using KxCard for unification
-                             KxCard(
-                                modifier = Modifier.fillMaxSize(),
-                                variant = KxCardVariant.High,
-                                backgroundColor = Color.White
+                            
+                            // User Avatar / Profile
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = KaironexColors.GeminiBlurple,
+                                modifier = Modifier.size(if(isMobile) 32.dp else 40.dp),
+                                shadowElevation = 2.dp
                             ) {
-                                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-                                    when(selectedTab) {
-                                        "Home" -> HomeScreen()
-                                        "Chat" -> ChatScreen()
-                                        "Analytics" -> AnalyticsScreen()
-                                        "Settings" -> SettingsScreen()
-                                    }
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("S", color = Color.White, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
-                        
-                        // RIGHT PANEL (Agent Deck / Mini PressureMap)
-                        if (showRightPanel) {
-                             RightPanel()
+
+                        // Content Area using KxCard for unification
+                            KxCard(
+                            modifier = Modifier.fillMaxSize(),
+                            variant = KxCardVariant.High,
+                            backgroundColor = KaironexColors.CanvasWhite
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                                when(selectedTab) {
+                                    "Home" -> HomeScreen()
+                                    "Chat" -> ChatScreen()
+                                    "Analytics" -> AnalyticsScreen()
+                                    "Settings" -> SettingsScreen()
+                                    // Omni Menu mapping placeholders
+                                    "StudyRoom" -> Text("Study Room Loading...", modifier = Modifier.align(Alignment.Center))
+                                    "KnowledgeGraph" -> Text("Knowledge Graph Loading...", modifier = Modifier.align(Alignment.Center))
+                                    "MockTest" -> Text("Mock Test Center Loading...", modifier = Modifier.align(Alignment.Center))
+                                    "JobCampaign" -> Text("Job Campaign Loading...", modifier = Modifier.align(Alignment.Center))
+                                    "ResumeDebugger" -> Text("Resume Debugger Loading...", modifier = Modifier.align(Alignment.Center))
+                                    "Nutrition" -> Text("Nutrition Loading...", modifier = Modifier.align(Alignment.Center))
+                                    "Sleep" -> Text("Sleep Tracking Loading...", modifier = Modifier.align(Alignment.Center))
+                                }
+                            }
                         }
                     }
+                    
+                    // RIGHT PANEL (Agent Deck / Mini PressureMap)
+                    if (showRightPanel) {
+                            RightPanel()
+                    }
                 }
+                }
+            }
 
                 // BOTTOM NAVIGATION (Only on Mobile)
                 if (isMobile) {
@@ -169,6 +195,7 @@ object DashboardScreen : Screen {
                             )
                         }
                     }
+                }
                 }
             }
         }
@@ -244,11 +271,11 @@ object DashboardScreen : Screen {
     fun RightPanel() {
         Surface(
             modifier = Modifier.width(350.dp).fillMaxHeight(),
-            color = KaironexColors.Slate50, // Slight distinction
+            color = KaironexColors.CloudGray, // Slight distinction
             shadowElevation = 0.dp
         ) {
             Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-                Text("Active Agents", fontWeight = FontWeight.Bold, color = KaironexColors.Slate900)
+                Text("Active Agents", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack)
                 Spacer(Modifier.height(16.dp))
                 
                 // Real Active Agent Deck
@@ -260,11 +287,11 @@ object DashboardScreen : Screen {
                 
                 Spacer(Modifier.height(32.dp))
                 
-                Text("Academic Pressure", fontWeight = FontWeight.Bold, color = KaironexColors.Slate900)
+                Text("Academic Pressure", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack)
                 Spacer(Modifier.height(16.dp))
                 
                 // Real Pressure Map
-                KxCard(variant = KxCardVariant.Flat, modifier = Modifier.fillMaxWidth().height(250.dp), backgroundColor = KaironexColors.Slate100) {
+                KxCard(variant = KxCardVariant.Flat, modifier = Modifier.fillMaxWidth().height(250.dp), backgroundColor = KaironexColors.CanvasWhite) {
                      PressureMap(modifier = Modifier.fillMaxSize())
                 }
             }
