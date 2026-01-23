@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "49751472161",
+    "project_id": "kaironex-236c5",
+    "storage_bucket": "kaironex-236c5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:49751472161:android:6da33a4c004017d76bcb60",
+        "android_client_info": {
+          "package_name": "com.mursaline.kaironex"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8L6zvhphxHxZ1nCZJBbiru09ZFKDMhes"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

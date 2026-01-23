@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Kaironex</string>
+    <string name="accessibility_desc">Kaironex uses this service to detect distraction apps (like Netflix) and help you stay focused.</string>
+</resources>
