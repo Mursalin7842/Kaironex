@@ -98,8 +98,14 @@ fun main() {
     Window(
         onCloseRequest = ::exitApplication,
         title = "Kaironex",
-        state = rememberWindowState(width = 800.dp, height = 600.dp)
+        state = rememberWindowState(
+            width = 1100.dp,
+            height = 750.dp,
+            position = WindowPosition(Alignment.Center)
+        )
     ) {
+        // Set minimum window size to prevent UI breaking from unwanted resizing
+        window.minimumSize = java.awt.Dimension(900, 650)
         App(
             sensorStream = DesktopEye.watchActiveWindow(),
             isAccessibilityEnabled = true,

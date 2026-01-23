@@ -3,8 +3,7 @@ package com.mursaline.kaironex.features.study
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,15 +25,17 @@ object StudyRoomScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.current
         
+        @Suppress("UnusedBoxWithConstraintsScope")
         BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
-            val isMobile = maxWidth < 800.dp
-            
+            val isMobile = this.maxWidth < 800.dp
+
             Column(modifier = Modifier.fillMaxSize()) {
-                // Header (Common)
+                // Header (Common) - made responsive
                 StudyHeader(
                      onBack = { navigator?.pop() },
-                     title = "Mathematics: Advanced Calculus",
-                     timer = "00:45:00"
+                     title = if (isMobile) "Math: Calculus" else "Mathematics: Advanced Calculus",
+                     timer = "00:45:00",
+                     isMobile = isMobile
                 )
 
                 if (isMobile) {
@@ -46,29 +47,37 @@ object StudyRoomScreen : Screen {
                 }
                 
                 // Bottom Context Bar (Common)
-                StudyContextBar()
+                StudyContextBar(isMobile = isMobile)
             }
         }
     }
 }
 
 @Composable
-fun StudyHeader(onBack: () -> Unit, title: String, timer: String) {
+fun StudyHeader(onBack: () -> Unit, title: String, timer: String, isMobile: Boolean = false) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 24.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (isMobile) 56.dp else 64.dp)
+            .padding(horizontal = if (isMobile) 8.dp else 24.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = KaironexColors.InkBlack)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = KaironexColors.InkBlack)
             }
-            Spacer(Modifier.width(16.dp))
+            if (!isMobile) Spacer(Modifier.width(16.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = if (isMobile) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = KaironexColors.InkBlack
+                color = KaironexColors.InkBlack,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
         }
         
@@ -78,10 +87,10 @@ fun StudyHeader(onBack: () -> Unit, title: String, timer: String) {
         ) {
             Text(
                 text = timer,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                modifier = Modifier.padding(horizontal = if (isMobile) 8.dp else 12.dp, vertical = if (isMobile) 4.dp else 6.dp),
                 color = KaironexColors.ElectricBlue,
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyLarge
+                style = if (isMobile) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge
             )
         }
     }
@@ -141,33 +150,120 @@ fun DesktopStudyLayout() {
 
 @Composable
 fun MobileStudyLayout() {
-    // Placeholder for tabs
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Mobile Study Layout (Tabs)", color = KaironexColors.InkBlack)
+    var selectedTab by remember { mutableStateOf(0) }
+    val tabs = listOf("Resources", "Viewer", "Tools")
+
+    val dummyResources = remember {
+        listOf(
+            Resource("1", "Ch 1: Limits", ResourceType.PDF, "45 min"),
+            Resource("2", "Derivatives", ResourceType.VIDEO, "1h 20min"),
+            Resource("3", "Practice", ResourceType.PDF, "30 min")
+        )
+    }
+    var selectedResource by remember { mutableStateOf<Resource?>(null) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Tab Row
+        TabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = KaironexColors.CanvasWhite,
+            contentColor = KaironexColors.ElectricBlue
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    text = {
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1
+                        )
+                    }
+                )
+            }
+        }
+
+        // Tab Content
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f)
+                .padding(8.dp)
+        ) {
+            when (selectedTab) {
+                0 -> {
+                    // Resources Tab
+                    KxCard(
+                        modifier = Modifier.fillMaxSize(),
+                        variant = KxCardVariant.Flat,
+                        backgroundColor = KaironexColors.CanvasWhite
+                    ) {
+                        ResourceIndex(
+                            resources = dummyResources,
+                            selectedResourceId = selectedResource?.id,
+                            onResourceSelect = {
+                                selectedResource = it
+                                selectedTab = 1 // Switch to viewer
+                            },
+                            isMobile = true
+                        )
+                    }
+                }
+                1 -> {
+                    // Viewer Tab
+                    KxCard(
+                        modifier = Modifier.fillMaxSize(),
+                        variant = KxCardVariant.High,
+                        backgroundColor = Color.Black
+                    ) {
+                        StudyViewer(resource = selectedResource, isMobile = true)
+                    }
+                }
+                2 -> {
+                    // Tools Tab
+                    KxCard(
+                        modifier = Modifier.fillMaxSize(),
+                        variant = KxCardVariant.Flat,
+                        backgroundColor = KaironexColors.CanvasWhite
+                    ) {
+                        StudyTools(isMobile = true)
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun StudyContextBar() {
+fun StudyContextBar(isMobile: Boolean = false) {
     Surface(
-        modifier = Modifier.fillMaxWidth().height(56.dp),
+        modifier = Modifier.fillMaxWidth().height(if (isMobile) 48.dp else 56.dp),
         color = KaironexColors.CanvasWhite,
         shadowElevation = 8.dp
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = if (isMobile) 12.dp else 24.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             TextButton(onClick = {}) {
-                Text("Request Break", color = KaironexColors.SlateGray)
+                Text(
+                    if (isMobile) "Break" else "Request Break",
+                    color = KaironexColors.SlateGray,
+                    style = if (isMobile) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium
+                )
             }
             
             Button(
                 onClick = {},
-                colors = ButtonDefaults.buttonColors(containerColor = KaironexColors.ElectricBlue)
+                colors = ButtonDefaults.buttonColors(containerColor = KaironexColors.ElectricBlue),
+                contentPadding = if (isMobile) PaddingValues(horizontal = 12.dp, vertical = 6.dp) else ButtonDefaults.ContentPadding
             ) {
-                Text("Finish Session")
+                Text(
+                    if (isMobile) "Finish" else "Finish Session",
+                    style = if (isMobile) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyMedium
+                )
             }
         }
     }

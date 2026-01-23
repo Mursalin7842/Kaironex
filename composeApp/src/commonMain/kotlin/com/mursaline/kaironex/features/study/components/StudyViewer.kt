@@ -14,7 +14,8 @@ import com.mursaline.kaironex.ui.theme.KaironexColors
 @Composable
 fun StudyViewer(
     resource: Resource?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isMobile: Boolean = false
 ) {
     Box(
         modifier = modifier
@@ -25,42 +26,45 @@ fun StudyViewer(
         if (resource == null) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Select a resource to begin studying",
+                    text = if (isMobile) "Select a resource" else "Select a resource to begin studying",
                     color = Color.White.copy(alpha = 0.6f),
-                    style = MaterialTheme.typography.titleMedium
+                    style = if (isMobile) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium
                 )
             }
         } else {
             when(resource.type) {
-                ResourceType.PDF -> PDFViewer(resource)
-                ResourceType.VIDEO -> VideoPlayer(resource)
-                ResourceType.CODE -> CodeViewer(resource)
+                ResourceType.PDF -> PDFViewer(resource, isMobile)
+                ResourceType.VIDEO -> VideoPlayer(resource, isMobile)
+                ResourceType.CODE -> CodeViewer(resource, isMobile)
             }
         }
     }
 }
 
 @Composable
-fun PDFViewer(resource: Resource) {
+fun PDFViewer(resource: Resource, isMobile: Boolean = false) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(if (isMobile) 16.dp else 24.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "📄 PDF Viewer",
                 color = Color.White,
-                style = MaterialTheme.typography.headlineSmall,
+                style = if (isMobile) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = resource.title,
                 color = Color.White.copy(alpha = 0.7f),
-                style = MaterialTheme.typography.bodyMedium
+                style = if (isMobile) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(16.dp))
             Text(
@@ -73,27 +77,29 @@ fun PDFViewer(resource: Resource) {
 }
 
 @Composable
-fun VideoPlayer(resource: Resource) {
+fun VideoPlayer(resource: Resource, isMobile: Boolean = false) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(if (isMobile) 16.dp else 24.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "🎥 Video Player",
                 color = Color.White,
-                style = MaterialTheme.typography.headlineSmall,
+                style = if (isMobile) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = resource.title,
                 color = Color.White.copy(alpha = 0.7f),
-                style = MaterialTheme.typography.bodyMedium
+                style = if (isMobile) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "YouTube/Video player will be implemented here",
+                text = "Video player will be implemented",
                 color = Color.White.copy(alpha = 0.5f),
                 style = MaterialTheme.typography.bodySmall
             )
@@ -102,27 +108,29 @@ fun VideoPlayer(resource: Resource) {
 }
 
 @Composable
-fun CodeViewer(resource: Resource) {
+fun CodeViewer(resource: Resource, isMobile: Boolean = false) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(if (isMobile) 16.dp else 24.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "💻 Code Viewer",
                 color = Color.White,
-                style = MaterialTheme.typography.headlineSmall,
+                style = if (isMobile) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = resource.title,
                 color = Color.White.copy(alpha = 0.7f),
-                style = MaterialTheme.typography.bodyMedium
+                style = if (isMobile) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "Code viewing with syntax highlighting will be implemented here",
+                text = "Code viewer will be implemented",
                 color = Color.White.copy(alpha = 0.5f),
                 style = MaterialTheme.typography.bodySmall
             )

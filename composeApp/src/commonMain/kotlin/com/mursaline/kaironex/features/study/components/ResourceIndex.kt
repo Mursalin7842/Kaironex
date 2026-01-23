@@ -34,25 +34,27 @@ fun ResourceIndex(
     resources: List<Resource>,
     selectedResourceId: String?,
     onResourceSelect: (Resource) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isMobile: Boolean = false
 ) {
-    Column(modifier = modifier.padding(16.dp)) {
+    Column(modifier = modifier.padding(if (isMobile) 12.dp else 16.dp)) {
         Text(
             text = "RESOURCES",
             style = MaterialTheme.typography.labelMedium,
             color = KaironexColors.SlateGray,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = 12.dp)
+            modifier = Modifier.padding(bottom = if (isMobile) 8.dp else 12.dp)
         )
         
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(if (isMobile) 6.dp else 8.dp)
         ) {
             items(resources) { resource ->
                 ResourceItem(
                     resource = resource,
                     isSelected = resource.id == selectedResourceId,
-                    onClick = { onResourceSelect(resource) }
+                    onClick = { onResourceSelect(resource) },
+                    isMobile = isMobile
                 )
             }
         }
@@ -63,7 +65,8 @@ fun ResourceIndex(
 fun ResourceItem(
     resource: Resource,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isMobile: Boolean = false
 ) {
     val icon = when(resource.type) {
         ResourceType.PDF -> Icons.Filled.Article
@@ -72,8 +75,9 @@ fun ResourceItem(
     }
     
     val backgroundColor = if (isSelected) KaironexColors.CloudGray else KaironexColors.CanvasWhite
-    val borderColor = if (isSelected) KaironexColors.ElectricBlue else KaironexColors.BorderGray
-    
+    val itemPadding = if (isMobile) 10.dp else 12.dp
+    val iconSize = if (isMobile) 18.dp else 20.dp
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -86,27 +90,29 @@ fun ResourceItem(
         )
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(itemPadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = if (isSelected) KaironexColors.ElectricBlue else KaironexColors.SlateGray,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(iconSize)
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(if (isMobile) 8.dp else 12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = resource.title,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = if (isMobile) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    color = KaironexColors.InkBlack
+                    color = KaironexColors.InkBlack,
+                    maxLines = if (isMobile) 1 else 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 resource.duration?.let {
                     Text(
                         text = it,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = KaironexColors.SlateGray
                     )
                 }

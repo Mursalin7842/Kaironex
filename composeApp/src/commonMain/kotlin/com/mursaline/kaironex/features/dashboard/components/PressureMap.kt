@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,51 +17,77 @@ import com.mursaline.kaironex.ui.theme.KaironexColors
 
 @Composable
 fun PressureMap(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isMobile: Boolean = false
 ) {
-    // Structure: Row of 7 Vertical Pills (Rounded Rectangles)
-    // Each Pill has 3 dots inside.
-    
-    Column(modifier = modifier) {
+    val pillWidth = if (isMobile) 24.dp else 32.dp
+    val pillHeight = if (isMobile) 60.dp else 80.dp
+    val dotSize = if (isMobile) 4.dp else 6.dp
+
+    Column(modifier = modifier.padding(if (isMobile) 8.dp else 0.dp)) {
         Text(
             text = "INTENSITY",
-            style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall,
             color = KaironexColors.SlateGray,
-            modifier = Modifier.padding(bottom = 12.dp)
+            modifier = Modifier.padding(bottom = if (isMobile) 8.dp else 12.dp)
         )
         
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 7 Days / Pills
             repeat(7) { index ->
-                PressurePill(isActive = index > 2) // Dummy active state
+                PressurePill(
+                    isActive = index > 2,
+                    pillWidth = pillWidth,
+                    pillHeight = pillHeight,
+                    dotSize = dotSize
+                )
+            }
+        }
+
+        // Day labels for mobile
+        if (isMobile) {
+            Spacer(Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
+                    Text(
+                        text = day,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = KaironexColors.SlateGray
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun PressurePill(isActive: Boolean) {
-    val pillColor = if (isActive) KaironexColors.CloudGray else KaironexColors.CanvasWhite
-    val dotColor = if (isActive) KaironexColors.AttentionOrange else KaironexColors.BorderGray
-    
+fun PressurePill(
+    isActive: Boolean,
+    pillWidth: androidx.compose.ui.unit.Dp = 32.dp,
+    pillHeight: androidx.compose.ui.unit.Dp = 80.dp,
+    dotSize: androidx.compose.ui.unit.Dp = 6.dp
+) {
     Column(
         modifier = Modifier
-            .width(32.dp)
-            .height(80.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(if(isActive) KaironexColors.CanvasWhite else KaironexColors.CloudGray) // Inverted for effect
-            .border(1.dp, if(isActive) KaironexColors.BorderGray else Color.Transparent, RoundedCornerShape(16.dp)),
+            .width(pillWidth)
+            .height(pillHeight)
+            .clip(RoundedCornerShape(pillWidth / 2))
+            .background(if(isActive) KaironexColors.CanvasWhite else KaironexColors.CloudGray)
+            .border(1.dp, if(isActive) KaironexColors.BorderGray else Color.Transparent, RoundedCornerShape(pillWidth / 2)),
         verticalArrangement = Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         repeat(3) {
              Box(
                  modifier = Modifier
-                     .size(6.dp)
+                     .size(dotSize)
                      .clip(CircleShape)
                      .background(if (isActive) KaironexColors.ElectricBlue.copy(alpha=0.6f) else KaironexColors.BorderGray)
              )

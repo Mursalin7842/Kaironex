@@ -8,11 +8,14 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.core.screen.Screen
@@ -21,30 +24,31 @@ import com.mursaline.kaironex.ui.theme.KaironexColors
 import com.mursaline.kaironex.features.dashboard.components.OmniMenuDrawer
 import com.mursaline.kaironex.features.dashboard.DashboardScreen
 
-@OptIn(ExperimentalAnimationApi::class)
+@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 object MainShellScreen : Screen {
     private fun readResolve(): Any = MainShellScreen
 
     @Composable
     override fun Content() {
         var isMenuOpen by remember { mutableStateOf(false) }
+        var selectedTab by remember { mutableStateOf("Home") }
 
         Navigator(DashboardScreen) { navigator ->
             val currentRoute = navigator.lastItem
             val selectedItem = when (currentRoute) {
                 is DashboardScreen -> "Home"
-                else -> "Home" // Default
+                else -> "Home"
             }
 
+            @Suppress("UnusedBoxWithConstraintsScope")
             BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
-                val isMobile = maxWidth < 800.dp
+                val isMobile = this.maxWidth < 800.dp
 
                 OmniMenuDrawer(
                     isOpen = isMenuOpen,
                     onClose = { isMenuOpen = false },
                     onNavigate = { route ->
                         isMenuOpen = false
-                        // Handle OmniMenu Navigation
                         when (route) {
                             "StudyRoom" -> navigator.push(com.mursaline.kaironex.features.study.StudyRoomScreen)
                             "Settings" -> { /* TODO */ }
@@ -52,10 +56,73 @@ object MainShellScreen : Screen {
                         }
                     }
                 ) {
-                    Row(modifier = Modifier.fillMaxSize()) {
-
-                        // 1. Navigation Rail (Desktop Only)
-                        if (!isMobile) {
+                    if (isMobile) {
+                        // MOBILE LAYOUT: Top Bar + Content + Bottom Nav
+                        Scaffold(
+                            topBar = {
+                                TopAppBar(
+                                    title = {
+                                        Text(
+                                            "Kaironex",
+                                            fontWeight = FontWeight.Bold,
+                                            color = KaironexColors.InkBlack
+                                        )
+                                    },
+                                    navigationIcon = {
+                                        IconButton(onClick = { isMenuOpen = true }) {
+                                            Icon(
+                                                Icons.Filled.Menu,
+                                                contentDescription = "Menu",
+                                                tint = KaironexColors.InkBlack
+                                            )
+                                        }
+                                    },
+                                    colors = TopAppBarDefaults.topAppBarColors(
+                                        containerColor = KaironexColors.CanvasWhite
+                                    )
+                                )
+                            },
+                            bottomBar = {
+                                NavigationBar(
+                                    containerColor = KaironexColors.CanvasWhite,
+                                    contentColor = KaironexColors.InkBlack,
+                                    tonalElevation = 8.dp
+                                ) {
+                                    MobileNavItem("Home", Icons.Filled.Home, selectedTab == "Home") {
+                                        selectedTab = "Home"
+                                        if (currentRoute !is DashboardScreen) navigator.replace(DashboardScreen)
+                                    }
+                                    MobileNavItem("Chat", Icons.AutoMirrored.Filled.Chat, selectedTab == "Chat") {
+                                        selectedTab = "Chat"
+                                    }
+                                    MobileNavItem("Stats", Icons.Filled.Analytics, selectedTab == "Stats") {
+                                        selectedTab = "Stats"
+                                    }
+                                    MobileNavItem("Settings", Icons.Filled.Settings, selectedTab == "Settings") {
+                                        selectedTab = "Settings"
+                                    }
+                                }
+                            },
+                            containerColor = KaironexColors.CloudGray
+                        ) { paddingValues ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(paddingValues)
+                            ) {
+                                AnimatedContent(
+                                    targetState = navigator.lastItem,
+                                    transitionSpec = { fadeIn() togetherWith fadeOut() }
+                                ) { screen ->
+                                    navigator.saveableState("shell_content", screen) {
+                                        screen.Content()
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // DESKTOP LAYOUT: Side Rail + Content
+                        Row(modifier = Modifier.fillMaxSize()) {
                             NavigationRail(
                                 containerColor = KaironexColors.CanvasWhite,
                                 contentColor = KaironexColors.InkBlack,
@@ -73,29 +140,26 @@ object MainShellScreen : Screen {
                                 }
                                 Spacer(Modifier.height(12.dp))
 
-                                // Placeholder for Chat Screen - for now just re-route to Dashboard (or handle internal tab)
-                                ShellNavItem("Chat", Icons.Filled.Chat, selectedItem == "Chat") { /* navigator.push(ChatScreen) */ }
+                                ShellNavItem("Chat", Icons.AutoMirrored.Filled.Chat, selectedItem == "Chat") { }
                                 Spacer(Modifier.height(12.dp))
 
-                                ShellNavItem("Stats", Icons.Filled.Analytics, selectedItem == "Stats") { /* navigator.push(AnalyticsScreen) */ }
+                                ShellNavItem("Stats", Icons.Filled.Analytics, selectedItem == "Stats") { }
 
                                 Spacer(Modifier.weight(1f))
 
-                                ShellNavItem("Settings", Icons.Filled.Settings, selectedItem == "Settings") { /* navigator.push(SettingsScreen) */ }
+                                ShellNavItem("Settings", Icons.Filled.Settings, selectedItem == "Settings") { }
                                 Spacer(Modifier.height(24.dp))
                             }
-                        }
 
-                        // 2. Main Content - Renders the internal Navigator's current screen
-                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            androidx.compose.animation.AnimatedContent(
-                                targetState = navigator.lastItem,
-                                transitionSpec = {
-                                    fadeIn() togetherWith fadeOut()
-                                }
-                            ) { screen ->
-                                navigator.saveableState("shell_content", screen) {
-                                    screen.Content()
+                            // Main Content
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                AnimatedContent(
+                                    targetState = navigator.lastItem,
+                                    transitionSpec = { fadeIn() togetherWith fadeOut() }
+                                ) { screen ->
+                                    navigator.saveableState("shell_content", screen) {
+                                        screen.Content()
+                                    }
                                 }
                             }
                         }
@@ -104,6 +168,23 @@ object MainShellScreen : Screen {
             }
         }
     }
+}
+
+@Composable
+fun RowScope.MobileNavItem(label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
+    NavigationBarItem(
+        selected = isSelected,
+        onClick = onClick,
+        icon = { Icon(icon, contentDescription = label, modifier = Modifier.size(22.dp)) },
+        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+        colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = KaironexColors.ElectricBlue,
+            selectedTextColor = KaironexColors.ElectricBlue,
+            unselectedIconColor = KaironexColors.SlateGray,
+            unselectedTextColor = KaironexColors.SlateGray,
+            indicatorColor = KaironexColors.CloudGray
+        )
+    )
 }
 
 @Composable

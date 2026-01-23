@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -67,48 +68,44 @@ object DashboardScreen : Screen {
     override fun Content() {
         var selectedTab by remember { mutableStateOf("Home") }
 
+        @Suppress("UnusedBoxWithConstraintsScope")
         BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
-            val isMobile = maxWidth < 800.dp
-            val showRightPanel = maxWidth > 1200.dp // Desktop wide mode
+            val isMobile = this.maxWidth < 800.dp
+            val showRightPanel = this.maxWidth > 1200.dp // Desktop wide mode
 
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.weight(1f)) {
                     Row(modifier = Modifier.fillMaxSize()) {
-                        // MAIN CONTENT
-                        Column(modifier = Modifier.weight(1f).padding(if (isMobile) 16.dp else 24.dp)) {
+                        // MAIN CONTENT - Add vertical scroll for mobile
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .verticalScroll(rememberScrollState())
+                                .padding(if (isMobile) 12.dp else 24.dp)
+                        ) {
                             // Header
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = if (isMobile) 16.dp else 32.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                     // Mobile Menu Trigger (If shell handles it, we might not need it here, but keeping for mobile context)
-                                     // Actually MainShell handles Desktop rail. For Mobile, we might need a hamburger here IF MainShell doesn't provide it.
-                                     // But MainShell wraps content. Responsive MainShell could provide the top bar.
-                                     // For now, let's keep the menu button ONLY if isMobile.
-                                     if (isMobile) {
-                                         // We need a way to open the MainShell drawer. 
-                                         // Currently we disconnected the state.
-                                         // TODO: Expose DrawerState or callback. For now, hiding to clean up layout conflicts.
-                                     }
-                                     
-                                    Column {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = if (isMobile) "Good Morning!" else "Good Morning, Student.",
+                                        style = if(isMobile) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = KaironexColors.InkBlack
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
-                                            text = "Good Morning, Student.",
-                                            style = if(isMobile) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = KaironexColors.InkBlack
+                                            text = "Your focus score is stable.",
+                                            style = if (isMobile) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                                            color = KaironexColors.SlateGray
                                         )
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = "Your focus score is stable.",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = KaironexColors.SlateGray
-                                            )
-                                            Spacer(Modifier.width(8.dp))
-                                            KxBadge("Routine", variant = KxBadgeVariant.Success)
-                                        }
+                                        Spacer(Modifier.width(8.dp))
+                                        KxBadge("Routine", variant = KxBadgeVariant.Success)
                                     }
                                 }
                                 
@@ -127,11 +124,13 @@ object DashboardScreen : Screen {
 
                             // Content Area using KxCard for unification
                             KxCard(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxWidth().let {
+                                    if (isMobile) it.heightIn(min = 300.dp) else it.fillMaxHeight()
+                                },
                                 variant = KxCardVariant.High,
                                 backgroundColor = KaironexColors.CanvasWhite
                             ) {
-                                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                                Box(modifier = Modifier.fillMaxSize().padding(if (isMobile) 12.dp else 24.dp)) {
                                     when(selectedTab) {
                                         "Home" -> HomeScreen()
                                         "Chat" -> ChatScreen()
@@ -140,6 +139,51 @@ object DashboardScreen : Screen {
                                         else -> HomeScreen()
                                     }
                                 }
+                            }
+
+                            // MOBILE: Show agents and pressure map below main content
+                            if (isMobile) {
+                                Spacer(Modifier.height(16.dp))
+
+                                // Active Agents Section
+                                Text(
+                                    "Active Agents",
+                                    fontWeight = FontWeight.Bold,
+                                    color = KaironexColors.InkBlack,
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Spacer(Modifier.height(8.dp))
+
+                                val dummyAgents = listOf(
+                                    Agent("1", "Exam Prep", "Math", "Active", "2 days"),
+                                    Agent("2", "Fitness", "Health", "Idle", "Tomorrow")
+                                )
+                                ActiveAgentDeck(
+                                    agents = dummyAgents,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    isMobile = true
+                                )
+
+                                Spacer(Modifier.height(16.dp))
+
+                                // Pressure Map Section
+                                Text(
+                                    "Weekly Pressure",
+                                    fontWeight = FontWeight.Bold,
+                                    color = KaironexColors.InkBlack,
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Spacer(Modifier.height(8.dp))
+
+                                KxCard(
+                                    variant = KxCardVariant.Flat,
+                                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                                    backgroundColor = KaironexColors.CanvasWhite
+                                ) {
+                                    PressureMap(modifier = Modifier.fillMaxSize(), isMobile = true)
+                                }
+
+                                Spacer(Modifier.height(16.dp))
                             }
                         }
                         
@@ -150,38 +194,7 @@ object DashboardScreen : Screen {
                     }
                 }
             }
-            
-            // BOTTOM NAVIGATION (Only on Mobile)
-            if (isMobile) {
-                val items = listOf(
-                    "Home" to Icons.Filled.Home,
-                    "Chat" to Icons.Filled.Chat,
-                    "Analytics" to Icons.Filled.Analytics,
-                    "Settings" to Icons.Filled.Settings
-                )
-                
-                NavigationBar(
-                    containerColor = Color.White,
-                    contentColor = KaironexColors.Indigo600,
-                    tonalElevation = 8.dp
-                ) {
-                    items.forEach { (label, icon) ->
-                        NavigationBarItem(
-                            icon = { Icon(icon, contentDescription = label) },
-                            label = { Text(label) },
-                            selected = selectedTab == label,
-                            onClick = { selectedTab = label },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = KaironexColors.Indigo600,
-                                selectedTextColor = KaironexColors.Indigo600,
-                                unselectedIconColor = KaironexColors.Slate500,
-                                unselectedTextColor = KaironexColors.Slate500,
-                                indicatorColor = KaironexColors.Indigo50
-                            )
-                        )
-                    }
-                }
-            }
+            // Bottom navigation is now handled by MainShell for mobile
         }
     }
 

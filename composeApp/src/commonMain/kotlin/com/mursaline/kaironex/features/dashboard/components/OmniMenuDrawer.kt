@@ -32,57 +32,66 @@ fun OmniMenuDrawer(
     onNavigate: (String) -> Unit,
     content: @Composable () -> Unit
 ) {
-    if (isOpen) {
-        ModalDrawerSheet(
-             modifier = Modifier.fillMaxHeight().width(300.dp),
-             drawerContainerColor = KaironexColors.CanvasWhite,
-             drawerContentColor = KaironexColors.InkBlack
-        ) {
-            Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Kaironex System",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = KaironexColors.ElectricBlue
-                    )
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close Menu")
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Main content always rendered
+        content()
+
+        // Drawer overlay when open
+        if (isOpen) {
+            // Scrim (dark overlay)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(onClick = onClose)
+            )
+
+            // Drawer panel
+            Surface(
+                modifier = Modifier.fillMaxHeight().width(300.dp),
+                color = KaironexColors.CanvasWhite,
+                shadowElevation = 16.dp
+            ) {
+                Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Kaironex System",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = KaironexColors.ElectricBlue
+                        )
+                        IconButton(onClick = onClose) {
+                            Icon(Icons.Filled.Close, contentDescription = "Close Menu")
+                        }
+                    }
+
+                    OmniMenuSection("🧠 Cortex (Focus & Learning)") {
+                        OmniMenuItem("The Study Room", onClick = { onNavigate("StudyRoom"); onClose() })
+                        OmniMenuItem("Knowledge Graph", onClick = { onNavigate("KnowledgeGraph"); onClose() })
+                        OmniMenuItem("Mock Test Center", onClick = { onNavigate("MockTest"); onClose() })
+                    }
+
+                    OmniMenuSection("💼 Campaign (Career)") {
+                        OmniMenuItem("Job Campaign Manager", onClick = { onNavigate("JobCampaign"); onClose() })
+                        OmniMenuItem("Resume Debugger", onClick = { onNavigate("ResumeDebugger"); onClose() })
+                    }
+
+                    OmniMenuSection("🧬 Vitality") {
+                        OmniMenuItem("Nutritional Supply Chain", onClick = { onNavigate("Nutrition"); onClose() })
+                        OmniMenuItem("Sleep & Energy", onClick = { onNavigate("Sleep"); onClose() })
+                    }
+
+                    Spacer(Modifier.weight(1f))
+
+                    OmniMenuSection("⚙️ System") {
+                        OmniMenuItem("Settings", onClick = { onNavigate("Settings"); onClose() })
                     }
                 }
-                
-                OmniMenuSection("🧠 Cortex (Focus & Learning)") {
-                    OmniMenuItem("The Study Room", onClick = { onNavigate("StudyRoom") })
-                    OmniMenuItem("Knowledge Graph", onClick = { onNavigate("KnowledgeGraph") })
-                    OmniMenuItem("Mock Test Center", onClick = { onNavigate("MockTest") })
-                }
-                
-                OmniMenuSection("💼 Campaign (Career)") {
-                    OmniMenuItem("Job Campaign Manager", onClick = { onNavigate("JobCampaign") })
-                    OmniMenuItem("Resume Debugger", onClick = { onNavigate("ResumeDebugger") })
-                }
-                
-                OmniMenuSection("🧬 Vitality") {
-                    OmniMenuItem("Nutritional Supply Chain", onClick = { onNavigate("Nutrition") })
-                    OmniMenuItem("Sleep & Energy", onClick = { onNavigate("Sleep") })
-                }
-                 
-                Spacer(Modifier.weight(1f))
-                
-                OmniMenuSection("⚙️ System") {
-                    OmniMenuItem("Settings", onClick = { onNavigate("Settings") })
-                }
             }
-        }
-    } else {
-        // Just render content if drawer logic is external, but usually this wraps content or is used in a Scaffold.
-        // For custom overlay approach:
-        Box(Modifier.fillMaxSize()) {
-            content()
         }
     }
 }
