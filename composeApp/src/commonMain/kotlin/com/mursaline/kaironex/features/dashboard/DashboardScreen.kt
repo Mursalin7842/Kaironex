@@ -58,7 +58,7 @@ import com.mursaline.kaironex.features.dashboard.components.OmniMenuDrawer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.filled.Menu
+
 
 object DashboardScreen : Screen {
     private fun readResolve(): Any = DashboardScreen
@@ -67,201 +67,120 @@ object DashboardScreen : Screen {
     override fun Content() {
         var selectedTab by remember { mutableStateOf("Home") }
 
-        var isMenuOpen by remember { mutableStateOf(false) }
-        
-        OmniMenuDrawer(
-            isOpen = isMenuOpen,
-            onClose = { isMenuOpen = false },
-            onNavigate = { 
-                selectedTab = it // For now mapping to tabs, later to full routes
-                isMenuOpen = false
-            }
-        ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
-                val isMobile = maxWidth < 800.dp
-                val showRightPanel = maxWidth > 1200.dp // Desktop wide mode
-    
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        Row(modifier = Modifier.fillMaxSize()) {
-                            // No Static Sidebar anymore, handled by Drawer
-    
-                            // MAIN CONTENT
-                            Column(modifier = Modifier.weight(1f).padding(if (isMobile) 16.dp else 24.dp)) {
-                                // Header
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        // Menu Trigger
-                                         androidx.compose.material3.IconButton(onClick = { isMenuOpen = true }) {
-                                             Icon(Icons.Filled.Menu, contentDescription = "Open Menu", tint = KaironexColors.InkBlack)
-                                         }
-                                         Spacer(Modifier.width(16.dp))
-                                         
-                                        Column {
-                                            Text(
-                                                text = "Good Morning, Student.",
-                                                style = if(isMobile) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = KaironexColors.InkBlack
-                                            )
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "Your focus score is stable.",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = KaironexColors.SlateGray
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    KxBadge("Routine", variant = KxBadgeVariant.Success)
-                                }
-                            }
-                            
-                            // User Avatar / Profile
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = KaironexColors.GeminiBlurple,
-                                modifier = Modifier.size(if(isMobile) 32.dp else 40.dp),
-                                shadowElevation = 2.dp
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
+            val isMobile = maxWidth < 800.dp
+            val showRightPanel = maxWidth > 1200.dp // Desktop wide mode
+
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.weight(1f)) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        // MAIN CONTENT
+                        Column(modifier = Modifier.weight(1f).padding(if (isMobile) 16.dp else 24.dp)) {
+                            // Header
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text("S", color = Color.White, fontWeight = FontWeight.Bold)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                     // Mobile Menu Trigger (If shell handles it, we might not need it here, but keeping for mobile context)
+                                     // Actually MainShell handles Desktop rail. For Mobile, we might need a hamburger here IF MainShell doesn't provide it.
+                                     // But MainShell wraps content. Responsive MainShell could provide the top bar.
+                                     // For now, let's keep the menu button ONLY if isMobile.
+                                     if (isMobile) {
+                                         // We need a way to open the MainShell drawer. 
+                                         // Currently we disconnected the state.
+                                         // TODO: Expose DrawerState or callback. For now, hiding to clean up layout conflicts.
+                                     }
+                                     
+                                    Column {
+                                        Text(
+                                            text = "Good Morning, Student.",
+                                            style = if(isMobile) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = KaironexColors.InkBlack
+                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "Your focus score is stable.",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = KaironexColors.SlateGray
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            KxBadge("Routine", variant = KxBadgeVariant.Success)
+                                        }
+                                    }
+                                }
+                                
+                                // User Avatar / Profile
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = KaironexColors.GeminiBlurple,
+                                    modifier = Modifier.size(if(isMobile) 32.dp else 40.dp),
+                                    shadowElevation = 2.dp
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("S", color = Color.White, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
-                        }
 
-                        // Content Area using KxCard for unification
+                            // Content Area using KxCard for unification
                             KxCard(
-                            modifier = Modifier.fillMaxSize(),
-                            variant = KxCardVariant.High,
-                            backgroundColor = KaironexColors.CanvasWhite
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-                                when(selectedTab) {
-                                    "Home" -> HomeScreen()
-                                    "Chat" -> ChatScreen()
-                                    "Analytics" -> AnalyticsScreen()
-                                    "Settings" -> SettingsScreen()
-                                    // Omni Menu mapping placeholders
-                                    "StudyRoom" -> Text("Study Room Loading...", modifier = Modifier.align(Alignment.Center))
-                                    "KnowledgeGraph" -> Text("Knowledge Graph Loading...", modifier = Modifier.align(Alignment.Center))
-                                    "MockTest" -> Text("Mock Test Center Loading...", modifier = Modifier.align(Alignment.Center))
-                                    "JobCampaign" -> Text("Job Campaign Loading...", modifier = Modifier.align(Alignment.Center))
-                                    "ResumeDebugger" -> Text("Resume Debugger Loading...", modifier = Modifier.align(Alignment.Center))
-                                    "Nutrition" -> Text("Nutrition Loading...", modifier = Modifier.align(Alignment.Center))
-                                    "Sleep" -> Text("Sleep Tracking Loading...", modifier = Modifier.align(Alignment.Center))
+                                modifier = Modifier.fillMaxSize(),
+                                variant = KxCardVariant.High,
+                                backgroundColor = KaironexColors.CanvasWhite
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                                    when(selectedTab) {
+                                        "Home" -> HomeScreen()
+                                        "Chat" -> ChatScreen()
+                                        "Analytics" -> AnalyticsScreen()
+                                        "Settings" -> SettingsScreen()
+                                        else -> HomeScreen()
+                                    }
                                 }
                             }
                         }
-                    }
-                    
-                    // RIGHT PANEL (Agent Deck / Mini PressureMap)
-                    if (showRightPanel) {
+                        
+                        // RIGHT PANEL (Agent Deck / Mini PressureMap)
+                        if (showRightPanel) {
                             RightPanel()
-                    }
-                }
-                }
-            }
-
-                // BOTTOM NAVIGATION (Only on Mobile)
-                if (isMobile) {
-                    val items = listOf(
-                        "Home" to Icons.Filled.Home,
-                        "Chat" to Icons.Filled.Chat,
-                        "Analytics" to Icons.Filled.Analytics,
-                        "Settings" to Icons.Filled.Settings
-                    )
-                    
-                    NavigationBar(
-                        containerColor = Color.White,
-                        contentColor = KaironexColors.Indigo600,
-                        tonalElevation = 8.dp
-                    ) {
-                        items.forEach { (label, icon) ->
-                            NavigationBarItem(
-                                icon = { Icon(icon, contentDescription = label) },
-                                label = { Text(label) },
-                                selected = selectedTab == label,
-                                onClick = { selectedTab = label },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = KaironexColors.Indigo600,
-                                    selectedTextColor = KaironexColors.Indigo600,
-                                    unselectedIconColor = KaironexColors.Slate500,
-                                    unselectedTextColor = KaironexColors.Slate500,
-                                    indicatorColor = KaironexColors.Indigo50
-                                )
-                            )
                         }
                     }
                 }
-                }
             }
-        }
-    }
-
-    @Composable
-    fun Sidebar(selected: String, onSelect: (String) -> Unit) {
-        Surface(
-            modifier = Modifier.width(250.dp).fillMaxHeight(),
-            color = Color.White,
-            shadowElevation = 8.dp
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                // Logo
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = KaironexColors.Indigo600,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("K", color = Color.White, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Text("KAIRONEX", fontWeight = FontWeight.Bold, color = KaironexColors.Slate900)
-                }
-
-                Spacer(Modifier.height(48.dp))
-
-                // Menu Items
+            
+            // BOTTOM NAVIGATION (Only on Mobile)
+            if (isMobile) {
                 val items = listOf(
                     "Home" to Icons.Filled.Home,
                     "Chat" to Icons.Filled.Chat,
-                    "Analytics" to Icons.Filled.Analytics
+                    "Analytics" to Icons.Filled.Analytics,
+                    "Settings" to Icons.Filled.Settings
                 )
-
-                items.forEach { (label, icon) ->
-                    SidebarItem(label, icon, selected == label) { onSelect(label) }
-                    Spacer(Modifier.height(8.dp))
+                
+                NavigationBar(
+                    containerColor = Color.White,
+                    contentColor = KaironexColors.Indigo600,
+                    tonalElevation = 8.dp
+                ) {
+                    items.forEach { (label, icon) ->
+                        NavigationBarItem(
+                            icon = { Icon(icon, contentDescription = label) },
+                            label = { Text(label) },
+                            selected = selectedTab == label,
+                            onClick = { selectedTab = label },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = KaironexColors.Indigo600,
+                                selectedTextColor = KaironexColors.Indigo600,
+                                unselectedIconColor = KaironexColors.Slate500,
+                                unselectedTextColor = KaironexColors.Slate500,
+                                indicatorColor = KaironexColors.Indigo50
+                            )
+                        )
+                    }
                 }
-                
-                Spacer(Modifier.weight(1f))
-                
-                SidebarItem("Settings", Icons.Filled.Settings, selected == "Settings") { onSelect("Settings") }
-            }
-        }
-    }
-
-    @Composable
-    fun SidebarItem(label: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
-        val backgroundColor = if (isSelected) KaironexColors.Indigo50 else Color.Transparent
-        val contentColor = if (isSelected) KaironexColors.Indigo600 else KaironexColors.Slate500
-
-        Surface(
-            modifier = Modifier.fillMaxWidth().clickable { onClick() },
-            shape = RoundedCornerShape(8.dp),
-            color = backgroundColor
-        ) {
-            Row(
-                modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(12.dp))
-                Text(label, color = contentColor, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium)
             }
         }
     }

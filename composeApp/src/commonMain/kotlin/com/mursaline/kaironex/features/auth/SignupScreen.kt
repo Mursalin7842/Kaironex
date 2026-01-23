@@ -330,11 +330,11 @@ object SignupScreen : Screen {
                                      }
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = KaironexColors.Indigo600),
-                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 2.dp)
+                                shape = RoundedCornerShape(24.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = KaironexColors.ElectricBlue),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                             ) {
-                                Text("Create Account", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                Text("CREATE ACCOUNT", fontWeight = FontWeight.Bold, color = Color.White)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                             }

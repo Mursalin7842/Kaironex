@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.mursaline.kaironex.MainShellScreen
 import com.mursaline.kaironex.ui.theme.KaironexColors
 
 object GenesisInterviewScreen : Screen {
@@ -105,7 +106,7 @@ object GenesisInterviewScreen : Screen {
                         Text("Negotiating Autonomy", style = MaterialTheme.typography.bodySmall, color = KaironexColors.Indigo600)
                     }
                 }
-                TextButton(onClick = { /* Navigate to Next Step or Dashboard */ }) { Text("Skip (Dev)", color = KaironexColors.Slate500) }
+                TextButton(onClick = { navigator.replaceAll(MainShellScreen) }) { Text("Skip (Dev)", color = KaironexColors.Slate500) }
             }
 
             // Chat List (Scrollable)
@@ -200,7 +201,7 @@ object GenesisInterviewScreen : Screen {
                     // Confirm Action (For Prototype Flow)
                     if (messages.size > 3) {
                         Button(
-                            onClick = { navigator.replaceAll(com.mursaline.kaironex.features.dashboard.DashboardScreen) }, 
+                            onClick = { navigator.replaceAll(MainShellScreen) }, 
                             modifier = Modifier.fillMaxWidth().height(48.dp), 
                             colors = ButtonDefaults.buttonColors(containerColor = KaironexColors.Slate900),
                             shape = RoundedCornerShape(12.dp)

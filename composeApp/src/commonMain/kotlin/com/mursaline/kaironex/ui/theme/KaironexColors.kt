@@ -4,8 +4,8 @@ import androidx.compose.ui.graphics.Color
 
 object KaironexColors {
     // Backgrounds
-    val CanvasWhite = Color(0xFFFFFFFF)
-    val CloudGray = Color(0xFFF3F6FC) // Sidebars, active cards, inputs
+    val CanvasWhite = Color(0xFFFFFFFF) // Pure White
+    val CloudGray = Color(0xFFF8FAFD) // Off-white for Desktop Shell
     
     // Primary Accents (The Brain)
     val GeminiBlurple = Color(0xFF65558F) // AI thoughts, Generate buttons

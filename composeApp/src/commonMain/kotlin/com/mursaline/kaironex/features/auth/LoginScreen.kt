@@ -66,6 +66,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.mursaline.kaironex.features.genesis.GenesisIntroScreen
+import com.mursaline.kaironex.MainShellScreen
 import com.mursaline.kaironex.ui.theme.KaironexColors
 import kotlinx.coroutines.launch
 
@@ -354,28 +355,24 @@ object LoginScreen : Screen {
                                      scope.launch {
                                          val result = authRepo.login(email, password)
                                          if (result.isSuccess) {
-                                             navigator.replaceAll(GenesisIntroScreen)
+                                             navigator.replaceAll(MainShellScreen)
                                          } else {
                                              error = result.exceptionOrNull()?.message
                                          }
                                      }
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(24.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = KaironexColors.Indigo600
+                                    containerColor = KaironexColors.ElectricBlue
                                 ),
                                 elevation = ButtonDefaults.buttonElevation(
-                                    defaultElevation = 4.dp,
-                                    pressedElevation = 2.dp,
-                                    focusedElevation = 4.dp,
-                                    hoveredElevation = 6.dp,
-                                    disabledElevation = 0.dp
+                                    defaultElevation = 2.dp
                                 )
                             ) {
-                                Text("Sign In", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Text("SIGN IN", fontWeight = FontWeight.Bold, color = Color.White)
+                                Spacer(Modifier.width(8.dp))
+                                Icon(Icons.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                             }
 
                             Spacer(modifier = Modifier.height(32.dp))

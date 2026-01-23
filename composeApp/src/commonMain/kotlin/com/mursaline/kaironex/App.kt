@@ -22,7 +22,8 @@ import kotlinx.coroutines.flow.emptyFlow
 // Voyager & Feature Imports
 import cafe.adriel.voyager.navigator.Navigator
 import com.mursaline.kaironex.features.auth.LoginScreen
-import com.mursaline.kaironex.features.genesis.GenesisScreen
+import com.mursaline.kaironex.features.dashboard.DashboardScreen
+import com.mursaline.kaironex.ui.theme.KaironexColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,15 +34,15 @@ fun App(
     onLockTriggered: (Boolean) -> Unit = {}
 ) {
     MaterialTheme(
-        colorScheme = darkColorScheme(
-            background = Color(0xFF121212),
-            surface = Color(0xFF1E1E1E),
-            primary = Color(0xFFBB86FC),
-            onBackground = Color.White,
-            onSurface = Color.White
+        colorScheme = lightColorScheme(
+            background = KaironexColors.CloudGray,
+            surface = KaironexColors.CanvasWhite,
+            primary = KaironexColors.ElectricBlue,
+            onBackground = KaironexColors.InkBlack,
+            onSurface = KaironexColors.InkBlack
         )
     ) {
-        // Entry Point: Login (The First Impression)
+        // Entry Point: Login
         Navigator(LoginScreen)
     }
 }
