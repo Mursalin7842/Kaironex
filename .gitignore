@@ -18,8 +18,16 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 
+
 # Log files
 *.log
 *.txt
 build_*.txt
 run_*.log
+
+# IDE
+.vscode/
+
+# System
+Thumbs.db
+Desktop.ini
