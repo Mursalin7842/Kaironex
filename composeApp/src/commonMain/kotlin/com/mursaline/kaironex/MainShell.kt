@@ -1,23 +1,19 @@
 package com.mursaline.kaironex
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,24 +24,27 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.transitions.SlideTransition
 import com.mursaline.kaironex.ui.theme.KaironexColors
-import com.mursaline.kaironex.features.dashboard.components.OmniMenuDrawer
 import com.mursaline.kaironex.features.dashboard.DashboardScreen
+import com.mursaline.kaironex.features.profile.ProfileScreen
+import com.mursaline.kaironex.features.study.StudySessionsScreen
+import com.mursaline.kaironex.features.agents.LifeSupportAgentsScreen
 import com.mursaline.kaironex.ui.components.KxOrb
 import com.mursaline.kaironex.ui.components.KxOrbState
 
 /**
- * MainShell - The Orb-Centric Navigation Shell
+ * MainShell - The Trinity Navigation Shell
  *
- * Architecture: Portal-based navigation
- * - Command (Dashboard): The Portal - shows Cortex Hero + Life Tracks
- * - Orb (AI Assistant): The Executor - Gemini Live-like AI assistant
- * - Profile: Account/Settings access
+ * Architecture: Clean "Trinity" navigation
+ * - Command (Home): The Dashboard Portal
+ * - Orb (AI): Immersive full-screen AI assistant
+ * - Profile: Dedicated settings/account page
  *
- * The Dashboard IS the router. Users enter Study/Tracks from the Hero Card,
- * not from redundant navbar items.
+ * NO hamburger menu. The Dashboard IS the router.
  */
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 object MainShellScreen : Screen {
@@ -53,250 +52,213 @@ object MainShellScreen : Screen {
 
     @Composable
     override fun Content() {
-        var isMenuOpen by remember { mutableStateOf(false) }
-        var selectedTab by remember { mutableStateOf("Command") }
         var isOrbExpanded by remember { mutableStateOf(false) }
-        var isProfileOpen by remember { mutableStateOf(false) }
 
         Navigator(DashboardScreen) { navigator ->
             val currentRoute = navigator.lastItem
 
-            @Suppress("UnusedBoxWithConstraintsScope")
+            // Determine active tab for UI highlighting
+            val selectedTab = when (currentRoute) {
+                is DashboardScreen -> "Home"
+                is StudySessionsScreen -> "Study"
+                is LifeSupportAgentsScreen -> "More"
+                is ProfileScreen -> "Profile"
+                else -> "Home" // Default to Home for detail screens
+            }
+
             BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
-                val isMobile = this.maxWidth < 800.dp
+                val isMobile = maxWidth < 800.dp
 
-                OmniMenuDrawer(
-                    isOpen = isMenuOpen,
-                    onClose = { isMenuOpen = false },
-                    onNavigate = { route ->
-                        isMenuOpen = false
-                        when (route) {
-                            "StudyRoom" -> navigator.push(com.mursaline.kaironex.features.study.StudyRoomScreen)
-                            "Settings" -> isProfileOpen = true
-                            else -> { /* Placeholder */ }
-                        }
-                    }
-                ) {
-                    if (isMobile) {
-                        // MOBILE LAYOUT: Minimal Top Bar + Content + Orb-Centric Bottom Nav
-                        Scaffold(
-                            topBar = {
-                                TopAppBar(
-                                    title = {
-                                        Text(
-                                            "Kaironex",
-                                            fontWeight = FontWeight.Bold,
-                                            color = KaironexColors.InkBlack
-                                        )
-                                    },
-                                    navigationIcon = {
-                                        IconButton(onClick = { isMenuOpen = true }) {
-                                            Icon(
-                                                Icons.Filled.Menu,
-                                                contentDescription = "Menu",
-                                                tint = KaironexColors.InkBlack
-                                            )
-                                        }
-                                    },
-                                    actions = {
-                                        // Profile in top bar for quick access
-                                        IconButton(onClick = { isProfileOpen = true }) {
-                                            ProfileAvatar(size = 32.dp)
-                                        }
-                                    },
-                                    colors = TopAppBarDefaults.topAppBarColors(
-                                        containerColor = KaironexColors.CanvasWhite
-                                    )
-                                )
-                            },
-                            bottomBar = {
-                                // Orb-Centric Bottom Nav: Command | ORB | Profile
-                                OrbCentricMobileNav(
-                                    selectedTab = selectedTab,
-                                    isOrbExpanded = isOrbExpanded,
-                                    onCommandClick = {
-                                        selectedTab = "Command"
-                                        if (currentRoute !is DashboardScreen) navigator.replace(DashboardScreen)
-                                    },
-                                    onOrbClick = { isOrbExpanded = !isOrbExpanded },
-                                    onProfileClick = { isProfileOpen = true }
-                                )
-                            },
-                            containerColor = KaironexColors.CloudGray
-                        ) { paddingValues ->
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(paddingValues)
-                            ) {
-                                AnimatedContent(
-                                    targetState = navigator.lastItem,
-                                    transitionSpec = { fadeIn() togetherWith fadeOut() }
-                                ) { screen ->
-                                    navigator.saveableState("shell_content", screen) {
-                                        screen.Content()
+                Scaffold(
+                    bottomBar = {
+                        if (isMobile) {
+                            FiveItemNavBar(
+                                selectedTab = selectedTab,
+                                onTabSelected = { tab ->
+                                    when (tab) {
+                                        "Home" -> navigator.replaceAll(DashboardScreen)
+                                        "Study" -> navigator.push(StudySessionsScreen)
+                                        "More" -> navigator.push(LifeSupportAgentsScreen)
+                                        "Profile" -> navigator.push(ProfileScreen)
                                     }
-                                }
-
-                                // Orb Expanded Panel (Gemini Live-like overlay)
-                                AnimatedVisibility(
-                                    visible = isOrbExpanded,
-                                    enter = fadeIn() + slideInVertically { it },
-                                    exit = fadeOut() + slideOutVertically { it },
-                                    modifier = Modifier.align(Alignment.BottomCenter)
-                                ) {
-                                    AssistantPanel(
-                                        onDismiss = { isOrbExpanded = false },
-                                        isMobile = true
-                                    )
-                                }
-
-                                // Profile Sheet
-                                if (isProfileOpen) {
-                                    ProfileSheet(
-                                        onDismiss = { isProfileOpen = false },
-                                        isMobile = true
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        // DESKTOP LAYOUT: Minimal Side Rail with Orb
-                        Row(modifier = Modifier.fillMaxSize()) {
-                            // Orb-Centric Desktop Rail
-                            OrbCentricDesktopRail(
-                                isOrbExpanded = isOrbExpanded,
-                                onMenuClick = { isMenuOpen = true },
-                                onCommandClick = {
-                                    if (currentRoute !is DashboardScreen) navigator.replace(DashboardScreen)
                                 },
-                                onOrbClick = { isOrbExpanded = !isOrbExpanded },
-                                onProfileClick = { isProfileOpen = true }
+                                onOrbClick = { isOrbExpanded = true }
                             )
+                        }
+                    },
+                    containerColor = KaironexColors.CloudGray
+                ) { paddingValues ->
+                    Row(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
 
-                            // Main Content with Assistant Overlay
-                            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                                AnimatedContent(
-                                    targetState = navigator.lastItem,
-                                    transitionSpec = { fadeIn() togetherWith fadeOut() }
-                                ) { screen ->
-                                    navigator.saveableState("shell_content", screen) {
-                                        screen.Content()
+                        // DESKTOP: Navigation Rail (Left Side)
+                        if (!isMobile) {
+                            FiveItemNavRail(
+                                selectedTab = selectedTab,
+                                onTabSelected = { tab ->
+                                    when (tab) {
+                                        "Home" -> navigator.replaceAll(DashboardScreen)
+                                        "Study" -> navigator.push(StudySessionsScreen)
+                                        "More" -> navigator.push(LifeSupportAgentsScreen)
+                                        "Profile" -> navigator.push(ProfileScreen)
                                     }
-                                }
+                                },
+                                onOrbClick = { isOrbExpanded = true }
+                            )
+                        }
 
-                                // Orb Expanded Panel for Desktop
-                                if (isOrbExpanded) {
-                                    AssistantPanel(
-                                        onDismiss = { isOrbExpanded = false },
-                                        isMobile = false,
-                                        modifier = Modifier.align(Alignment.CenterStart)
-                                    )
-                                }
-
-                                // Profile Sheet for Desktop
-                                if (isProfileOpen) {
-                                    ProfileSheet(
-                                        onDismiss = { isProfileOpen = false },
-                                        isMobile = false,
-                                        modifier = Modifier.align(Alignment.TopEnd)
-                                    )
-                                }
-                            }
+                        // MAIN CONTENT AREA
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            SlideTransition(navigator)
                         }
                     }
+                }
+
+// === THE IMMERSIVE ORB OVERLAY ===
+                AnimatedVisibility(
+                    visible = isOrbExpanded,
+                    enter = fadeIn() + slideInVertically { it },
+                    exit = fadeOut() + slideOutVertically { it },
+                    modifier = Modifier.fillMaxSize().zIndex(99f)
+                ) {
+                    // Handle back press to close orb instead of closing app
+                    com.mursaline.kaironex.platform.PlatformBackHandler(enabled = isOrbExpanded) {
+                        isOrbExpanded = false
+                    }
+
+                    ImmersiveAssistantPanel(
+                        onDismiss = { isOrbExpanded = false },
+                        isMobile = isMobile
+                    )
                 }
             }
         }
     }
 }
 
-// ===== ORB-CENTRIC NAVIGATION (Minimal: Command | Orb | Profile) =====
-
-/**
- * Mobile Bottom Navigation - Orb Centric
- * Only 3 elements: Command (Home), Orb (AI), Profile
- */
+// ===== 1. FIVE-ITEM NAVBAR (Mobile) =====
+// Home | Study | ORB | More | Profile
 @Composable
-fun OrbCentricMobileNav(
+fun FiveItemNavBar(
     selectedTab: String,
-    isOrbExpanded: Boolean,
-    onCommandClick: () -> Unit,
-    onOrbClick: () -> Unit,
-    onProfileClick: () -> Unit
+    onTabSelected: (String) -> Unit,
+    onOrbClick: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().height(80.dp),
-        color = KaironexColors.CanvasWhite,
-        shadowElevation = 12.dp
+    // Container with extra space for the floating orb
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(90.dp) // Extra height to accommodate floating orb
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // The actual navbar surface
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(65.dp)
+                .align(Alignment.BottomCenter),
+            color = KaironexColors.CanvasWhite,
+            shadowElevation = 16.dp,
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
         ) {
-            // 1. COMMAND (The Portal - Dashboard)
-            NavItemMinimal(
-                icon = Icons.Filled.Dashboard,
-                label = "Command",
-                isSelected = selectedTab == "Command",
-                onClick = onCommandClick
-            )
-
-            // 2. CENTER ORB (The Executor - AI Assistant)
-            Box(
+            Row(
                 modifier = Modifier
-                    .offset(y = (-20).dp)
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.radialGradient(
-                            colors = if (isOrbExpanded)
-                                listOf(KaironexColors.Purple600, KaironexColors.Indigo600)
-                            else
-                                listOf(KaironexColors.Indigo600, KaironexColors.GeminiBlurple)
-                        )
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 1. HOME
+                NavIconItemCompact(
+                    icon = Icons.Filled.Home,
+                    label = "Home",
+                    isSelected = selectedTab == "Home",
+                    onClick = { onTabSelected("Home") }
+                )
+
+                // 2. STUDY
+                NavIconItemCompact(
+                    icon = Icons.Filled.School,
+                    label = "Study",
+                    isSelected = selectedTab == "Study",
+                    onClick = { onTabSelected("Study") }
+                )
+
+                // Spacer for center orb
+                Spacer(Modifier.width(56.dp))
+
+                // 4. MORE (Life Support Agents)
+                NavIconItemCompact(
+                    icon = Icons.Filled.MoreHoriz,
+                    label = "More",
+                    isSelected = selectedTab == "More",
+                    onClick = { onTabSelected("More") }
+                )
+
+                // 5. PROFILE
+                NavIconItemCompact(
+                    icon = Icons.Filled.Person,
+                    label = "Profile",
+                    isSelected = selectedTab == "Profile",
+                    onClick = { onTabSelected("Profile") }
+                )
+            }
+        }
+
+        // 3. CENTER ORB (Floating above the navbar)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .offset(y = 4.dp)
+                .size(58.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(KaironexColors.Indigo600, KaironexColors.GeminiBlurple)
                     )
-                    .border(3.dp, Color.White, CircleShape)
-                    .clickable(onClick = onOrbClick),
-                contentAlignment = Alignment.Center
-            ) {
-                KxOrb(
-                    size = 48.dp,
-                    state = if (isOrbExpanded) KxOrbState.Active else KxOrbState.Idle
                 )
-            }
-
-            // 3. PROFILE (Account/Settings)
-            Column(
-                modifier = Modifier
-                    .clickable(onClick = onProfileClick)
-                    .padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                ProfileAvatar(size = 28.dp)
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "Profile",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = KaironexColors.SlateGray
-                )
-            }
+                .border(3.dp, KaironexColors.CanvasWhite, CircleShape)
+                .clickable(onClick = onOrbClick),
+            contentAlignment = Alignment.Center
+        ) {
+            KxOrb(size = 40.dp, state = KxOrbState.Idle)
         }
     }
 }
 
-/**
- * Desktop Side Rail - Orb Centric
- * Minimal: Menu, Command, Orb, Profile
- */
 @Composable
-fun OrbCentricDesktopRail(
-    isOrbExpanded: Boolean,
-    onMenuClick: () -> Unit,
-    onCommandClick: () -> Unit,
-    onOrbClick: () -> Unit,
-    onProfileClick: () -> Unit
+fun NavIconItemCompact(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (isSelected) KaironexColors.ElectricBlue else KaironexColors.SlateGray,
+            modifier = Modifier.size(22.dp)
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isSelected) KaironexColors.ElectricBlue else KaironexColors.SlateGray,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+        )
+    }
+}
+
+// ===== 2. FIVE-ITEM NAV RAIL (Desktop) =====
+@Composable
+fun FiveItemNavRail(
+    selectedTab: String,
+    onTabSelected: (String) -> Unit,
+    onOrbClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier.width(80.dp).fillMaxHeight(),
@@ -305,193 +267,133 @@ fun OrbCentricDesktopRail(
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            // Menu Button (Access to full navigation)
-            IconButton(onClick = onMenuClick) {
-                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = KaironexColors.InkBlack)
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // COMMAND (Dashboard Portal)
-            NavigationRailItem(
-                selected = true, // Always "selected" since it's the main view
-                onClick = onCommandClick,
-                icon = { Icon(Icons.Filled.Dashboard, contentDescription = "Command") },
-                label = { Text("Command", style = MaterialTheme.typography.labelSmall) },
-                colors = NavigationRailItemDefaults.colors(
-                    selectedIconColor = KaironexColors.ElectricBlue,
-                    selectedTextColor = KaironexColors.ElectricBlue,
-                    indicatorColor = KaironexColors.CloudGray
-                )
+            // 1. HOME
+            NavIconItemCompact(
+                icon = Icons.Filled.Home,
+                label = "Home",
+                isSelected = selectedTab == "Home",
+                onClick = { onTabSelected("Home") }
             )
 
-            Spacer(Modifier.weight(1f))
+            // 2. STUDY
+            NavIconItemCompact(
+                icon = Icons.Filled.School,
+                label = "Study",
+                isSelected = selectedTab == "Study",
+                onClick = { onTabSelected("Study") }
+            )
 
-            // CENTER ORB (AI Assistant)
+            // 3. ORB (Center)
             Box(
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
                     .background(
-                        brush = Brush.radialGradient(
-                            colors = if (isOrbExpanded)
-                                listOf(KaironexColors.Purple600, KaironexColors.Indigo600)
-                            else
-                                listOf(KaironexColors.Indigo600, KaironexColors.GeminiBlurple)
+                        Brush.radialGradient(
+                            colors = listOf(KaironexColors.Indigo600, KaironexColors.GeminiBlurple)
                         )
                     )
                     .border(2.dp, KaironexColors.CloudGray, CircleShape)
                     .clickable(onClick = onOrbClick),
                 contentAlignment = Alignment.Center
             ) {
-                KxOrb(
-                    size = 48.dp,
-                    state = if (isOrbExpanded) KxOrbState.Active else KxOrbState.Idle
-                )
+                KxOrb(size = 40.dp, state = KxOrbState.Idle)
             }
 
-            Spacer(Modifier.weight(1f))
+            // 4. MORE (Life Support Agents)
+            NavIconItemCompact(
+                icon = Icons.Filled.MoreHoriz,
+                label = "More",
+                isSelected = selectedTab == "More",
+                onClick = { onTabSelected("More") }
+            )
 
-            // PROFILE (Account/Settings)
-            Column(
-                modifier = Modifier
-                    .clickable(onClick = onProfileClick)
-                    .padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                ProfileAvatar(size = 36.dp)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Profile",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = KaironexColors.SlateGray
-                )
-            }
-
-            Spacer(Modifier.height(16.dp))
-        }
-    }
-}
-
-// ===== HELPER COMPONENTS =====
-
-@Composable
-fun NavItemMinimal(
-    icon: ImageVector,
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            modifier = Modifier.size(24.dp),
-            tint = if (isSelected) KaironexColors.ElectricBlue else KaironexColors.SlateGray
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (isSelected) KaironexColors.ElectricBlue else KaironexColors.SlateGray
-        )
-    }
-}
-
-@Composable
-fun ProfileAvatar(size: androidx.compose.ui.unit.Dp) {
-    Surface(
-        shape = CircleShape,
-        color = KaironexColors.GeminiBlurple,
-        modifier = Modifier.size(size)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                "S",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                style = if (size > 30.dp) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.labelSmall
+            // 5. PROFILE
+            NavIconItemCompact(
+                icon = Icons.Filled.Person,
+                label = "Profile",
+                isSelected = selectedTab == "Profile",
+                onClick = { onTabSelected("Profile") }
             )
         }
     }
 }
 
-// ===== ASSISTANT PANEL (Gemini Live-like) =====
-
+// ===== 3. IMMERSIVE ASSISTANT PANEL (Full-Screen Overlay) =====
 @Composable
-fun AssistantPanel(
+fun ImmersiveAssistantPanel(
     onDismiss: () -> Unit,
-    isMobile: Boolean,
-    modifier: Modifier = Modifier
+    isMobile: Boolean
 ) {
-    val panelWidth = if (isMobile) Modifier.fillMaxWidth() else Modifier.width(400.dp)
-    val panelHeight = if (isMobile) Modifier.height(450.dp) else Modifier.fillMaxHeight()
-
-    Surface(
-        modifier = modifier.then(panelWidth).then(panelHeight).padding(if (isMobile) 16.dp else 0.dp),
-        color = KaironexColors.CanvasWhite,
-        shape = if (isMobile) RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-               else RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
-        shadowElevation = 16.dp
+    // Full-screen overlay that blocks all background interactions
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(KaironexColors.InkBlack.copy(alpha = 0.95f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null, // No ripple effect
+                onClick = { } // Consume clicks to prevent pass-through
+            )
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Kaironex AI",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = KaironexColors.InkBlack
-                )
-                TextButton(onClick = onDismiss) {
-                    Text("Close", color = KaironexColors.SlateGray)
+            // Close Button
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = "Close",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(if (isMobile) 40.dp else 60.dp))
 
-            // Main Orb - Larger and interactive
+            // Massive Glowing Orb
             Box(
                 modifier = Modifier
-                    .size(if (isMobile) 120.dp else 150.dp)
+                    .size(if (isMobile) 180.dp else 220.dp)
                     .clip(CircleShape)
                     .background(
-                        brush = Brush.radialGradient(
+                        Brush.radialGradient(
                             colors = listOf(
                                 KaironexColors.Purple600,
                                 KaironexColors.Indigo600,
-                                KaironexColors.GeminiBlurple
+                                KaironexColors.GeminiBlurple.copy(alpha = 0.5f),
+                                Color.Transparent
                             )
                         )
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                KxOrb(
-                    size = if (isMobile) 100.dp else 130.dp,
-                    state = KxOrbState.Active
-                )
+                KxOrb(size = if (isMobile) 160.dp else 200.dp, state = KxOrbState.Active)
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(40.dp))
+
+            Text(
+                "I'm listening...",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(Modifier.height(8.dp))
 
             Text(
                 "Tap to speak or type below",
                 style = MaterialTheme.typography.bodyMedium,
-                color = KaironexColors.SlateGray
+                color = Color.White.copy(alpha = 0.7f)
             )
 
             Spacer(Modifier.weight(1f))
@@ -506,20 +408,25 @@ fun AssistantPanel(
                 AssistantQuickAction("🖥️", "Screen") { }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
 
             // Input Field
             OutlinedTextField(
                 value = "",
                 onValueChange = {},
-                placeholder = { Text("Ask me anything...") },
+                placeholder = { Text("Ask me anything...", color = Color.White.copy(alpha = 0.5f)) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = KaironexColors.ElectricBlue,
-                    unfocusedBorderColor = KaironexColors.CloudGray
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    cursorColor = Color.White
                 ),
                 shape = RoundedCornerShape(16.dp)
             )
+
+            Spacer(Modifier.height(if (isMobile) 16.dp else 32.dp))
         }
     }
 }
@@ -532,114 +439,18 @@ fun AssistantQuickAction(
 ) {
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .background(KaironexColors.CloudGray)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .background(Color.White.copy(alpha = 0.1f))
+            .padding(horizontal = 24.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(emoji, style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(4.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = KaironexColors.SlateGray)
-    }
-}
-
-// ===== PROFILE SHEET =====
-
-@Composable
-fun ProfileSheet(
-    onDismiss: () -> Unit,
-    isMobile: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val sheetWidth = if (isMobile) Modifier.fillMaxWidth() else Modifier.width(320.dp)
-    val sheetHeight = if (isMobile) Modifier.fillMaxHeight(0.7f) else Modifier.fillMaxHeight()
-
-    Surface(
-        modifier = modifier.then(sheetWidth).then(sheetHeight),
-        color = KaironexColors.CanvasWhite,
-        shape = if (isMobile) RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-               else RoundedCornerShape(bottomStart = 16.dp),
-        shadowElevation = 16.dp
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp)
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Profile & Settings",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = KaironexColors.InkBlack
-                )
-                TextButton(onClick = onDismiss) {
-                    Text("Done", color = KaironexColors.ElectricBlue)
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // Profile Info
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ProfileAvatar(size = 56.dp)
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text(
-                        "Student User",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = KaironexColors.InkBlack
-                    )
-                    Text(
-                        "student@university.edu",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = KaironexColors.SlateGray
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(32.dp))
-
-            // Settings Options
-            ProfileSettingItem("🔔", "Notifications")
-            ProfileSettingItem("🎨", "Appearance")
-            ProfileSettingItem("🔒", "Privacy & Security")
-            ProfileSettingItem("📊", "Study Statistics")
-            ProfileSettingItem("❓", "Help & Support")
-
-            Spacer(Modifier.weight(1f))
-
-            // Sign Out
-            TextButton(
-                onClick = { /* TODO: Sign out */ },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Sign Out", color = KaironexColors.AlertRed)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProfileSettingItem(emoji: String, label: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { /* TODO */ }
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(emoji, style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.width(16.dp))
+        Text(emoji, style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(8.dp))
         Text(
             label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = KaironexColors.InkBlack
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White.copy(alpha = 0.8f)
         )
     }
 }

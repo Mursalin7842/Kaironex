@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.emptyFlow
 
 // Voyager & Feature Imports
 import cafe.adriel.voyager.navigator.Navigator
+import com.mursaline.kaironex.features.splash.SplashScreen
 import com.mursaline.kaironex.features.auth.LoginScreen
 import com.mursaline.kaironex.features.dashboard.DashboardScreen
 import com.mursaline.kaironex.ui.theme.KaironexColors
@@ -28,7 +29,7 @@ import com.mursaline.kaironex.ui.theme.KaironexColors
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App(
-    sensorStream: Flow<String> = emptyFlow(),
+    sensorStream: Flow<String?> = emptyFlow(),
     isAccessibilityEnabled: Boolean = true,
     onOpenSettings: () -> Unit = {},
     onLockTriggered: (Boolean) -> Unit = {}
@@ -42,8 +43,8 @@ fun App(
             onSurface = KaironexColors.InkBlack
         )
     ) {
-        // Entry Point: Login
-        Navigator(LoginScreen)
+        // Entry Point: Splash Screen -> Login
+        Navigator(SplashScreen)
     }
 }
 

@@ -32,7 +32,9 @@ fun main() {
 
     // --- LOGIC 1: DESKTOP SENSOR (Auto-Dismiss Logic Added) ---
     LaunchedEffect(Unit) {
-        DesktopEye.watchActiveWindow().collect { windowTitle ->
+        DesktopEye.watchActiveWindow().collect { nullableWindowTitle ->
+            // Skip if DesktopEye is disabled or not monitoring (returns null)
+            val windowTitle = nullableWindowTitle ?: return@collect
 
             println("👁️ WATCHING: $windowTitle")
 

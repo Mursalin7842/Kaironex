@@ -21,8 +21,13 @@ import com.mursaline.kaironex.ui.theme.KaironexColors
 
 /**
  * Life Tracks Grid - The "Defense System" that handles life
- * These agents run in the background while the student focuses on studying.
- * Based on the "Hero + Support" dashboard strategy.
+ *
+ * 3-Zone Architecture:
+ * - CAMPAIGN (Career & Growth) 🚀
+ * - VITALITY (Food & Finance) ⚡
+ * - RADIUS   (Habitat & Culture) 📡
+ *
+ * These agents run in the background while the student focuses on studying in the Cortex.
  */
 @Composable
 fun LifeTracksGrid(
@@ -42,30 +47,16 @@ fun LifeTracksGrid(
             }
         }
     } else {
-        // Desktop: 2x2 Grid
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Desktop: 3-column layout for 3 tracks
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            LifeTrack.entries.forEach { track ->
                 LifeTrackCard(
-                    track = LifeTrack.Marathon,
-                    onClick = { onTrackClick(LifeTrack.Marathon) },
-                    modifier = Modifier.weight(1f).height(140.dp)
-                )
-                LifeTrackCard(
-                    track = LifeTrack.RealTime,
-                    onClick = { onTrackClick(LifeTrack.RealTime) },
-                    modifier = Modifier.weight(1f).height(140.dp)
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                LifeTrackCard(
-                    track = LifeTrack.VibeCheck,
-                    onClick = { onTrackClick(LifeTrack.VibeCheck) },
-                    modifier = Modifier.weight(1f).height(140.dp)
-                )
-                LifeTrackCard(
-                    track = LifeTrack.Creative,
-                    onClick = { onTrackClick(LifeTrack.Creative) },
-                    modifier = Modifier.weight(1f).height(140.dp)
+                    track = track,
+                    onClick = { onTrackClick(track) },
+                    modifier = Modifier.weight(1f).height(160.dp)
                 )
             }
         }

@@ -69,6 +69,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.mursaline.kaironex.features.genesis.GenesisIntroScreen
+import com.mursaline.kaironex.features.onboarding.SystemSetupScreen
 import com.mursaline.kaironex.ui.theme.KaironexColors
 import kotlinx.coroutines.launch
 
@@ -325,7 +326,7 @@ object SignupScreen : Screen {
                                      scope.launch {
                                          val result = authRepo.signup(name, email, password)
                                          if (result.isSuccess) {
-                                             navigator.replaceAll(GenesisIntroScreen)
+                                             navigator.replaceAll(SystemSetupScreen)
                                          }
                                      }
                                 },
