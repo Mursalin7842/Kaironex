@@ -42,7 +42,8 @@ object KaironexColors {
     val Emerald500 = SuccessGreen
     val Rose500 = AlertRed
     val Purple600 = GeminiBlurple
-    
+    val Amber500 = AttentionOrange // For streaks and warnings
+
     // Gradients (Mapped to new scheme)
     val IndigoGradientStart = GeminiBlurple.copy(alpha=0.9f)
     val IndigoGradientEnd = InkBlack.copy(alpha=0.95f)

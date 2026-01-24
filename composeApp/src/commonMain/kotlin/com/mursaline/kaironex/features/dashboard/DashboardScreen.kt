@@ -1,8 +1,6 @@
 package com.mursaline.kaironex.features.dashboard
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -13,21 +11,11 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,16 +26,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import com.mursaline.kaironex.ui.theme.KaironexColors
-import com.mursaline.kaironex.features.dashboard.tabs.HomeScreen
-import com.mursaline.kaironex.features.dashboard.tabs.AnalyticsScreen
-import com.mursaline.kaironex.features.dashboard.tabs.SettingsScreen
-import com.mursaline.kaironex.features.dashboard.tabs.ChatScreen
-
 import com.mursaline.kaironex.ui.components.KxCard
 import com.mursaline.kaironex.ui.components.KxCardVariant
 import com.mursaline.kaironex.ui.components.KxBadge
@@ -55,193 +39,185 @@ import com.mursaline.kaironex.ui.components.KxBadgeVariant
 import com.mursaline.kaironex.features.dashboard.components.ActiveAgentDeck
 import com.mursaline.kaironex.features.dashboard.components.PressureMap
 import com.mursaline.kaironex.features.dashboard.components.Agent
-import com.mursaline.kaironex.features.dashboard.components.OmniMenuDrawer
+import com.mursaline.kaironex.features.dashboard.components.CortexHeroCard
+import com.mursaline.kaironex.features.dashboard.components.LifeTracksGrid
+import com.mursaline.kaironex.features.zones.CortexState
+import com.mursaline.kaironex.features.study.StudyRoomScreen
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.IconButton
 
-
+/**
+ * Dashboard Screen - "Hero + Support" Layout
+ *
+ * Based on the Kaironex Motivation: The Study Room (Cortex) is the HEART of the app.
+ * The entire goal is to protect this space from "Life" distractions.
+ *
+ * Layout:
+ * - Top Section (The Cortex): Massive, immersive "Enter Flow" area with pressure visualization
+ * - Bottom Section (Life Support): The 4 Life Tracks that handle life so students can study
+ */
 object DashboardScreen : Screen {
     private fun readResolve(): Any = DashboardScreen
 
     @Composable
     override fun Content() {
-        var selectedTab by remember { mutableStateOf("Home") }
+        val navigator = LocalNavigator.currentOrThrow
+
+        // Cortex State - In production, this would come from ViewModel
+        var cortexState by remember {
+            mutableStateOf(
+                CortexState(
+                    currentSubject = "Calculus II",
+                    currentTopic = "3 Deadlines approaching. High pressure detected.",
+                    pressure = 0.7f,
+                    upcomingDeadlines = 3,
+                    studyStreak = 5,
+                    conceptMastery = 0.45f,
+                    isActive = true
+                )
+            )
+        }
 
         @Suppress("UnusedBoxWithConstraintsScope")
         BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
             val isMobile = this.maxWidth < 800.dp
-            val isWideDesktop = this.maxWidth > 1400.dp // Only show separate panel on very wide screens
-            val maxContentWidth = this.maxWidth
+            val isWideDesktop = this.maxWidth > 1400.dp
 
-            Column(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.weight(1f)) {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        // MAIN CONTENT - Scrollable for all screen sizes
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .verticalScroll(rememberScrollState())
-                                .padding(if (isMobile) 12.dp else 24.dp)
-                        ) {
-                            // Header
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = if (isMobile) 16.dp else 24.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = if (isMobile) "Good Morning!" else "Good Morning, Student.",
-                                        style = if(isMobile) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = KaironexColors.InkBlack
-                                    )
-                                    Spacer(Modifier.height(4.dp))
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = "Your focus score is stable.",
-                                            style = if (isMobile) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
-                                            color = KaironexColors.SlateGray
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        KxBadge("Routine", variant = KxBadgeVariant.Success)
-                                    }
-                                }
-                                
-                                // User Avatar / Profile
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = KaironexColors.GeminiBlurple,
-                                    modifier = Modifier.size(if(isMobile) 32.dp else 40.dp),
-                                    shadowElevation = 2.dp
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text("S", color = Color.White, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
+            Row(modifier = Modifier.fillMaxSize()) {
+                // MAIN SCROLLABLE CONTENT
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                        .padding(if (isMobile) 16.dp else 24.dp)
+                ) {
+                    // ===== HEADER =====
+                    DashboardHeader(isMobile = isMobile)
 
-                            // Content Area using KxCard - Responsive height
-                            val contentCardHeight = if (isMobile) {
-                                Modifier.heightIn(min = 280.dp, max = 400.dp)
-                            } else {
-                                Modifier.heightIn(min = 300.dp, max = 500.dp)
-                            }
+                    Spacer(Modifier.height(if (isMobile) 16.dp else 24.dp))
 
-                            KxCard(
-                                modifier = Modifier.fillMaxWidth().then(contentCardHeight),
-                                variant = KxCardVariant.High,
-                                backgroundColor = KaironexColors.CanvasWhite
-                            ) {
-                                Box(modifier = Modifier.fillMaxSize().padding(if (isMobile) 12.dp else 20.dp)) {
-                                    when(selectedTab) {
-                                        "Home" -> HomeScreen()
-                                        "Chat" -> ChatScreen()
-                                        "Analytics" -> AnalyticsScreen()
-                                        "Settings" -> SettingsScreen()
-                                        else -> HomeScreen()
-                                    }
-                                }
-                            }
+                    // ===== SECTION 1: THE HERO - CORTEX (Study Room) =====
+                    Text(
+                        text = "Current Focus",
+                        style = if (isMobile) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = KaironexColors.SlateGray
+                    )
+                    Spacer(Modifier.height(12.dp))
 
-                            Spacer(Modifier.height(if (isMobile) 16.dp else 24.dp))
+                    CortexHeroCard(
+                        cortexState = cortexState,
+                        onEnterFlow = { navigator.push(StudyRoomScreen) },
+                        isMobile = isMobile
+                    )
 
-                            // Active Agents Section - Now in scroll area for ALL screen sizes
-                            val dummyAgents = listOf(
-                                Agent("1", "Exam Prep", "Math", "Active", if (isMobile) "2 days" else "2 days left"),
-                                Agent("2", "Fitness Coach", "Health", "Idle", "Tomorrow"),
-                                Agent("3", "Code Review", "Dev", "Active", "Today")
-                            )
+                    Spacer(Modifier.height(if (isMobile) 24.dp else 32.dp))
 
-                            // Two-column layout for desktop
-                            if (!isMobile && !isWideDesktop) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(20.dp)
-                                ) {
-                                    // Left: Active Agents
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            "Active Agents",
-                                            fontWeight = FontWeight.Bold,
-                                            color = KaironexColors.InkBlack,
-                                            style = MaterialTheme.typography.titleMedium
-                                        )
-                                        Spacer(Modifier.height(12.dp))
-                                        ActiveAgentDeck(
-                                            agents = dummyAgents,
-                                            modifier = Modifier.fillMaxWidth(),
-                                            isMobile = false
-                                        )
-                                    }
+                    // ===== SECTION 2: LIFE SUPPORT AGENTS =====
+                    Text(
+                        text = "Life Support Agents",
+                        style = if (isMobile) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = KaironexColors.SlateGray
+                    )
+                    Spacer(Modifier.height(if (isMobile) 8.dp else 16.dp))
 
-                                    // Right: Academic Pressure
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            "Academic Pressure",
-                                            fontWeight = FontWeight.Bold,
-                                            color = KaironexColors.InkBlack,
-                                            style = MaterialTheme.typography.titleMedium
-                                        )
-                                        Spacer(Modifier.height(12.dp))
-                                        KxCard(
-                                            variant = KxCardVariant.Flat,
-                                            modifier = Modifier.fillMaxWidth().height(180.dp),
-                                            backgroundColor = KaironexColors.CanvasWhite
-                                        ) {
-                                            PressureMap(modifier = Modifier.fillMaxSize(), isMobile = false)
-                                        }
-                                    }
-                                }
-                            } else if (isMobile) {
-                                // Mobile: Stacked layout
-                                Text(
-                                    "Active Agents",
-                                    fontWeight = FontWeight.Bold,
-                                    color = KaironexColors.InkBlack,
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                ActiveAgentDeck(
-                                    agents = dummyAgents,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    isMobile = true
-                                )
+                    LifeTracksGrid(
+                        isMobile = isMobile,
+                        onTrackClick = { track -> }
+                    )
 
-                                Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(if (isMobile) 24.dp else 32.dp))
 
-                                Text(
-                                    "Weekly Pressure",
-                                    fontWeight = FontWeight.Bold,
-                                    color = KaironexColors.InkBlack,
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                KxCard(
-                                    variant = KxCardVariant.Flat,
-                                    modifier = Modifier.fillMaxWidth().height(120.dp),
-                                    backgroundColor = KaironexColors.CanvasWhite
-                                ) {
-                                    PressureMap(modifier = Modifier.fillMaxSize(), isMobile = true)
-                                }
-                            }
+                    // ===== SECTION 3: ACTIVE TASK AGENTS =====
+                    Text(
+                        text = "Active Agents",
+                        style = if (isMobile) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = KaironexColors.SlateGray
+                    )
+                    Spacer(Modifier.height(if (isMobile) 8.dp else 12.dp))
 
-                            Spacer(Modifier.height(24.dp))
-                        }
-                        
-                        // RIGHT PANEL - Only for very wide desktop screens (1400dp+)
-                        if (isWideDesktop) {
-                            RightPanel()
-                        }
+                    val dummyAgents = listOf(
+                        Agent("1", "Exam Prep", "Math", "Active", if (isMobile) "2 days" else "2 days left"),
+                        Agent("2", "Fitness Coach", "Health", "Idle", "Tomorrow"),
+                        Agent("3", "Code Review", "Dev", "Active", "Today")
+                    )
+                    ActiveAgentDeck(
+                        agents = dummyAgents,
+                        modifier = Modifier.fillMaxWidth(),
+                        isMobile = isMobile
+                    )
+
+                    Spacer(Modifier.height(if (isMobile) 24.dp else 32.dp))
+
+                    // ===== SECTION 4: PRESSURE MAP =====
+                    Text(
+                        text = if (isMobile) "Weekly Pressure" else "Academic Pressure Overview",
+                        style = if (isMobile) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = KaironexColors.SlateGray
+                    )
+                    Spacer(Modifier.height(if (isMobile) 8.dp else 12.dp))
+
+                    KxCard(
+                        variant = KxCardVariant.Flat,
+                        modifier = Modifier.fillMaxWidth().height(if (isMobile) 120.dp else 160.dp),
+                        backgroundColor = KaironexColors.CanvasWhite
+                    ) {
+                        PressureMap(modifier = Modifier.fillMaxSize(), isMobile = isMobile)
                     }
+
+                    Spacer(Modifier.height(32.dp))
+                }
+
+                // RIGHT PANEL - Only for very wide desktop screens
+                if (isWideDesktop) {
+                    RightPanel()
                 }
             }
-            // Bottom navigation is now handled by MainShell for mobile
         }
     }
 
+    @Composable
+    private fun DashboardHeader(isMobile: Boolean) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (isMobile) "Good Morning!" else "Good Morning, Student.",
+                    style = if (isMobile) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = KaironexColors.InkBlack
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Your focus score is stable.",
+                        style = if (isMobile) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                        color = KaironexColors.SlateGray
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    KxBadge("Routine", variant = KxBadgeVariant.Success)
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = KaironexColors.GeminiBlurple,
+                modifier = Modifier.size(if (isMobile) 36.dp else 44.dp),
+                shadowElevation = 2.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("S", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
 
     @Composable
     fun RightPanel() {
@@ -251,10 +227,28 @@ object DashboardScreen : Screen {
             shadowElevation = 0.dp
         ) {
             Column(modifier = Modifier.padding(20.dp).verticalScroll(rememberScrollState())) {
+                Text("Quick Stats", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(16.dp))
+
+                KxCard(variant = KxCardVariant.Elevated, modifier = Modifier.fillMaxWidth(), backgroundColor = KaironexColors.CanvasWhite) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            StatItem("Study Streak", "5 days", "🔥")
+                            StatItem("Focus Score", "78%", "🎯")
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            StatItem("Tasks Done", "12/15", "✅")
+                            StatItem("Deadlines", "3", "⏰")
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
                 Text("Active Agents", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
 
-                // Real Active Agent Deck
                 val dummyAgents = listOf(
                     Agent("1", "Exam Prep", "Math", "Active", "2 days left"),
                     Agent("2", "Fitness Coach", "Health", "Idle", "Tomorrow"),
@@ -264,14 +258,23 @@ object DashboardScreen : Screen {
                 
                 Spacer(Modifier.height(24.dp))
 
-                Text("Academic Pressure", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack, style = MaterialTheme.typography.titleMedium)
+                Text("Weekly Pressure", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
 
-                // Real Pressure Map
-                KxCard(variant = KxCardVariant.Flat, modifier = Modifier.fillMaxWidth().height(200.dp), backgroundColor = KaironexColors.CanvasWhite) {
-                     PressureMap(modifier = Modifier.fillMaxSize())
+                KxCard(variant = KxCardVariant.Flat, modifier = Modifier.fillMaxWidth().height(180.dp), backgroundColor = KaironexColors.CanvasWhite) {
+                    PressureMap(modifier = Modifier.fillMaxSize())
                 }
             }
+        }
+    }
+
+    @Composable
+    private fun StatItem(label: String, value: String, emoji: String) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(emoji, style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(4.dp))
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = KaironexColors.SlateGray)
         }
     }
 }
