@@ -71,15 +71,7 @@ object SystemSetupScreen : Screen {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            KaironexColors.InkBlack,
-                            Color(0xFF1A1A2E),
-                            KaironexColors.InkBlack
-                        )
-                    )
-                )
+                .background(KaironexColors.CloudGray)
         ) {
             Column(
                 modifier = Modifier
@@ -100,7 +92,7 @@ object SystemSetupScreen : Screen {
                                 .clip(CircleShape)
                                 .background(
                                     if (step <= currentStep) KaironexColors.GeminiBlurple
-                                    else Color.White.copy(alpha = 0.3f)
+                                    else KaironexColors.SlateGray.copy(alpha = 0.3f)
                                 )
                         )
                     }
@@ -180,7 +172,7 @@ private fun NameSetupStep(
             "What should I call you?",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = KaironexColors.InkBlack,
             textAlign = TextAlign.Center
         )
 
@@ -189,7 +181,7 @@ private fun NameSetupStep(
         Text(
             "I want to address you properly",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f)
+            color = KaironexColors.SlateGray
         )
 
         Spacer(Modifier.height(32.dp))
@@ -203,12 +195,14 @@ private fun NameSetupStep(
             modifier = Modifier.fillMaxWidth(0.8f),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = KaironexColors.GeminiBlurple,
-                unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
+                unfocusedBorderColor = KaironexColors.SlateGray.copy(alpha = 0.3f),
+                focusedTextColor = KaironexColors.InkBlack,
+                unfocusedTextColor = KaironexColors.InkBlack,
                 focusedLabelColor = KaironexColors.GeminiBlurple,
-                unfocusedLabelColor = Color.White.copy(alpha = 0.5f),
-                cursorColor = KaironexColors.GeminiBlurple
+                unfocusedLabelColor = KaironexColors.SlateGray,
+                cursorColor = KaironexColors.GeminiBlurple,
+                focusedContainerColor = KaironexColors.CanvasWhite,
+                unfocusedContainerColor = KaironexColors.CanvasWhite
             ),
             singleLine = true
         )
@@ -224,7 +218,7 @@ private fun NameSetupStep(
             ),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Text("Continue")
+            Text("Continue", fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
             Icon(Icons.AutoMirrored.Filled.ArrowForward, null)
         }
@@ -267,7 +261,7 @@ private fun WakeWordSetupStep(
             "How will you wake me up?",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = KaironexColors.InkBlack,
             textAlign = TextAlign.Center
         )
 
@@ -276,7 +270,7 @@ private fun WakeWordSetupStep(
         Text(
             "Choose your wake word (like 'Hey Siri')",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f)
+            color = KaironexColors.SlateGray
         )
 
         Spacer(Modifier.height(32.dp))
@@ -303,8 +297,9 @@ private fun WakeWordSetupStep(
                         }
                     },
                     shape = RoundedCornerShape(12.dp),
-                    color = if (isSelected) KaironexColors.GeminiBlurple.copy(alpha = 0.2f)
-                           else Color.White.copy(alpha = 0.05f),
+                    color = if (isSelected) KaironexColors.GeminiBlurple.copy(alpha = 0.1f)
+                           else KaironexColors.CanvasWhite,
+                    shadowElevation = if (isSelected) 0.dp else 2.dp,
                     border = if (isSelected) {
                         androidx.compose.foundation.BorderStroke(2.dp, KaironexColors.GeminiBlurple)
                     } else null
@@ -318,7 +313,7 @@ private fun WakeWordSetupStep(
                         Text(
                             option,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color.White
+                            color = KaironexColors.InkBlack
                         )
                         Spacer(Modifier.weight(1f))
                         if (isSelected && option != "Custom...") {
@@ -341,10 +336,12 @@ private fun WakeWordSetupStep(
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = KaironexColors.GeminiBlurple,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = KaironexColors.GeminiBlurple
+                        unfocusedBorderColor = KaironexColors.SlateGray.copy(alpha = 0.3f),
+                        focusedTextColor = KaironexColors.InkBlack,
+                        unfocusedTextColor = KaironexColors.InkBlack,
+                        cursorColor = KaironexColors.GeminiBlurple,
+                        focusedContainerColor = KaironexColors.CanvasWhite,
+                        unfocusedContainerColor = KaironexColors.CanvasWhite
                     ),
                     singleLine = true
                 )
@@ -362,9 +359,9 @@ private fun WakeWordSetupStep(
                 onClick = onBack,
                 modifier = Modifier.weight(1f).height(56.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color.White
+                    contentColor = KaironexColors.SlateGray
                 ),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+                border = androidx.compose.foundation.BorderStroke(1.dp, KaironexColors.SlateGray.copy(alpha = 0.3f))
             ) {
                 Text("Back")
             }
@@ -378,7 +375,7 @@ private fun WakeWordSetupStep(
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Text("Continue")
+                Text("Continue", fontWeight = FontWeight.Bold)
             }
         }
 
@@ -410,7 +407,7 @@ private fun InteractionModeStep(
             "How do you want to interact?",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = KaironexColors.InkBlack,
             textAlign = TextAlign.Center
         )
 
@@ -419,7 +416,7 @@ private fun InteractionModeStep(
         Text(
             "You can change this anytime in settings",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f)
+            color = KaironexColors.SlateGray
         )
 
         Spacer(Modifier.height(32.dp))
@@ -435,8 +432,9 @@ private fun InteractionModeStep(
                 Surface(
                     onClick = { onUpdate(config.copy(interactionMode = mode)) },
                     shape = RoundedCornerShape(16.dp),
-                    color = if (isSelected) KaironexColors.GeminiBlurple.copy(alpha = 0.2f)
-                           else Color.White.copy(alpha = 0.05f),
+                    color = if (isSelected) KaironexColors.GeminiBlurple.copy(alpha = 0.1f)
+                           else KaironexColors.CanvasWhite,
+                    shadowElevation = if (isSelected) 0.dp else 2.dp,
                     border = if (isSelected) {
                         androidx.compose.foundation.BorderStroke(2.dp, KaironexColors.GeminiBlurple)
                     } else null
@@ -457,12 +455,12 @@ private fun InteractionModeStep(
                                 mode.label,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = KaironexColors.InkBlack
                             )
                             Text(
                                 mode.description,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.7f)
+                                color = KaironexColors.SlateGray
                             )
                         }
                         if (isSelected) {
@@ -488,9 +486,9 @@ private fun InteractionModeStep(
                 onClick = onBack,
                 modifier = Modifier.weight(1f).height(56.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color.White
+                    contentColor = KaironexColors.SlateGray
                 ),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+                border = androidx.compose.foundation.BorderStroke(1.dp, KaironexColors.SlateGray.copy(alpha = 0.3f))
             ) {
                 Text("Back")
             }

@@ -171,15 +171,7 @@ data class GenesisInterviewScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            KaironexColors.InkBlack,
-                            Color(0xFF1A1A2E),
-                            KaironexColors.InkBlack
-                        )
-                    )
-                )
+                .background(KaironexColors.CloudGray)
         ) {
             when (screenState) {
                 InterviewState.INTERVIEWING -> {
@@ -369,7 +361,8 @@ private fun InterviewHeader(
     isListening: Boolean
 ) {
     Surface(
-        color = Color.Black.copy(alpha = 0.3f),
+        color = KaironexColors.CanvasWhite,
+        shadowElevation = 4.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -414,7 +407,7 @@ private fun InterviewHeader(
                         else "Getting to know you",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = KaironexColors.InkBlack
                     )
                 }
                 Text(
@@ -433,7 +426,7 @@ private fun InterviewHeader(
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp)),
                 color = KaironexColors.GeminiBlurple,
-                trackColor = Color.White.copy(alpha = 0.2f)
+                trackColor = KaironexColors.CloudGray
             )
         }
     }
@@ -467,13 +460,14 @@ private fun ChatBubble(message: ChatMessage) {
                 bottomEnd = if (message.isFromUser) 4.dp else 16.dp
             ),
             color = if (message.isFromUser) KaironexColors.GeminiBlurple
-                   else Color.White.copy(alpha = 0.1f),
+                   else KaironexColors.CanvasWhite,
+            shadowElevation = if (message.isFromUser) 0.dp else 2.dp,
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
             Text(
                 text = message.content,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White,
+                color = if (message.isFromUser) Color.White else KaironexColors.InkBlack,
                 modifier = Modifier.padding(12.dp)
             )
         }
@@ -541,7 +535,8 @@ private fun TypingIndicator(isVoice: Boolean = false) {
         Spacer(Modifier.width(8.dp))
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = Color.White.copy(alpha = 0.1f)
+            color = KaironexColors.CanvasWhite,
+            shadowElevation = 2.dp
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -552,7 +547,7 @@ private fun TypingIndicator(isVoice: Boolean = false) {
                     Text(
                         "Speaking...",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.7f)
+                        color = KaironexColors.SlateGray
                     )
                 } else {
                     repeat(3) { index ->
@@ -561,7 +556,7 @@ private fun TypingIndicator(isVoice: Boolean = false) {
                                 .size(8.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    Color.White.copy(
+                                    KaironexColors.GeminiBlurple.copy(
                                         alpha = if (index == 0) dot1
                                                else if (index == 1) 1f - dot1
                                                else dot1 * 0.5f
@@ -595,7 +590,8 @@ private fun ChatInputArea(
     )
 
     Surface(
-        color = Color.Black.copy(alpha = 0.5f),
+        color = KaironexColors.CanvasWhite,
+        shadowElevation = 8.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -633,7 +629,7 @@ private fun ChatInputArea(
                     else "Tap the mic to speak your answer",
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isListening) KaironexColors.SuccessGreen
-                           else Color.White.copy(alpha = 0.5f),
+                           else KaironexColors.SlateGray,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -644,7 +640,7 @@ private fun ChatInputArea(
                 Text(
                     "or type below",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.3f),
+                    color = KaironexColors.SlateGray.copy(alpha = 0.5f),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -660,14 +656,16 @@ private fun ChatInputArea(
                 OutlinedTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    placeholder = { Text("Type your answer...", color = Color.White.copy(alpha = 0.5f)) },
+                    placeholder = { Text("Type your answer...", color = KaironexColors.SlateGray) },
                     modifier = Modifier.weight(1f),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = KaironexColors.GeminiBlurple,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = KaironexColors.GeminiBlurple
+                        unfocusedBorderColor = KaironexColors.SlateGray.copy(alpha = 0.3f),
+                        focusedTextColor = KaironexColors.InkBlack,
+                        unfocusedTextColor = KaironexColors.InkBlack,
+                        cursorColor = KaironexColors.GeminiBlurple,
+                        focusedContainerColor = KaironexColors.CloudGray,
+                        unfocusedContainerColor = KaironexColors.CloudGray
                     ),
                     shape = RoundedCornerShape(24.dp),
                     singleLine = true
@@ -683,7 +681,7 @@ private fun ChatInputArea(
                         .clip(CircleShape)
                         .background(
                             if (value.isNotBlank()) KaironexColors.GeminiBlurple
-                            else Color.White.copy(alpha = 0.1f)
+                            else KaironexColors.SlateGray.copy(alpha = 0.2f)
                         )
                 ) {
                     Icon(
@@ -704,8 +702,8 @@ private fun ProfileCompleteScreen(
 ) {
     val infiniteTransition = rememberInfiniteTransition()
     val scale by infiniteTransition.animateFloat(
-        initialValue = 0.9f,
-        targetValue = 1.1f,
+        initialValue = 0.95f,
+        targetValue = 1.05f,
         animationSpec = infiniteRepeatable(
             animation = tween(1000, easing = EaseInOutCubic),
             repeatMode = RepeatMode.Reverse
@@ -715,6 +713,7 @@ private fun ProfileCompleteScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(KaironexColors.CloudGray)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -729,7 +728,7 @@ private fun ProfileCompleteScreen(
                     Brush.radialGradient(
                         colors = listOf(
                             KaironexColors.SuccessGreen,
-                            KaironexColors.SuccessGreen.copy(alpha = 0.5f)
+                            KaironexColors.SuccessGreen.copy(alpha = 0.7f)
                         )
                     )
                 ),
@@ -749,7 +748,7 @@ private fun ProfileCompleteScreen(
             "Profile Complete!",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = KaironexColors.InkBlack
         )
 
         Spacer(Modifier.height(8.dp))
@@ -757,7 +756,7 @@ private fun ProfileCompleteScreen(
         Text(
             "I now understand your life, ${studentProfile.name}",
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.White.copy(alpha = 0.7f),
+            color = KaironexColors.SlateGray,
             textAlign = TextAlign.Center
         )
 
@@ -766,7 +765,8 @@ private fun ProfileCompleteScreen(
         // Profile summary
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = Color.White.copy(alpha = 0.1f),
+            color = KaironexColors.CanvasWhite,
+            shadowElevation = 4.dp,
             modifier = Modifier.fillMaxWidth(0.9f)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -790,7 +790,7 @@ private fun ProfileCompleteScreen(
             ),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Text("Continue to Setup")
+            Text("Continue to Setup", fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
             Icon(Icons.Default.ChevronRight, null)
         }
@@ -815,6 +815,7 @@ private fun DriveConnectionScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(KaironexColors.CloudGray)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -829,7 +830,7 @@ private fun DriveConnectionScreen(
                     Brush.radialGradient(
                         colors = listOf(
                             KaironexColors.ElectricBlue,
-                            KaironexColors.ElectricBlue.copy(alpha = 0.5f)
+                            KaironexColors.ElectricBlue.copy(alpha = 0.7f)
                         )
                     )
                 ),
@@ -849,7 +850,7 @@ private fun DriveConnectionScreen(
             "Connect Your Study Materials",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = KaironexColors.InkBlack,
             textAlign = TextAlign.Center
         )
 
@@ -858,7 +859,7 @@ private fun DriveConnectionScreen(
         Text(
             "Import your PDFs, notes, and documents from Google Drive so I can help you study smarter",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f),
+            color = KaironexColors.SlateGray,
             textAlign = TextAlign.Center
         )
 
@@ -867,7 +868,8 @@ private fun DriveConnectionScreen(
         // Benefits list
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = Color.White.copy(alpha = 0.1f),
+            color = KaironexColors.CanvasWhite,
+            shadowElevation = 4.dp,
             modifier = Modifier.fillMaxWidth(0.9f)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
@@ -894,7 +896,7 @@ private fun DriveConnectionScreen(
         ) {
             Icon(Icons.Default.Cloud, null)
             Spacer(Modifier.width(8.dp))
-            Text("Connect Google Drive")
+            Text("Connect Google Drive", fontWeight = FontWeight.Bold)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -903,7 +905,7 @@ private fun DriveConnectionScreen(
         TextButton(onClick = onSkip) {
             Text(
                 "I'll upload files manually later",
-                color = Color.White.copy(alpha = 0.6f)
+                color = KaironexColors.SlateGray
             )
         }
     }
@@ -917,7 +919,7 @@ private fun BenefitItem(emoji: String, text: String) {
         Text(
             text,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White
+            color = KaironexColors.InkBlack
         )
     }
 }
@@ -936,12 +938,12 @@ private fun ProfileSummaryItem(emoji: String, label: String, value: String) {
             Text(
                 label,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.5f)
+                color = KaironexColors.SlateGray
             )
             Text(
                 value,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White
+                color = KaironexColors.InkBlack
             )
         }
     }

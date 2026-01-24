@@ -379,7 +379,38 @@ data class MarathonAgentState(
   - Recent uploads with ingestion status
   - File type detection (PDF, Video, PPT, etc.)
 
-### ✅ NEW: Splash & Onboarding
+### ✅ NEW: Presence Engine & Intervention System
+- [x] **PresenceEngine** - Cross-platform presence detection (replaces DesktopEye):
+  - Tracks if user is focused on app or drifted away
+  - States: FOCUSED, DRIFTING, INTERVENTION, NEGOTIATING, ON_BREAK
+  - Configurable drift tolerance (default 15s grace, 30s before call)
+  - Window focus gained/lost callbacks
+  - Break granting with duration
+- [x] **GeminiInterventionOverlay** - "Kairo is calling" screen:
+  - Full-screen dark overlay with pulsing animations
+  - Expanding ring effects around avatar
+  - "I'm Back" and "Need a Break" buttons
+  - Friendly, non-punishing tone
+- [x] **NegotiationDialog** - Break negotiation:
+  - User explains why they need a break
+  - Break duration chips (2, 5, 10, 15 minutes)
+  - "It was nothing, I'm back" option
+- [x] **DriftingWarningBadge** - Small warning when starting to drift
+- [x] **OnBreakBadge** - Shows when user is on approved break
+
+### ✅ NEW: Light Theme for Onboarding
+- [x] **SystemSetupScreen** - Updated to use light/white theme:
+  - CloudGray background
+  - InkBlack text colors
+  - White cards with shadows
+  - Consistent with main app theme
+- [x] **GenesisInterviewScreen** - Updated to use light theme:
+  - White chat bubbles for Kairo messages
+  - Purple bubbles for user messages
+  - Light header with shadow
+  - White input area
+  - Profile summary with white cards
+  - Drive connection with light styling
 - [x] **SplashScreen** - Animated splash with:
   - Robot hero image with pulse animation
   - Glow effects
