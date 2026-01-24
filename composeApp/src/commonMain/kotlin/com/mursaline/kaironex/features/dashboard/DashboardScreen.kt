@@ -36,9 +36,7 @@ import com.mursaline.kaironex.ui.components.KxCard
 import com.mursaline.kaironex.ui.components.KxCardVariant
 import com.mursaline.kaironex.ui.components.KxBadge
 import com.mursaline.kaironex.ui.components.KxBadgeVariant
-import com.mursaline.kaironex.features.dashboard.components.ActiveAgentDeck
 import com.mursaline.kaironex.features.dashboard.components.PressureMap
-import com.mursaline.kaironex.features.dashboard.components.Agent
 import com.mursaline.kaironex.features.dashboard.components.CortexHeroCard
 import com.mursaline.kaironex.features.dashboard.components.LifeTracksGrid
 import com.mursaline.kaironex.features.zones.CortexState
@@ -115,6 +113,7 @@ object DashboardScreen : Screen {
                     Spacer(Modifier.height(if (isMobile) 24.dp else 32.dp))
 
                     // ===== SECTION 2: LIFE SUPPORT AGENTS =====
+                    // These contain the active agents - no separate "Active Agents" deck needed
                     Text(
                         text = "Life Support Agents",
                         style = if (isMobile) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
@@ -125,34 +124,16 @@ object DashboardScreen : Screen {
 
                     LifeTracksGrid(
                         isMobile = isMobile,
-                        onTrackClick = { track -> }
+                        onTrackClick = { track ->
+                            // Route to specific Track screens when implemented
+                            // For now, tracks show their status inline
+                            // TODO: navigator.push(TrackDetailScreen(track))
+                        }
                     )
 
                     Spacer(Modifier.height(if (isMobile) 24.dp else 32.dp))
 
-                    // ===== SECTION 3: ACTIVE TASK AGENTS =====
-                    Text(
-                        text = "Active Agents",
-                        style = if (isMobile) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = KaironexColors.SlateGray
-                    )
-                    Spacer(Modifier.height(if (isMobile) 8.dp else 12.dp))
-
-                    val dummyAgents = listOf(
-                        Agent("1", "Exam Prep", "Math", "Active", if (isMobile) "2 days" else "2 days left"),
-                        Agent("2", "Fitness Coach", "Health", "Idle", "Tomorrow"),
-                        Agent("3", "Code Review", "Dev", "Active", "Today")
-                    )
-                    ActiveAgentDeck(
-                        agents = dummyAgents,
-                        modifier = Modifier.fillMaxWidth(),
-                        isMobile = isMobile
-                    )
-
-                    Spacer(Modifier.height(if (isMobile) 24.dp else 32.dp))
-
-                    // ===== SECTION 4: PRESSURE MAP =====
+                    // ===== SECTION 3: PRESSURE MAP =====
                     Text(
                         text = if (isMobile) "Weekly Pressure" else "Academic Pressure Overview",
                         style = if (isMobile) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
@@ -246,16 +227,12 @@ object DashboardScreen : Screen {
 
                 Spacer(Modifier.height(24.dp))
 
-                Text("Active Agents", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack, style = MaterialTheme.typography.titleMedium)
+                Text("Life Support", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
 
-                val dummyAgents = listOf(
-                    Agent("1", "Exam Prep", "Math", "Active", "2 days left"),
-                    Agent("2", "Fitness Coach", "Health", "Idle", "Tomorrow"),
-                    Agent("3", "Code Review", "Dev", "Active", "Today")
-                )
-                ActiveAgentDeck(agents = dummyAgents, modifier = Modifier.fillMaxWidth())
-                
+                // Compact Life Tracks grid for side panel
+                LifeTracksGrid(isMobile = true, onTrackClick = {})
+
                 Spacer(Modifier.height(24.dp))
 
                 Text("Weekly Pressure", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack, style = MaterialTheme.typography.titleMedium)
