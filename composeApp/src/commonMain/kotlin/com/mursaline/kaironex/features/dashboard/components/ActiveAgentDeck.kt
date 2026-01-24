@@ -48,8 +48,9 @@ fun ActiveAgentDeck(
 
 @Composable
 fun AgentCard(agent: Agent, isMobile: Boolean = false) {
-    val cardWidth = if (isMobile) 180.dp else 260.dp
-    val cardPadding = if (isMobile) 12.dp else 16.dp
+    // More compact card sizes for better minimum window support
+    val cardWidth = if (isMobile) 160.dp else 220.dp
+    val cardPadding = if (isMobile) 10.dp else 14.dp
 
     KxCard(
         modifier = Modifier.width(cardWidth),
@@ -74,11 +75,11 @@ fun AgentCard(agent: Agent, isMobile: Boolean = false) {
                 }
             }
             
-            Spacer(Modifier.height(if (isMobile) 8.dp else 12.dp))
+            Spacer(Modifier.height(if (isMobile) 6.dp else 10.dp))
 
             Text(
                 text = agent.name,
-                style = if (isMobile) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium,
+                style = if (isMobile) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
                 color = KaironexColors.Slate900,
                 maxLines = 1,
@@ -87,16 +88,16 @@ fun AgentCard(agent: Agent, isMobile: Boolean = false) {
             
             Text(
                 text = agent.status,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelSmall,
                 color = KaironexColors.Slate500,
                 maxLines = 1
             )
             
-            Spacer(Modifier.height(if (isMobile) 8.dp else 16.dp))
+            Spacer(Modifier.height(if (isMobile) 6.dp else 12.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = if (isMobile) "" else "Deadline: ",
+                    text = if (isMobile) "" else "Due: ",
                     style = MaterialTheme.typography.labelSmall,
                     color = KaironexColors.Slate500
                 )

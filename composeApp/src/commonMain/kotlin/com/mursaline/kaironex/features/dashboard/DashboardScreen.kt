@@ -71,12 +71,13 @@ object DashboardScreen : Screen {
         @Suppress("UnusedBoxWithConstraintsScope")
         BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
             val isMobile = this.maxWidth < 800.dp
-            val showRightPanel = this.maxWidth > 1200.dp // Desktop wide mode
+            val isWideDesktop = this.maxWidth > 1400.dp // Only show separate panel on very wide screens
+            val maxContentWidth = this.maxWidth
 
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.weight(1f)) {
                     Row(modifier = Modifier.fillMaxSize()) {
-                        // MAIN CONTENT - Add vertical scroll for mobile
+                        // MAIN CONTENT - Scrollable for all screen sizes
                         Column(
                             modifier = Modifier
                                 .weight(1f)
@@ -86,7 +87,7 @@ object DashboardScreen : Screen {
                         ) {
                             // Header
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = if (isMobile) 16.dp else 32.dp),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = if (isMobile) 16.dp else 24.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -122,15 +123,19 @@ object DashboardScreen : Screen {
                                 }
                             }
 
-                            // Content Area using KxCard for unification
+                            // Content Area using KxCard - Responsive height
+                            val contentCardHeight = if (isMobile) {
+                                Modifier.heightIn(min = 280.dp, max = 400.dp)
+                            } else {
+                                Modifier.heightIn(min = 300.dp, max = 500.dp)
+                            }
+
                             KxCard(
-                                modifier = Modifier.fillMaxWidth().let {
-                                    if (isMobile) it.heightIn(min = 300.dp) else it.fillMaxHeight()
-                                },
+                                modifier = Modifier.fillMaxWidth().then(contentCardHeight),
                                 variant = KxCardVariant.High,
                                 backgroundColor = KaironexColors.CanvasWhite
                             ) {
-                                Box(modifier = Modifier.fillMaxSize().padding(if (isMobile) 12.dp else 24.dp)) {
+                                Box(modifier = Modifier.fillMaxSize().padding(if (isMobile) 12.dp else 20.dp)) {
                                     when(selectedTab) {
                                         "Home" -> HomeScreen()
                                         "Chat" -> ChatScreen()
@@ -141,11 +146,57 @@ object DashboardScreen : Screen {
                                 }
                             }
 
-                            // MOBILE: Show agents and pressure map below main content
-                            if (isMobile) {
-                                Spacer(Modifier.height(16.dp))
+                            Spacer(Modifier.height(if (isMobile) 16.dp else 24.dp))
 
-                                // Active Agents Section
+                            // Active Agents Section - Now in scroll area for ALL screen sizes
+                            val dummyAgents = listOf(
+                                Agent("1", "Exam Prep", "Math", "Active", if (isMobile) "2 days" else "2 days left"),
+                                Agent("2", "Fitness Coach", "Health", "Idle", "Tomorrow"),
+                                Agent("3", "Code Review", "Dev", "Active", "Today")
+                            )
+
+                            // Two-column layout for desktop
+                            if (!isMobile && !isWideDesktop) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(20.dp)
+                                ) {
+                                    // Left: Active Agents
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            "Active Agents",
+                                            fontWeight = FontWeight.Bold,
+                                            color = KaironexColors.InkBlack,
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Spacer(Modifier.height(12.dp))
+                                        ActiveAgentDeck(
+                                            agents = dummyAgents,
+                                            modifier = Modifier.fillMaxWidth(),
+                                            isMobile = false
+                                        )
+                                    }
+
+                                    // Right: Academic Pressure
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            "Academic Pressure",
+                                            fontWeight = FontWeight.Bold,
+                                            color = KaironexColors.InkBlack,
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Spacer(Modifier.height(12.dp))
+                                        KxCard(
+                                            variant = KxCardVariant.Flat,
+                                            modifier = Modifier.fillMaxWidth().height(180.dp),
+                                            backgroundColor = KaironexColors.CanvasWhite
+                                        ) {
+                                            PressureMap(modifier = Modifier.fillMaxSize(), isMobile = false)
+                                        }
+                                    }
+                                }
+                            } else if (isMobile) {
+                                // Mobile: Stacked layout
                                 Text(
                                     "Active Agents",
                                     fontWeight = FontWeight.Bold,
@@ -153,11 +204,6 @@ object DashboardScreen : Screen {
                                     style = MaterialTheme.typography.titleSmall
                                 )
                                 Spacer(Modifier.height(8.dp))
-
-                                val dummyAgents = listOf(
-                                    Agent("1", "Exam Prep", "Math", "Active", "2 days"),
-                                    Agent("2", "Fitness", "Health", "Idle", "Tomorrow")
-                                )
                                 ActiveAgentDeck(
                                     agents = dummyAgents,
                                     modifier = Modifier.fillMaxWidth(),
@@ -166,7 +212,6 @@ object DashboardScreen : Screen {
 
                                 Spacer(Modifier.height(16.dp))
 
-                                // Pressure Map Section
                                 Text(
                                     "Weekly Pressure",
                                     fontWeight = FontWeight.Bold,
@@ -174,7 +219,6 @@ object DashboardScreen : Screen {
                                     style = MaterialTheme.typography.titleSmall
                                 )
                                 Spacer(Modifier.height(8.dp))
-
                                 KxCard(
                                     variant = KxCardVariant.Flat,
                                     modifier = Modifier.fillMaxWidth().height(120.dp),
@@ -182,13 +226,13 @@ object DashboardScreen : Screen {
                                 ) {
                                     PressureMap(modifier = Modifier.fillMaxSize(), isMobile = true)
                                 }
-
-                                Spacer(Modifier.height(16.dp))
                             }
+
+                            Spacer(Modifier.height(24.dp))
                         }
                         
-                        // RIGHT PANEL (Agent Deck / Mini PressureMap)
-                        if (showRightPanel) {
+                        // RIGHT PANEL - Only for very wide desktop screens (1400dp+)
+                        if (isWideDesktop) {
                             RightPanel()
                         }
                     }
@@ -202,28 +246,29 @@ object DashboardScreen : Screen {
     @Composable
     fun RightPanel() {
         Surface(
-            modifier = Modifier.width(350.dp).fillMaxHeight(),
-            color = KaironexColors.CloudGray, // Slight distinction
+            modifier = Modifier.width(320.dp).fillMaxHeight(),
+            color = KaironexColors.CloudGray,
             shadowElevation = 0.dp
         ) {
-            Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
-                Text("Active Agents", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack)
-                Spacer(Modifier.height(16.dp))
-                
+            Column(modifier = Modifier.padding(20.dp).verticalScroll(rememberScrollState())) {
+                Text("Active Agents", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(12.dp))
+
                 // Real Active Agent Deck
                 val dummyAgents = listOf(
                     Agent("1", "Exam Prep", "Math", "Active", "2 days left"),
-                    Agent("2", "Fitness Coach", "Health", "Idle", "Tomorrow")
+                    Agent("2", "Fitness Coach", "Health", "Idle", "Tomorrow"),
+                    Agent("3", "Code Review", "Dev", "Active", "Today")
                 )
                 ActiveAgentDeck(agents = dummyAgents, modifier = Modifier.fillMaxWidth())
                 
-                Spacer(Modifier.height(32.dp))
-                
-                Text("Academic Pressure", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack)
-                Spacer(Modifier.height(16.dp))
-                
+                Spacer(Modifier.height(24.dp))
+
+                Text("Academic Pressure", fontWeight = FontWeight.Bold, color = KaironexColors.InkBlack, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(12.dp))
+
                 // Real Pressure Map
-                KxCard(variant = KxCardVariant.Flat, modifier = Modifier.fillMaxWidth().height(250.dp), backgroundColor = KaironexColors.CanvasWhite) {
+                KxCard(variant = KxCardVariant.Flat, modifier = Modifier.fillMaxWidth().height(200.dp), backgroundColor = KaironexColors.CanvasWhite) {
                      PressureMap(modifier = Modifier.fillMaxSize())
                 }
             }
