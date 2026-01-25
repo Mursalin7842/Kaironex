@@ -34,7 +34,8 @@ import com.mursaline.kaironex.features.profile.ProfileScreen
 import com.mursaline.kaironex.features.study.StudySessionsScreen
 import com.mursaline.kaironex.features.agents.LifeSupportAgentsScreen
 import com.mursaline.kaironex.ui.components.KxOrb
-import com.mursaline.kaironex.ui.components.KxOrbState
+import com.mursaline.kaironex.ui.components.KxOrb
+
 
 /**
  * MainShell - The Trinity Navigation Shell
@@ -219,7 +220,11 @@ fun FiveItemNavBar(
                 .clickable(onClick = onOrbClick),
             contentAlignment = Alignment.Center
         ) {
-            KxOrb(size = 40.dp, state = KxOrbState.Idle)
+            KxOrb(
+                isAgentSpeaking = false,
+                isUserListening = false,
+                modifier = Modifier.size(40.dp)
+            )
         }
     }
 }
@@ -300,7 +305,11 @@ fun FiveItemNavRail(
                     .clickable(onClick = onOrbClick),
                 contentAlignment = Alignment.Center
             ) {
-                KxOrb(size = 40.dp, state = KxOrbState.Idle)
+            KxOrb(
+                isAgentSpeaking = false,
+                isUserListening = false,
+                modifier = Modifier.size(40.dp)
+            )
             }
 
             // 4. MORE (Life Support Agents)
@@ -376,7 +385,11 @@ fun ImmersiveAssistantPanel(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                KxOrb(size = if (isMobile) 160.dp else 200.dp, state = KxOrbState.Active)
+            KxOrb(
+                isAgentSpeaking = true,
+                isUserListening = true,
+                modifier = Modifier.size(if (isMobile) 160.dp else 200.dp)
+            )
             }
 
             Spacer(Modifier.height(40.dp))

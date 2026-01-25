@@ -86,7 +86,10 @@ object SignupScreen : Screen {
         var name by remember { mutableStateOf("") }
         var email by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
+        var confirmPassword by remember { mutableStateOf("") }
         var passwordVisible by remember { mutableStateOf(false) }
+        var confirmPasswordVisible by remember { mutableStateOf(false) }
+        var passwordError by remember { mutableStateOf<String?>(null) }
 
         AuthLayout(navToSignup = true) {
             @Suppress("UnusedBoxWithConstraintsScope")
@@ -318,18 +321,67 @@ object SignupScreen : Screen {
                                 }
                             )
 
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            // Confirm Password
+                            Text("Confirm Password", style = MaterialTheme.typography.labelMedium, color = KaironexColors.Slate800, fontWeight = FontWeight.Medium)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = confirmPassword,
+                                onValueChange = {
+                                    confirmPassword = it
+                                    passwordError = if (it != password && it.isNotEmpty()) "Passwords don't match" else null
+                                },
+                                placeholder = { Text("••••••••", color = KaironexColors.Slate500.copy(alpha=0.7f)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = KaironexColors.Slate50,
+                                    focusedIndicatorColor = if (passwordError != null) KaironexColors.Rose500 else KaironexColors.Indigo600,
+                                    unfocusedIndicatorColor = if (passwordError != null) KaironexColors.Rose500 else KaironexColors.Slate100,
+                                    cursorColor = KaironexColors.Indigo600,
+                                    focusedTextColor = Color.Black,
+                                    unfocusedTextColor = Color.Black
+                                ),
+                                singleLine = true,
+                                isError = passwordError != null,
+                                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = if (passwordError != null) KaironexColors.Rose500 else KaironexColors.Slate500) },
+                                trailingIcon = {
+                                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                        Icon(if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, null, tint = KaironexColors.Slate500)
+                                    }
+                                }
+                            )
+
+                            // Error message
+                            if (passwordError != null) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    passwordError!!,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = KaironexColors.Rose500
+                                )
+                            }
+
                             Spacer(modifier = Modifier.height(32.dp))
 
                             // Submit
                             Button(
                                 onClick = {
+                                     if (password != confirmPassword) {
+                                         passwordError = "Passwords don't match"
+                                         return@Button
+                                     }
                                      scope.launch {
                                          val result = authRepo.signup(name, email, password)
                                          if (result.isSuccess) {
-                                             navigator.replaceAll(SystemSetupScreen)
+                                             navigator.replaceAll(SystemSetupScreen(userName = name))
                                          }
                                      }
                                 },
+                                enabled = name.isNotBlank() && email.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank() && passwordError == null,
                                 modifier = Modifier.fillMaxWidth().height(52.dp),
                                 shape = RoundedCornerShape(24.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = KaironexColors.ElectricBlue),

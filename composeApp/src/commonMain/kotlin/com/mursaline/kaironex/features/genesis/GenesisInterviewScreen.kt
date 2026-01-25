@@ -1,214 +1,456 @@
 package com.mursaline.kaironex.features.genesis
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import cafe.adriel.voyager.core.screen.Screen
-import cafe.adriel.voyager.navigator.LocalNavigator
-import cafe.adriel.voyager.navigator.currentOrThrow
-import com.mursaline.kaironex.MainShellScreen
 import com.mursaline.kaironex.ui.theme.KaironexColors
+import kaironex.composeapp.generated.resources.Res
+import kaironex.composeapp.generated.resources.robot_hero
+import org.jetbrains.compose.resources.painterResource
 
-object GenesisInterviewScreen : Screen {
-    private fun readResolve(): Any = GenesisInterviewScreen
-    
-    @Composable
-    override fun Content() {
-        val navigator = LocalNavigator.currentOrThrow
-        var messages by remember { mutableStateOf(listOf(
-            "ai" to "To assist you effectively, I need to understand your reality. Let's start with your workflow.",
-            "ai" to "How do you handle pressure? Do you pull all-nighters or do you prefer strict boundaries?"
-        )) }
-        var inputText by remember { mutableStateOf("") }
-        val listState = rememberLazyListState()
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GenesisInterviewScreen(
+    viewModel: GenesisViewModel,
+    onInterviewComplete: () -> Unit
+) {
+    val state = viewModel.uiState
+    var isTextMode by remember { mutableStateOf(false) }
+    var textInput by remember { mutableStateOf("") }
 
-        // Monitor IME visibility to scroll to bottom
-        val imeInsets = WindowInsets.ime
-        val density = LocalDensity.current
-        val isImeVisible = imeInsets.getBottom(density) > 0
-        
-        LaunchedEffect(isImeVisible, messages.size) {
-            if (messages.isNotEmpty()) {
-                listState.animateScrollToItem(messages.size - 1)
-            }
-        }
-        
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(KaironexColors.Slate50)
-                .statusBarsPadding() // Safe area for top
-                .navigationBarsPadding() // Safe area for bottom nav bar
-                .imePadding() // Push up for keyboard
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth().height(72.dp).background(Color.White).padding(horizontal = 24.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = KaironexColors.Indigo600, shape = RoundedCornerShape(8.dp), modifier = Modifier.size(32.dp)) {
-                        Box(contentAlignment = Alignment.Center) { Text("K", color = Color.White) }
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text("Genesis Interview", fontWeight = FontWeight.Bold, color = KaironexColors.Slate900)
-                        Text("Negotiating Autonomy", style = MaterialTheme.typography.bodySmall, color = KaironexColors.Indigo600)
-                    }
-                }
-                TextButton(onClick = { navigator.replaceAll(MainShellScreen) }) { Text("Skip (Dev)", color = KaironexColors.Slate500) }
-            }
+    // Floating animation
+    val infiniteTransition = rememberInfiniteTransition(label = "float")
+    val floatOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "floatOffset"
+    )
 
-            // Chat List (Scrollable)
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 24.dp)
-            ) {
-                items(messages) { (sender, text) ->
-                    val isAi = sender == "ai"
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = if (isAi) Arrangement.Start else Arrangement.End
+    // Orb pulse animation
+    val orbScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (state.isAgentSpeaking) 1.15f else 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(if (state.isAgentSpeaking) 600 else 1500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "orbScale"
+    )
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val isDesktop = maxWidth > 800.dp
+
+        Row(modifier = Modifier.fillMaxSize()) {
+            // LEFT SIDE - HERO (Desktop Only)
+            if (isDesktop) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(KaironexColors.Slate900)
+                ) {
+                    // Robot Image
+                    Image(
+                        painter = painterResource(Res.drawable.robot_hero),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize().alpha(0.6f),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    // Gradient Overlay
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        KaironexColors.IndigoGradientStart.copy(alpha = 0.4f),
+                                        KaironexColors.IndigoGradientEnd.copy(alpha = 0.9f)
+                                    )
+                                )
+                            )
+                    )
+
+                    // Content
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(48.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
                     ) {
-                        if (isAi) {
-                            Surface(shape = CircleShape, color = Color.White, shadowElevation = 1.dp, modifier = Modifier.size(32.dp)) {
-                                Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, null, tint = KaironexColors.Indigo600, modifier = Modifier.size(20.dp)) }
+                        // Branding
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(KaironexColors.Indigo600),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("K", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 20.sp)
                             }
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Kaironex", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 24.sp, letterSpacing = (-1).sp)
                         }
-                        
-                        // Bubble
-                        Surface(
-                            shape = RoundedCornerShape(
-                                if (isAi) 4.dp else 20.dp,
-                                if (isAi) 20.dp else 4.dp,
-                                20.dp,
-                                20.dp
-                            ),
-                            color = if (isAi) Color.White else KaironexColors.Indigo600,
-                            shadowElevation = 1.dp,
-                            modifier = Modifier.widthIn(max = 480.dp)
+
+                        // Hero Text with floating effect
+                        Column(
+                            modifier = Modifier.graphicsLayer { translationY = floatOffset },
+                            verticalArrangement = Arrangement.spacedBy(24.dp)
                         ) {
                             Text(
-                                text = text,
-                                modifier = Modifier.padding(16.dp),
-                                color = if (isAi) KaironexColors.Slate900 else Color.White,
-                                lineHeight = 24.sp
+                                text = "Getting to Know You",
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                lineHeight = 56.sp
+                            )
+                            Text(
+                                text = "I'm learning about your lifestyle to optimize your experience. Just have a natural conversation.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color(0xFFC7D2FE),
+                                lineHeight = 28.sp
                             )
                         }
+
+                        // Footer
+                        Text(
+                            "Step 2 of 3 • AI Interview",
+                            color = KaironexColors.Indigo600,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
 
-            // Input Area
-            Surface(color = Color.White, shadowElevation = 16.dp) {
-                Column(Modifier.padding(24.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                         // Voice Mode Toggle (Visual Only for now)
-                        IconButton(onClick = {}) {
-                             Icon(Icons.Default.CheckCircle, contentDescription = "Voice Mode", tint = KaironexColors.Slate500)
-                        }
-                        
-                        Spacer(Modifier.width(8.dp))
-
-                        OutlinedTextField(
-                            value = inputText,
-                            onValueChange = { inputText = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("Type your answer...", color = KaironexColors.Slate500.copy(alpha=0.5f)) },
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = KaironexColors.Slate50,
-                                unfocusedContainerColor = KaironexColors.Slate50,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent, 
-                                focusedTextColor = KaironexColors.Slate900,
-                                unfocusedTextColor = KaironexColors.Slate900
-                            ),
-                            shape = RoundedCornerShape(24.dp),
-                            trailingIcon = {
-                                IconButton(onClick = {
-                                    if (inputText.isNotBlank()) {
-                                        messages = messages + ("user" to inputText)
-                                        inputText = ""
-                                        // Simulate AI Reply
-                                        // In real app, this would be a suspend call
+            // RIGHT SIDE - INTERVIEW AREA
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(Color.White)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Mobile Header
+                    if (!isDesktop) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color.White,
+                            shadowElevation = 2.dp
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(KaironexColors.Indigo600),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("K", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                     }
-                                }) { 
-                                    Surface(shape = CircleShape, color = if(inputText.isNotBlank()) KaironexColors.Indigo600 else KaironexColors.Slate100, modifier = Modifier.size(32.dp)) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(Icons.Default.ArrowForward, null, tint = if(inputText.isNotBlank()) Color.White else KaironexColors.Slate500, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("AI Interview", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = KaironexColors.Slate900)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Tell me about yourself",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = KaironexColors.Slate500
+                                )
+                            }
+                        }
+                    }
+
+                    // Main Content Area
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            // THE ORB - Central Focus
+                            Box(
+                                modifier = Modifier
+                                    .graphicsLayer {
+                                        scaleX = orbScale
+                                        scaleY = orbScale
+                                        translationY = -floatOffset * 2
+                                    }
+                            ) {
+                                // Outer glow ring
+                                Box(
+                                    modifier = Modifier
+                                        .size(180.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            Brush.radialGradient(
+                                                colors = listOf(
+                                                    KaironexColors.GeminiBlurple.copy(alpha = 0.2f),
+                                                    Color.Transparent
+                                                )
+                                            )
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    // Inner orb
+                                    Box(
+                                        modifier = Modifier
+                                            .size(120.dp)
+                                            .shadow(16.dp, CircleShape)
+                                            .clip(CircleShape)
+                                            .background(
+                                                Brush.linearGradient(
+                                                    colors = listOf(
+                                                        KaironexColors.GeminiBlurple,
+                                                        KaironexColors.Indigo600
+                                                    )
+                                                )
+                                            )
+                                            .border(
+                                                3.dp,
+                                                Brush.linearGradient(
+                                                    colors = listOf(
+                                                        Color.White.copy(alpha = 0.5f),
+                                                        KaironexColors.GeminiBlurple.copy(alpha = 0.3f)
+                                                    )
+                                                ),
+                                                CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        // Status indicator
+                                        if (state.isAgentSpeaking) {
+                                            Text("🗣️", fontSize = 32.sp)
+                                        } else if (state.isUserListening) {
+                                            Text("👂", fontSize = 32.sp)
+                                        } else {
+                                            Text("💭", fontSize = 32.sp)
                                         }
                                     }
                                 }
                             }
-                        )
+
+                            Spacer(modifier = Modifier.height(32.dp))
+
+                            // Agent Message Card
+                            Surface(
+                                modifier = Modifier
+                                    .widthIn(max = 400.dp)
+                                    .graphicsLayer { translationY = floatOffset }
+                                    .shadow(8.dp, RoundedCornerShape(20.dp)),
+                                shape = RoundedCornerShape(20.dp),
+                                color = KaironexColors.CloudGray,
+                                tonalElevation = 2.dp
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = state.lastAgentMessage,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = KaironexColors.Slate900,
+                                        textAlign = TextAlign.Center,
+                                        fontWeight = FontWeight.Medium,
+                                        lineHeight = 26.sp
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Status Badge
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = when {
+                                    state.isAgentSpeaking -> KaironexColors.GeminiBlurple.copy(alpha = 0.1f)
+                                    state.isUserListening -> KaironexColors.SuccessGreen.copy(alpha = 0.1f)
+                                    else -> KaironexColors.Slate100
+                                }
+                            ) {
+                                Text(
+                                    text = when {
+                                        state.isAgentSpeaking -> "🎙️ Kaironex is speaking..."
+                                        state.isUserListening -> "🎤 Listening to you..."
+                                        else -> "💡 Tap the mic to respond"
+                                    },
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = when {
+                                        state.isAgentSpeaking -> KaironexColors.GeminiBlurple
+                                        state.isUserListening -> KaironexColors.SuccessGreen
+                                        else -> KaironexColors.Slate500
+                                    },
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
-                    
-                    Spacer(Modifier.height(12.dp))
-                    
-                    // Confirm Action (For Prototype Flow)
-                    if (messages.size > 3) {
-                        Button(
-                            onClick = { navigator.replaceAll(MainShellScreen) }, 
-                            modifier = Modifier.fillMaxWidth().height(48.dp), 
-                            colors = ButtonDefaults.buttonColors(containerColor = KaironexColors.Slate900),
-                            shape = RoundedCornerShape(12.dp)
+
+                    // --- BOTTOM CONTROL DECK ---
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White,
+                        shadowElevation = 8.dp,
+                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("Complete Interview & Initialize Workspace")
-                            Spacer(Modifier.width(8.dp))
-                            Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(16.dp))
+                            if (isTextMode) {
+                                // Text Input Mode
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedTextField(
+                                        value = textInput,
+                                        onValueChange = { textInput = it },
+                                        placeholder = { Text("Type your response...", color = KaironexColors.Slate500) },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(24.dp),
+                                        colors = TextFieldDefaults.colors(
+                                            focusedContainerColor = KaironexColors.CloudGray,
+                                            unfocusedContainerColor = KaironexColors.CloudGray,
+                                            focusedIndicatorColor = KaironexColors.GeminiBlurple,
+                                            unfocusedIndicatorColor = Color.Transparent,
+                                            cursorColor = KaironexColors.GeminiBlurple,
+                                            focusedTextColor = KaironexColors.Slate900,
+                                            unfocusedTextColor = KaironexColors.Slate900
+                                        ),
+                                        singleLine = true
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    FloatingActionButton(
+                                        onClick = {
+                                            if (textInput.isNotBlank()) {
+                                                viewModel.processUserResponse(textInput)
+                                                textInput = ""
+                                                isTextMode = false
+                                            }
+                                        },
+                                        containerColor = KaironexColors.Indigo600,
+                                        contentColor = Color.White,
+                                        modifier = Modifier.size(56.dp)
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                TextButton(onClick = { isTextMode = false }) {
+                                    Text("Switch to Voice", color = KaironexColors.GeminiBlurple)
+                                }
+                            } else {
+                                // Voice Mode Controls
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                ) {
+                                    // Text Toggle (Left)
+                                    Surface(
+                                        onClick = { isTextMode = true },
+                                        shape = CircleShape,
+                                        color = KaironexColors.CloudGray,
+                                        modifier = Modifier.size(56.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.Keyboard,
+                                                contentDescription = "Type",
+                                                tint = KaironexColors.Slate500,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    }
+
+                                    // Main Mic Button (Center)
+                                    FloatingActionButton(
+                                        onClick = { viewModel.toggleListening() },
+                                        containerColor = if (state.isUserListening) KaironexColors.SuccessGreen else KaironexColors.Indigo600,
+                                        contentColor = Color.White,
+                                        modifier = Modifier.size(80.dp),
+                                        elevation = FloatingActionButtonDefaults.elevation(
+                                            defaultElevation = 8.dp,
+                                            pressedElevation = 12.dp
+                                        )
+                                    ) {
+                                        Icon(
+                                            imageVector = if (state.isUserListening) Icons.Default.Mic else Icons.Default.MicOff,
+                                            contentDescription = "Toggle Mic",
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                    }
+
+                                    // Skip/Next (Right)
+                                    Surface(
+                                        onClick = { onInterviewComplete() },
+                                        shape = CircleShape,
+                                        color = KaironexColors.CloudGray,
+                                        modifier = Modifier.size(56.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                "Skip",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = KaironexColors.Slate500,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Text(
+                                    "Hold to speak • Tap to toggle",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = KaironexColors.Slate500
+                                )
+                            }
                         }
                     }
                 }

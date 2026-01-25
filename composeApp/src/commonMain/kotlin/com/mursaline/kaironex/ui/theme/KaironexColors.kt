@@ -47,4 +47,10 @@ object KaironexColors {
     // Gradients (Mapped to new scheme)
     val IndigoGradientStart = GeminiBlurple.copy(alpha=0.9f)
     val IndigoGradientEnd = InkBlack.copy(alpha=0.95f)
+
+    // Genesis / Iron Man Palette
+    val NeonCyan = Color(0xFF00FFFF)
+    val NeonPurple = Color(0xFFD000FF)
+    val NeonGreen = Color(0xFF39FF14)
+    val BackgroundBlack = Color(0xFF101010) // Deep black for OLED visuals
 }

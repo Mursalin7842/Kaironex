@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.mursaline.kaironex.features.genesis.GenesisScreen
 import kotlinx.coroutines.launch
 
 object JudgeLoginScreen : Screen {
@@ -94,7 +93,8 @@ object JudgeLoginScreen : Screen {
                         scope.launch {
                             authRepo.judgeLogin(accessCode)
                                 .onSuccess {
-                                    navigator.replaceAll(GenesisScreen())
+                                    // For judges, skip to main app directly
+                                    navigator.replaceAll(com.mursaline.kaironex.MainShellScreen)
                                 }
                                 .onFailure { error = it.message }
                         }

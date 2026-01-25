@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,7 +32,8 @@ import com.mursaline.kaironex.ui.components.KxCardVariant
 import com.mursaline.kaironex.ui.components.KxIconButton
 import com.mursaline.kaironex.ui.components.KxIconButtonVariant
 import com.mursaline.kaironex.ui.components.KxOrb
-import com.mursaline.kaironex.ui.components.KxOrbState
+import com.mursaline.kaironex.ui.components.KxOrb
+
 import com.mursaline.kaironex.ui.components.KxTextField
 import com.mursaline.kaironex.ui.theme.KaironexColors
 
@@ -58,7 +60,11 @@ fun ChatScreen() {
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            KxOrb(size = 48.dp, state = KxOrbState.Active)
+            KxOrb(
+                isAgentSpeaking = true, 
+                isUserListening = false,
+                modifier = Modifier.size(48.dp)
+            )
             Spacer(Modifier.width(12.dp))
             Column {
                 Text("Kaironex AI", fontWeight = FontWeight.Bold, color = KaironexColors.Slate900)
