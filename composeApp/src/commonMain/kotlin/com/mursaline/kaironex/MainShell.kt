@@ -1,6 +1,8 @@
 package com.mursaline.kaironex
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -19,11 +22,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.core.screen.Screen
@@ -33,7 +39,6 @@ import com.mursaline.kaironex.features.dashboard.DashboardScreen
 import com.mursaline.kaironex.features.profile.ProfileScreen
 import com.mursaline.kaironex.features.study.StudySessionsScreen
 import com.mursaline.kaironex.features.agents.LifeSupportAgentsScreen
-import com.mursaline.kaironex.ui.components.KxOrb
 import com.mursaline.kaironex.ui.components.KxOrb
 
 
@@ -337,15 +342,46 @@ fun ImmersiveAssistantPanel(
     onDismiss: () -> Unit,
     isMobile: Boolean
 ) {
-    // Full-screen overlay that blocks all background interactions
+    // Floating animation
+    val infiniteTransition = rememberInfiniteTransition(label = "orb")
+    val orbFloat by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 12f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "orbFloat"
+    )
+
+    val orbPulse by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "orbPulse"
+    )
+
+    var inputText by remember { mutableStateOf("") }
+
+    // Full-screen overlay with glassmorphism effect
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(KaironexColors.InkBlack.copy(alpha = 0.95f))
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        KaironexColors.GeminiBlurple.copy(alpha = 0.95f),
+                        KaironexColors.Indigo900.copy(alpha = 0.98f)
+                    )
+                )
+            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null, // No ripple effect
-                onClick = { } // Consume clicks to prevent pass-through
+                indication = null,
+                onClick = { } // Consume clicks
             )
     ) {
         Column(
@@ -354,46 +390,138 @@ fun ImmersiveAssistantPanel(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Close Button
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        Icons.Filled.Close,
-                        contentDescription = "Close",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
+            // Top Bar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Branding
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.White.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("K", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text("Kaironex", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
+                        Text("AI Assistant", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
+                    }
+                }
+
+                // Close Button
+                Surface(
+                    onClick = onDismiss,
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.15f),
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "Close",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(Modifier.height(if (isMobile) 40.dp else 60.dp))
+            Spacer(Modifier.height(if (isMobile) 48.dp else 80.dp))
 
-            // Massive Glowing Orb
+            // Central Orb with floating effect
             Box(
                 modifier = Modifier
-                    .size(if (isMobile) 180.dp else 220.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                KaironexColors.Purple600,
-                                KaironexColors.Indigo600,
-                                KaironexColors.GeminiBlurple.copy(alpha = 0.5f),
-                                Color.Transparent
-                            )
-                        )
-                    ),
+                    .graphicsLayer {
+                        translationY = -orbFloat
+                        scaleX = orbPulse
+                        scaleY = orbPulse
+                    },
                 contentAlignment = Alignment.Center
             ) {
-            KxOrb(
-                isAgentSpeaking = true,
-                isUserListening = true,
-                modifier = Modifier.size(if (isMobile) 160.dp else 200.dp)
-            )
+                // Outer glow
+                Box(
+                    modifier = Modifier
+                        .size(if (isMobile) 200.dp else 260.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                // Middle ring
+                Box(
+                    modifier = Modifier
+                        .size(if (isMobile) 160.dp else 200.dp)
+                        .clip(CircleShape)
+                        .border(
+                            2.dp,
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.4f),
+                                    Color.White.copy(alpha = 0.1f)
+                                )
+                            ),
+                            CircleShape
+                        )
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.1f),
+                                    Color.Transparent
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Inner orb
+                    Box(
+                        modifier = Modifier
+                            .size(if (isMobile) 120.dp else 150.dp)
+                            .shadow(24.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White,
+                                        KaironexColors.CloudGray
+                                    )
+                                )
+                            )
+                            .border(
+                                3.dp,
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color.White,
+                                        Color.White.copy(alpha = 0.5f)
+                                    )
+                                ),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        KxOrb(
+                            isAgentSpeaking = true,
+                            isUserListening = true,
+                            modifier = Modifier.size(if (isMobile) 100.dp else 130.dp)
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(40.dp))
 
+            // Status Text
             Text(
                 "I'm listening...",
                 style = MaterialTheme.typography.headlineMedium,
@@ -404,7 +532,7 @@ fun ImmersiveAssistantPanel(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                "Tap to speak or type below",
+                "Speak naturally or type your request below",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.7f)
             )
@@ -423,21 +551,42 @@ fun ImmersiveAssistantPanel(
 
             Spacer(Modifier.height(24.dp))
 
-            // Input Field
-            OutlinedTextField(
-                value = "",
-                onValueChange = {},
-                placeholder = { Text("Ask me anything...", color = Color.White.copy(alpha = 0.5f)) },
+            // Input Field with glassmorphism
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = KaironexColors.ElectricBlue,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    cursorColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp)
-            )
+                shape = RoundedCornerShape(20.dp),
+                color = Color.White.copy(alpha = 0.15f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        placeholder = { Text("Ask me anything...", color = Color.White.copy(alpha = 0.5f)) },
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = Color.White
+                        ),
+                        singleLine = true
+                    )
+
+                    FloatingActionButton(
+                        onClick = { },
+                        containerColor = Color.White,
+                        contentColor = KaironexColors.GeminiBlurple,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
+                    }
+                }
+            }
 
             Spacer(Modifier.height(if (isMobile) 16.dp else 32.dp))
         }
