@@ -11,10 +11,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.mursaline.kaironex.core.audio.initAndroidSpeaker
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize TTS Speaker with application context
+        initAndroidSpeaker(applicationContext)
 
         setContent {
             // Track if permission is granted

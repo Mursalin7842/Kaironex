@@ -1,16 +1,24 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
-
-
     alias(libs.plugins.composeCompiler)
-//    alias(libs.plugins.sqldelight)
     kotlin("plugin.serialization") version "2.0.0"
 }
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
+val geminiKey = localProperties.getProperty("GeminiAPI") ?: ""
 
 kotlin {
     jvmToolchain(17)
@@ -113,6 +121,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    defaultConfig {
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
+    }
 }
 
 dependencies {
@@ -122,6 +138,7 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "com.mursaline.kaironex.MainKt"
+        jvmArgs += listOf("-DGEMINI_API_KEY=$geminiKey")
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)

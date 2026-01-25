@@ -1,0 +1,9 @@
+## This file must *NOT* be checked into Version Control Systems,
+# as it contains information specific to your local configuration.
+#
+# Location of the SDK. This is only used by Gradle.
+# For customization when writing a CustomView,
+# const val KEY_GEMINI_API = "GEMINI_API"
+# set the ANDROID_SDK_ROOT environment variable.
+sdk.dir=d\:\\AppData\\Local\\Android\\Sdk
+GeminiAPI=...PUT_YOUR_KEY_HERE

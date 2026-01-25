@@ -84,7 +84,7 @@ object MainShellScreen : Screen {
                                     when (tab) {
                                         "Home" -> navigator.replaceAll(DashboardScreen)
                                         "Study" -> navigator.push(StudySessionsScreen)
-                                        "More" -> navigator.push(LifeSupportAgentsScreen)
+                                        "More" -> navigator.push(com.mursaline.kaironex.features.agents.AgentSpaceScreen)
                                         "Profile" -> navigator.push(ProfileScreen)
                                     }
                                 },
@@ -104,7 +104,7 @@ object MainShellScreen : Screen {
                                     when (tab) {
                                         "Home" -> navigator.replaceAll(DashboardScreen)
                                         "Study" -> navigator.push(StudySessionsScreen)
-                                        "More" -> navigator.push(LifeSupportAgentsScreen)
+                                        "More" -> navigator.push(com.mursaline.kaironex.features.agents.AgentSpaceScreen)
                                         "Profile" -> navigator.push(ProfileScreen)
                                     }
                                 },
@@ -191,10 +191,10 @@ fun FiveItemNavBar(
                 // Spacer for center orb
                 Spacer(Modifier.width(56.dp))
 
-                // 4. MORE (Life Support Agents)
+                // 4. MORE (Agents/Life)
                 NavIconItemCompact(
                     icon = Icons.Filled.MoreHoriz,
-                    label = "More",
+                    label = "Agents",
                     isSelected = selectedTab == "More",
                     onClick = { onTabSelected("More") }
                 )

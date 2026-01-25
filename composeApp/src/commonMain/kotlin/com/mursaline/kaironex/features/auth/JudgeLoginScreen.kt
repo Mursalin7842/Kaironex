@@ -95,6 +95,16 @@ object JudgeLoginScreen : Screen {
                                 .onSuccess {
                                     // For judges, skip to main app directly
                                     navigator.replaceAll(com.mursaline.kaironex.MainShellScreen)
+                                    // Optionally push AgentSpaceScreen if MainShell handles tabs:
+                                    // But since MainShell defaults to Dashboard, we might want to ensure they land on Agents.
+                                    // For now, let's stick to MainShellScreen and rely on user clicking "Agents".
+                                    // OR, if we want to force it:
+                                    // navigator.replaceAll(com.mursaline.kaironex.features.agents.AgentSpaceScreen) 
+                                    // BUT MainShell has the bottom bar. AgentSpaceScreen is just content.
+                                    // The Judge Mode really wants full visibility.
+                                    // Let's keep MainShellScreen for now as requested by user "Judges see a distinct architecture" by BROWSING to it.
+                                    // Actually, let's verify if AgentSpaceScreen is a standalone screen or needs Shell.
+                                    // It's a Screen object.
                                 }
                                 .onFailure { error = it.message }
                         }

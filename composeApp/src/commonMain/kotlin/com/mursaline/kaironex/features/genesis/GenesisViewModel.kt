@@ -5,104 +5,111 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-// import com.mursaline.kaironex.features.genesis.StudentProfile // Assuming this might be moved or duplicated, checking imports
+import com.mursaline.kaironex.agents.genesis.GenesisAgent
+import com.mursaline.kaironex.agents.genesis.StudentProfile
 import com.mursaline.kaironex.core.audio.Speaker
 import com.mursaline.kaironex.core.audio.getPlatformSpeaker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Define strict data types here if not available commonly
-data class StudentProfile(
-    var name: String = "",
-    var university: String = "",
-    var degreeType: String = "",
-    var major: String = "",
-    var semester: String = "",
-    var hasPartTimeJob: Boolean = false,
-    var jobTitle: String = "",
-    var workSchedule: String = "",
-    var weeklyWorkHours: Int = 0,
-    var studyGoals: List<String> = emptyList(),
-    var challenges: List<String> = emptyList(),
-    var preferredStudyTime: String = "",
-    var extracurriculars: List<String> = emptyList(),
-    var sleepSchedule: String = "",
-    var internationalStudent: Boolean = false,
-    var visaType: String = ""
-)
-
+// Re-export ChatMessage here if used by UI, or replace usage in UI.
+// Since UI might use it, we keep it but typically we'd move it to a shared Core Models.
 data class ChatMessage(
     val sender: String, // "user" or "ai"
     val content: String,
     val timestamp: Long = System.currentTimeMillis()
 )
 
-enum class GenesisStage {
-    INTRO,
-    INTERVIEW,
-    COMPLETE
-}
+data class GenesisUiState(
+    val isAgentSpeaking: Boolean = false,
+    val isUserListening: Boolean = false, // True = Mic is ON
+    val lastAgentMessage: String = "Initializing...",
+    val isComplete: Boolean = false
+)
 
 class GenesisViewModel : ViewModel() {
 
     // --- DEPENDENCIES ---
-    // In production, inject this via Koin. For Hackathon speed, direct call is acceptable.
-    private val speaker: Speaker = getPlatformSpeaker() 
+    private val speaker: Speaker = getPlatformSpeaker()
+    
+    // --- AGENT BRAIN ---
+    private val agent = GenesisAgent()
 
     // --- STATE ---
     var uiState by mutableStateOf(GenesisUiState())
         private set
 
-    // We keep the logic state separate from UI state
+    // Expose Agent's Profile directly to UI
+    val profile: StudentProfile
+        get() = agent.profile
+    
     private var messages = mutableListOf<ChatMessage>()
-    var profile by mutableStateOf(StudentProfile())
-    private var currentStage = GenesisStage.INTRO
     
     // Identity Memories
     private var identityContext: String = ""
     private var userPreferredName: String = ""
-
-    data class GenesisUiState(
-        val isAgentSpeaking: Boolean = false,
-        val isUserListening: Boolean = false, // True = Mic is ON
-        val lastAgentMessage: String = "Initializing..."
-    )
+    private var systemName: String = ""
 
     // --- CORE LOGIC ---
     
     fun setIdentity(userName: String, wakeWord: String, addressUserAs: String) {
-        // Save to Profile
-        profile = profile.copy(name = userName)
+        // Update Agent with manual entries
+        agent.manualUpdate(userName, wakeWord)
+        
         userPreferredName = addressUserAs
-        
-        // Create the "Persona" Context
-        identityContext = """
-            USER REAL NAME: $userName
-            SYSTEM NAME (YOU): $wakeWord
-            ADDRESS USER AS: $addressUserAs
-        """.trimIndent()
-        
-        currentStage = GenesisStage.INTERVIEW
-        
-        // Auto-Trigger the first message
-        val initialGreeting = "Hello $addressUserAs. I am $wakeWord. Let's begin."
-        agentSpeak(initialGreeting)
+        systemName = wakeWord.ifEmpty { "Kaironex" }
+
+        // Show initial greeting immediately while waiting for API
+        val initialGreeting = "Hello $addressUserAs! I'm $systemName, your AI companion. Let me learn about you to personalize your experience."
+        uiState = uiState.copy(
+            lastAgentMessage = initialGreeting,
+            isAgentSpeaking = true
+        )
+
+        // Speak the greeting
+        speaker.speak(initialGreeting)
+
+        // Auto-Trigger the first message from agent
+        viewModelScope.launch {
+            // Wait a bit for initial greeting to be heard
+            delay(2000)
+            processAgentTurn(initialPrompt = true)
+        }
     }
     
     fun processUserResponse(text: String) {
-        // 1. UI Feedback: Stop Mic, Show user input accepted
+        // UI Feedback: Stop Mic
         uiState = uiState.copy(isUserListening = false)
         messages.add(ChatMessage("user", text))
 
         viewModelScope.launch {
-            // 2. The Thinking Phase (Orb Pulses Purple)
-            uiState = uiState.copy(isAgentSpeaking = true)
+            processAgentTurn(userText = text)
+        }
+    }
 
-            // 3. Gemini Call (Stubbed for now)
-            val responseText = "Mock response for: $text" 
+    private suspend fun processAgentTurn(userText: String? = null, initialPrompt: Boolean = false) {
+        // 1. Thinking UI
+        uiState = uiState.copy(isAgentSpeaking = true)
 
-            // 4. Agent Speaks
-            agentSpeak(responseText)
+        // 2. Agent Brain Processing
+        // If it's the first turn, we might send null text, or a greeting prompt.
+        // For GenesisAgent, the prompt logic handles null userText as "Initialize".
+        
+        val response = agent.processTurn(
+            userText = userText,
+            agentName = systemName,
+            userName = userPreferredName
+        )
+        
+        messages.add(ChatMessage("ai", response.displayText))
+
+        // 3. Audio & UI Update
+        agentSpeak(response.displayText)
+        
+        // 4. Check for completion or updates
+        if (response.isComplete) {
+            uiState = uiState.copy(isComplete = true)
+            // Trigger Handoff here if needed
         }
     }
 
@@ -116,20 +123,26 @@ class GenesisViewModel : ViewModel() {
         // Trigger Audio
         speaker.speak(text)
         
-        // Simulation: Reset state after speech
+        // Simulation: Reset listening state after speech
         viewModelScope.launch {
-            delay(text.length * 60L + 1000) // Estimate speech duration
+            // Simple heuristic for speech duration: 60ms per char + buffer
+            // In a real app, the Speaker callback would trigger this.
+            val duration = (text.length * 60L).coerceAtLeast(1500)
+            delay(duration)
+            
             uiState = uiState.copy(isAgentSpeaking = false)
             
-            // OPTIONAL: Auto-open Mic for user reply?
-            // toggleListening()
+            // Auto-open Mic for user reply unless complete
+            if (!uiState.isComplete) {
+                toggleListening(forceOn = true)
+            }
         }
     }
 
-    fun toggleListening() {
+    fun toggleListening(forceOn: Boolean? = null) {
         if (uiState.isAgentSpeaking) speaker.stop() // Interrupt Agent
         
-        val newListeningState = !uiState.isUserListening
+        val newListeningState = forceOn ?: !uiState.isUserListening
         uiState = uiState.copy(isUserListening = newListeningState)
         
         if (newListeningState) {
