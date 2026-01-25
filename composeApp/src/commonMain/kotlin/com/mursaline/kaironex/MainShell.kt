@@ -84,7 +84,7 @@ object MainShellScreen : Screen {
                                     when (tab) {
                                         "Home" -> navigator.replaceAll(DashboardScreen)
                                         "Study" -> navigator.push(StudySessionsScreen)
-                                        "More" -> navigator.push(com.mursaline.kaironex.features.agents.AgentSpaceScreen)
+                                        "More" -> navigator.push(LifeSupportAgentsScreen)
                                         "Profile" -> navigator.push(ProfileScreen)
                                     }
                                 },
@@ -104,7 +104,7 @@ object MainShellScreen : Screen {
                                     when (tab) {
                                         "Home" -> navigator.replaceAll(DashboardScreen)
                                         "Study" -> navigator.push(StudySessionsScreen)
-                                        "More" -> navigator.push(com.mursaline.kaironex.features.agents.AgentSpaceScreen)
+                                        "More" -> navigator.push(LifeSupportAgentsScreen)
                                         "Profile" -> navigator.push(ProfileScreen)
                                     }
                                 },
