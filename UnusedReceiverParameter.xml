@@ -1,0 +1,54 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors/kaironex/composeapp/generated/resources/Drawable0.commonMain.kt</file>
+  <line>22</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="method" FQNAME="kaironex.composeapp.generated.resources.Drawable0_commonMainKt org.jetbrains.compose.resources.DrawableResource getCompose_multiplatform(kaironex.composeapp.generated.resources.Res.drawable $this$compose_multiplatform)" />
+  <problem_class id="UnusedReceiverParameter" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused receiver parameter</problem_class>
+  <description>Receiver parameter is never used</description>
+  <highlighted_element>Res.drawable</highlighted_element>
+  <language>kotlin</language>
+  <offset>13</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors/kaironex/composeapp/generated/resources/Drawable0.commonMain.kt</file>
+  <line>34</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="method" FQNAME="kaironex.composeapp.generated.resources.Drawable0_commonMainKt org.jetbrains.compose.resources.DrawableResource getLogin_illustration(kaironex.composeapp.generated.resources.Res.drawable $this$login_illustration)" />
+  <problem_class id="UnusedReceiverParameter" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused receiver parameter</problem_class>
+  <description>Receiver parameter is never used</description>
+  <highlighted_element>Res.drawable</highlighted_element>
+  <language>kotlin</language>
+  <offset>13</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors/kaironex/composeapp/generated/resources/Drawable0.commonMain.kt</file>
+  <line>46</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="method" FQNAME="kaironex.composeapp.generated.resources.Drawable0_commonMainKt org.jetbrains.compose.resources.DrawableResource getLogo(kaironex.composeapp.generated.resources.Res.drawable $this$logo)" />
+  <problem_class id="UnusedReceiverParameter" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused receiver parameter</problem_class>
+  <description>Receiver parameter is never used</description>
+  <highlighted_element>Res.drawable</highlighted_element>
+  <language>kotlin</language>
+  <offset>13</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors/kaironex/composeapp/generated/resources/Drawable0.commonMain.kt</file>
+  <line>57</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="method" FQNAME="kaironex.composeapp.generated.resources.Drawable0_commonMainKt org.jetbrains.compose.resources.DrawableResource getRobot_hero(kaironex.composeapp.generated.resources.Res.drawable $this$robot_hero)" />
+  <problem_class id="UnusedReceiverParameter" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unused receiver parameter</problem_class>
+  <description>Receiver parameter is never used</description>
+  <highlighted_element>Res.drawable</highlighted_element>
+  <language>kotlin</language>
+  <offset>13</offset>
+  <length>12</length>
+</problem>
+</problems>

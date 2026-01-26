@@ -32,7 +32,9 @@ import com.mursaline.kaironex.ui.theme.KaironexColors
  *
  * Accessed via the "Study" button in the navigation bar.
  */
+@Suppress("unused")
 object StudySessionsScreen : Screen {
+    @Suppress("unused")
     private fun readResolve(): Any = StudySessionsScreen
 
     @OptIn(ExperimentalMaterial3Api::class)

@@ -1,0 +1,16 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/core/gemini/agents/MarathonAgentEngine.kt</file>
+  <line>393</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.core.gemini.agents</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.core.gemini.agents.MarathonAgentEngine int estimateExpectedActions(java.lang.String objective)" />
+  <problem_class id="SameReturnValue" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Method always returns the same value</problem_class>
+  <hints />
+  <description>Method &lt;code&gt;estimateExpectedActions()&lt;/code&gt; always returns &lt;code&gt;50&lt;/code&gt;</description>
+  <highlighted_element>estimateExpectedActions</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>23</length>
+</problem>
+</problems>

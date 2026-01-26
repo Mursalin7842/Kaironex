@@ -9,6 +9,7 @@ enum class GenesisStage {
 }
 
 // The "Why" Memory (Explainability Layer)
+@Suppress("unused")
 object FieldRationale {
     val map = mapOf(
         "sleepTime" to "I need this to calculate your Bio-Fuel score and prevent burnout.",

@@ -18,14 +18,15 @@ import com.mursaline.kaironex.ui.components.KxCard
 import com.mursaline.kaironex.ui.components.KxCardVariant
 import com.mursaline.kaironex.features.study.components.*
 
+@Suppress("unused")
 object StudyRoomScreen : Screen {
+    @Suppress("unused")
     private fun readResolve(): Any = StudyRoomScreen
 
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
         
-        @Suppress("UnusedBoxWithConstraintsScope")
         BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
             val isMobile = this.maxWidth < 800.dp
 

@@ -12,13 +12,33 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.mursaline.kaironex.core.audio.initAndroidSpeaker
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 
+@Suppress("unused")
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // Initialize TTS Speaker with application context
         initAndroidSpeaker(applicationContext)
+
+        val requestPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            if (isGranted) {
+                // Permission Granted
+            } else {
+                // Permission Denied
+            }
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
 
         setContent {
             // Track if permission is granted
@@ -40,14 +60,16 @@ class MainActivity : ComponentActivity() {
             }
 
             // Pass these to your App UI
-            App(
-                isAccessibilityEnabled = isPermissionGranted,
-                onOpenSettings = {
-                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                    startActivity(intent)
-                },
-                onLockTriggered = { /* Android handles this via Service Intent, do nothing here */ }
-            )
+            org.koin.compose.KoinContext {
+                App(
+                    isAccessibilityEnabled = isPermissionGranted,
+                    onOpenSettings = {
+                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        startActivity(intent)
+                    },
+                    onLockTriggered = { /* Android handles this via Service Intent, do nothing here */ }
+                )
+            }
         }
     }
 

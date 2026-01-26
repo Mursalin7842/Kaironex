@@ -20,6 +20,7 @@ import com.mursaline.kaironex.ui.components.KxCardVariant
 import com.mursaline.kaironex.ui.components.KxIconButton
 import com.mursaline.kaironex.ui.theme.KaironexColors
 
+@Suppress("unused")
 data class Agent(
     val id: String,
     val name: String,

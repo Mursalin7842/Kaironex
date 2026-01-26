@@ -1,0 +1,67 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonResClass/kaironex/composeapp/generated/resources/Res.kt</file>
+  <line>40</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="class" FQNAME="kaironex.composeapp.generated.resources.Res.drawable" />
+  <problem_class id="ClassName" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Class naming convention</problem_class>
+  <description>Class name &lt;code&gt;drawable&lt;/code&gt; should start with an uppercase letter #loc</description>
+  <highlighted_element>drawable</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>8</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonResClass/kaironex/composeapp/generated/resources/Res.kt</file>
+  <line>42</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="class" FQNAME="kaironex.composeapp.generated.resources.Res.string" />
+  <problem_class id="ClassName" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Class naming convention</problem_class>
+  <description>Class name &lt;code&gt;string&lt;/code&gt; should start with an uppercase letter #loc</description>
+  <highlighted_element>string</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>6</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonResClass/kaironex/composeapp/generated/resources/Res.kt</file>
+  <line>44</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="class" FQNAME="kaironex.composeapp.generated.resources.Res.array" />
+  <problem_class id="ClassName" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Class naming convention</problem_class>
+  <description>Class name &lt;code&gt;array&lt;/code&gt; should start with an uppercase letter #loc</description>
+  <highlighted_element>array</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>5</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonResClass/kaironex/composeapp/generated/resources/Res.kt</file>
+  <line>46</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="class" FQNAME="kaironex.composeapp.generated.resources.Res.plurals" />
+  <problem_class id="ClassName" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Class naming convention</problem_class>
+  <description>Class name &lt;code&gt;plurals&lt;/code&gt; should start with an uppercase letter #loc</description>
+  <highlighted_element>plurals</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>7</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonResClass/kaironex/composeapp/generated/resources/Res.kt</file>
+  <line>48</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="class" FQNAME="kaironex.composeapp.generated.resources.Res.font" />
+  <problem_class id="ClassName" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Class naming convention</problem_class>
+  <description>Class name &lt;code&gt;font&lt;/code&gt; should start with an uppercase letter #loc</description>
+  <highlighted_element>font</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>4</length>
+</problem>
+</problems>

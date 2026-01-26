@@ -1,0 +1,28 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/androidMain/kotlin/com/mursaline/kaironex/MainActivity.kt</file>
+  <line>31</line>
+  <module>Kaironex.composeApp.main</module>
+  <package>com.mursaline.kaironex</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.MainActivity void onCreate(android.os.Bundle savedInstanceState)" />
+  <problem_class id="ControlFlowWithEmptyBody" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Control flow with empty body</problem_class>
+  <description>'if' has empty body</description>
+  <highlighted_element>if</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>2</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/androidMain/kotlin/com/mursaline/kaironex/MainActivity.kt</file>
+  <line>33</line>
+  <module>Kaironex.composeApp.main</module>
+  <package>com.mursaline.kaironex</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.MainActivity void onCreate(android.os.Bundle savedInstanceState)" />
+  <problem_class id="ControlFlowWithEmptyBody" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Control flow with empty body</problem_class>
+  <description>'else' has empty body</description>
+  <highlighted_element>else</highlighted_element>
+  <language>kotlin</language>
+  <offset>14</offset>
+  <length>4</length>
+</problem>
+</problems>

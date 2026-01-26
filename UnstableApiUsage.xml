@@ -1,0 +1,93 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/settings.gradle.kts</file>
+  <line>8</line>
+  <module>Kaironex</module>
+  <package>&lt;default&gt;</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/settings.gradle.kts" />
+  <problem_class id="UnstableApiUsage" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unstable API Usage</problem_class>
+  <description>'includeGroupAndSubgroups(java.lang.String)' is marked unstable with @Incubating</description>
+  <highlighted_element>includeGroupAndSubgroups</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/settings.gradle.kts</file>
+  <line>9</line>
+  <module>Kaironex</module>
+  <package>&lt;default&gt;</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/settings.gradle.kts" />
+  <problem_class id="UnstableApiUsage" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unstable API Usage</problem_class>
+  <description>'includeGroupAndSubgroups(java.lang.String)' is marked unstable with @Incubating</description>
+  <highlighted_element>includeGroupAndSubgroups</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/settings.gradle.kts</file>
+  <line>10</line>
+  <module>Kaironex</module>
+  <package>&lt;default&gt;</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/settings.gradle.kts" />
+  <problem_class id="UnstableApiUsage" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unstable API Usage</problem_class>
+  <description>'includeGroupAndSubgroups(java.lang.String)' is marked unstable with @Incubating</description>
+  <highlighted_element>includeGroupAndSubgroups</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/settings.gradle.kts</file>
+  <line>19</line>
+  <module>Kaironex</module>
+  <package>&lt;default&gt;</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/settings.gradle.kts" />
+  <problem_class id="UnstableApiUsage" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unstable API Usage</problem_class>
+  <description>'repositories(org.gradle.api.Action&lt;? super org.gradle.api.artifacts.dsl.RepositoryHandler&gt;)' is marked unstable with @Incubating</description>
+  <highlighted_element>repositories</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>12</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/settings.gradle.kts</file>
+  <line>22</line>
+  <module>Kaironex</module>
+  <package>&lt;default&gt;</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/settings.gradle.kts" />
+  <problem_class id="UnstableApiUsage" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unstable API Usage</problem_class>
+  <description>'includeGroupAndSubgroups(java.lang.String)' is marked unstable with @Incubating</description>
+  <highlighted_element>includeGroupAndSubgroups</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/settings.gradle.kts</file>
+  <line>23</line>
+  <module>Kaironex</module>
+  <package>&lt;default&gt;</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/settings.gradle.kts" />
+  <problem_class id="UnstableApiUsage" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unstable API Usage</problem_class>
+  <description>'includeGroupAndSubgroups(java.lang.String)' is marked unstable with @Incubating</description>
+  <highlighted_element>includeGroupAndSubgroups</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>24</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/settings.gradle.kts</file>
+  <line>24</line>
+  <module>Kaironex</module>
+  <package>&lt;default&gt;</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/settings.gradle.kts" />
+  <problem_class id="UnstableApiUsage" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Unstable API Usage</problem_class>
+  <description>'includeGroupAndSubgroups(java.lang.String)' is marked unstable with @Incubating</description>
+  <highlighted_element>includeGroupAndSubgroups</highlighted_element>
+  <language>kotlin</language>
+  <offset>16</offset>
+  <length>24</length>
+</problem>
+</problems>

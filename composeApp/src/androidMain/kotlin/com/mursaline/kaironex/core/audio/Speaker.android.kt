@@ -56,6 +56,7 @@ class AndroidSpeaker(private val context: Context) : Speaker {
             }
 
             @Deprecated("Deprecated in Java")
+            @Suppress("unused")
             override fun onError(utteranceId: String?) {
                 isSpeakingState = false
                 Log.e("KaironexTTS", "Speech error")

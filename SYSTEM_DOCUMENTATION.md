@@ -90,7 +90,7 @@ composeApp/
 
 ### 2.3 Key Dependencies
 
-```kotlin
+```text
 // Navigation
 cafe.adriel.voyager:voyager-navigator
 cafe.adriel.voyager:voyager-transitions

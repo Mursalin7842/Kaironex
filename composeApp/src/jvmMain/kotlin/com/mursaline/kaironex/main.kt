@@ -15,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.core.context.startKoin
 
+@Suppress("unused")
 fun main() {
     startKoin {
         // printLogger() // Optional, logging

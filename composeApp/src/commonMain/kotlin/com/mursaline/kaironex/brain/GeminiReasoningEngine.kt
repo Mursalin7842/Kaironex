@@ -6,27 +6,31 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
-import kotlinx.serialization.json.Json
 import io.ktor.util.encodeBase64
+import io.ktor.util.decodeBase64Bytes
 
-class GeminiReasoningEngine(private val client: HttpClient) {
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
-    // --- FIX #1: THE URL ---
-    // REMOVED: "/v1beta"
-    // ADDED: "/ws" direct path
-    private val BASE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent"
+class GeminiReasoningEngine(
+    private val client: HttpClient,
+    private val audioRecorder: AudioRecorder,
+    private val audioPlayer: AudioPlayer
+) {
+
+    // ✅ USE v1beta for the Live API
+    private val BASE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     val connectionState = _connectionState.asStateFlow()
 
     private var session: DefaultClientWebSocketSession? = null
 
-    suspend fun connect(apiKey: String) {
+    suspend fun connect(apiKey: String, systemInstruction: String? = null) {
         try {
             _connectionState.value = ConnectionState.Connecting
-            println("🔌 Connecting to Gemini Live...")
+            println("🔌 Connecting to Live API (Native Audio Dialog)...")
 
-            // Construct Auth URL
             val urlString = "$BASE_URL?key=$apiKey"
 
             client.webSocket(urlString) {
@@ -34,70 +38,141 @@ class GeminiReasoningEngine(private val client: HttpClient) {
                 _connectionState.value = ConnectionState.Connected
                 println("⚡ SOCKET OPENED. Sending Handshake...")
 
-                // --- FIX #2: THE HANDSHAKE ---
-                // We MUST send this immediately, or the connection closes with 400.
-                sendHandshake()
+                sendHandshake(systemInstruction)
 
-                for (frame in incoming) {
-                    when (frame) {
-                        is Frame.Text -> {
-                            val text = frame.readText()
-                            println("📥 Gemini Text: $text")
-                            // TODO: Parse "serverContent" JSON here to trigger UI updates
+                // LAUNCH AUDIO RECORDER
+                val audioJob = launch {
+                    println("🎤 Starting Audio Recorder...")
+                    try {
+                        audioRecorder.startRecording().collect { pcmData ->
+                            sendAudio(pcmData)
                         }
-                        is Frame.Binary -> {
-                            // TODO: Pass audio bytes to Speaker
-                            println("🔊 Gemini Audio Packet Received")
+                    } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) {
+                            println("🎤 Audio Recorder Cancelled (Normal)")
+                        } else {
+                            println("🎤 Audio Recorder Crashed: ${e.message}")
+                            e.printStackTrace()
                         }
-                        else -> {}
                     }
                 }
-            }
-        } catch (e: Exception) {
-            println("❌ CRITICAL FAILURE: ${e.message}")
-            e.printStackTrace()
-            _connectionState.value = ConnectionState.Error(e.message ?: "Unknown Connection Error")
-        } finally {
-            _connectionState.value = ConnectionState.Disconnected
-            println("🔌 Socket Closed")
-        }
-    }
-
-    private suspend fun DefaultClientWebSocketSession.sendHandshake() {
-        // --- FIX #3: THE MODEL NAME ---
-        // Using "gemini-2.0-flash-exp" is REQUIRED for the Live API to work.
-        val handshakeJson = """
+// ...
+        val handshakeJson2 = """
         {
           "setup": {
-            "model": "models/gemini-2.5-flash-native-audio-preview-12-2025",
+            "model": "models/gemini-2.0-flash-exp",
             "generationConfig": {
               "responseModalities": ["AUDIO"],
               "speechConfig": {
-                "voiceConfig": { "prebuiltVoiceConfig": { "voiceName": "Aoede" } }
+                "voiceConfig": {
+                  "prebuiltVoiceConfig": {
+                    "voiceName": "Puck"
+                  }
+                }
               }
             }
           }
         }
         """.trimIndent()
 
-        send(Frame.Text(handshakeJson))
-        println("The Handshake sent. Waiting for server...")
+                try {
+                    for (frame in incoming) {
+                        val messageText = when (frame) {
+                            is Frame.Text -> frame.readText()
+                            is Frame.Binary -> String(frame.readBytes()) // Try to decode binary as UTF-8 JSON
+                            else -> null
+                        }
+
+                        if (messageText != null) {
+                            // Print first 100 chars to debug
+                            // println("📥 Rx: ${messageText.take(100)}...") 
+                            
+                            if (messageText.contains("\"interrupted\": true")) {
+                                println("🛑 Interruption detected! Clearing audio buffer.")
+                                audioPlayer.stop()
+                            }
+
+                            if (messageText.contains("audio/pcm")) {
+                                try {
+                                    val dataMarker = "\"data\": \""
+                                    val startIndex = messageText.indexOf(dataMarker)
+                                    if (startIndex != -1) {
+                                        val startQuote = startIndex + dataMarker.length
+                                        val endQuote = messageText.indexOf("\"", startQuote)
+                                        if (endQuote != -1) {
+                                            val base64 = messageText.substring(startQuote, endQuote)
+                                            val pcm = base64.decodeBase64Bytes()
+                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                                audioPlayer.play(pcm)
+                                            }
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    println("❌ Audio Decode Error: ${e.message}")
+                                }
+                            }
+                        }
+
+                        if (frame is Frame.Close) {
+                            println("📪 Server requested close: ${frame.readReason()}")
+                        }
+                    }
+                    println("📪 Incoming loop finished (Server closed connection?)")
+                } catch (e: Exception) {
+                    println("❌ Error in incoming loop: ${e.message}")
+                } finally {
+                    val reason = session?.closeReason?.await()
+                    println("📪 Connection closed. Reason: $reason")
+                    audioJob.cancel()
+                    audioPlayer.stop()
+                    println("🎤 Audio Recorder Stopped")
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ SOCKET ERROR: ${e.message}")
+            _connectionState.value = ConnectionState.Error(e.message ?: "Unknown Error")
+        } finally {
+             audioRecorder.stopRecording()
+        }
+    }
+
+    private suspend fun DefaultClientWebSocketSession.sendHandshake(systemInstruction: String?) {
+        val systemInstructionJson = if (systemInstruction != null) {
+            """,
+            "systemInstruction": {
+              "parts": [
+                { "text": "${systemInstruction.replace("\n", " ").replace("\"", "\\\"")}" }
+              ]
+            }
+            """.trimIndent()
+        } else ""
+
+        val handshakeJson2 = """
+        {
+          "setup": {
+            "model": "models/gemini-2.5-flash-native-audio-preview-12-2025",
+            "generationConfig": {
+              "responseModalities": ["AUDIO"],
+              "speechConfig": {
+                "voiceConfig": {
+                  "prebuiltVoiceConfig": {
+                    "voiceName": "Puck"
+                  }
+                }
+              }
+            }$systemInstructionJson
+          }
+        }
+        """.trimIndent()
+
+        send(Frame.Text(handshakeJson2))
+        println("✅ Handshake sent using: gemini-2.5-flash-native-audio-preview-12-2025 (with Voice Config)")
     }
 
     suspend fun sendAudio(pcmData: ByteArray) {
         if (session?.isActive == true) {
-            // Real-time audio chunks to Gemini
             val json = """
-            {
-                "realtime_input": {
-                    "media_chunks": [
-                        {
-                            "mime_type": "audio/pcm",
-                            "data": "${pcmData.encodeBase64()}"
-                        }
-                    ]
-                }
-            }
+            {"realtime_input": {"media_chunks": [{"mime_type": "audio/pcm", "data": "${pcmData.encodeBase64()}"}]}}
             """.trimIndent()
             session?.send(Frame.Text(json))
         }

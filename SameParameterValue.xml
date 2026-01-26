@@ -1,0 +1,44 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/core/gemini/agents/MarathonAgentEngine.kt</file>
+  <line>443</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.core.gemini.agents</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.core.gemini.agents.MarathonAgentEngine com.mursaline.kaironex.core.gemini.HumanIntervention requestHumanIntervention(com.mursaline.kaironex.core.gemini.MarathonTask task, com.mursaline.kaironex.core.gemini.InterventionType type, java.lang.String message)" />
+  <problem_class id="SameParameterValue" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Method parameter always has the same value</problem_class>
+  <hints />
+  <description>Value of parameter &lt;code&gt;type&lt;/code&gt; is always 'InterventionType.ERROR_ESCALATION'</description>
+  <highlighted_element>type</highlighted_element>
+  <language>kotlin</language>
+  <offset>8</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/auth/SignupScreen.kt</file>
+  <line>483</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.auth</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.features.auth.SignupScreenKt void BenefitRow(java.lang.String icon, java.lang.String text)" />
+  <problem_class id="SameParameterValue" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Method parameter always has the same value</problem_class>
+  <hints />
+  <description>Value of parameter &lt;code&gt;icon&lt;/code&gt; is always '&quot;✓&quot;'</description>
+  <highlighted_element>icon</highlighted_element>
+  <language>kotlin</language>
+  <offset>23</offset>
+  <length>4</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/study/viewers/InAppSecureBrowser.kt</file>
+  <line>230</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.study.viewers</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.features.study.viewers.InAppSecureBrowserKt void BrowserHeader(java.lang.String pageTitle, java.lang.String currentDomain, boolean isSecure, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onBack, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onForward, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onRefresh, kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onRequestDomain)" />
+  <problem_class id="SameParameterValue" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Method parameter always has the same value</problem_class>
+  <hints />
+  <description>Value of parameter &lt;code&gt;isSecure&lt;/code&gt; is always 'true'</description>
+  <highlighted_element>isSecure</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>8</length>
+</problem>
+</problems>

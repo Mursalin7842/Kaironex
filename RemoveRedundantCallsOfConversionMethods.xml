@@ -1,0 +1,28 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/dashboard/components/CortexHeroCard.kt</file>
+  <line>226</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.dashboard.components</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.features.dashboard.components.CortexHeroCardKt void PressureWaveBackground(float pressure, long pressureColor)" />
+  <problem_class id="RemoveRedundantCallsOfConversionMethods" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant call of the conversion method</problem_class>
+  <description>Redundant call of the conversion method</description>
+  <highlighted_element>toDouble()</highlighted_element>
+  <language>kotlin</language>
+  <offset>92</offset>
+  <length>10</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/dashboard/components/CortexHeroCard.kt</file>
+  <line>251</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.dashboard.components</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.features.dashboard.components.CortexHeroCardKt void PressureWaveBackground(float pressure, long pressureColor)" />
+  <problem_class id="RemoveRedundantCallsOfConversionMethods" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant call of the conversion method</problem_class>
+  <description>Redundant call of the conversion method</description>
+  <highlighted_element>toDouble()</highlighted_element>
+  <language>kotlin</language>
+  <offset>76</offset>
+  <length>10</length>
+</problem>
+</problems>

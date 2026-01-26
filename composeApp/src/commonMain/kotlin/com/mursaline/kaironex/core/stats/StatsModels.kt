@@ -49,12 +49,14 @@ enum class TrendDirection(val symbol: String) {
     STABLE("→")
 }
 
+@Suppress("unused")
 enum class CognitiveLoadLevel(val label: String, val color: Long) {
     LIGHT("Light", 0xFF4CAF50),
     BALANCED("Balanced", 0xFF2196F3),
     OVERLOADED("Overloaded", 0xFFF44336)
 }
 
+@Suppress("unused")
 enum class FatigueLevel(val label: String) {
     LOW("Low"),
     MEDIUM("Medium"),
@@ -102,6 +104,7 @@ data class Deadline(
     val urgencyLevel: UrgencyLevel
 )
 
+@Suppress("unused")
 enum class UrgencyLevel(val color: Long) {
     LOW(0xFF4CAF50),
     MEDIUM(0xFFFF9800),
@@ -122,12 +125,14 @@ data class MentalStateStats(
     val aiInsight: String                // One-liner guidance
 )
 
+@Suppress("unused")
 enum class RiskLevel(val label: String, val color: Long) {
     LOW("Low", 0xFF4CAF50),
     MEDIUM("Medium", 0xFFFF9800),
     HIGH("High", 0xFFF44336)
 }
 
+@Suppress("unused")
 enum class StudyMode(val label: String, val emoji: String) {
     DEEP("Deep Focus", "🎯"),
     FLOW("Flow State", "🌊"),
@@ -171,6 +176,7 @@ data class DirectionStats(
     val futureReadinessScore: Int        // 0-100
 )
 
+@Suppress("unused")
 enum class TrajectoryStatus(val label: String, val color: Long) {
     RISING("Rising", 0xFF4CAF50),
     STABLE("Stable", 0xFF2196F3),
@@ -274,6 +280,7 @@ data class RadiusStats(
     val riskAlerts: List<String>
 )
 
+@Suppress("unused")
 enum class AgentStatus(val label: String, val emoji: String, val color: Long) {
     OPTIMAL("Optimal", "✅", 0xFF4CAF50),
     STABLE("Stable", "🟢", 0xFF8BC34A),

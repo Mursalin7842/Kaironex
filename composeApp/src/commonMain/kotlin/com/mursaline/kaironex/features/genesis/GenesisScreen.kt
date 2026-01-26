@@ -36,7 +36,7 @@ data class GenesisScreen(
 
         // Set identity immediately from passed parameters
         LaunchedEffect(Unit) {
-            viewModel.setIdentity(userName, wakeWord, addressAs)
+            viewModel.startInterview(userName, wakeWord)
         }
 
         Scaffold(

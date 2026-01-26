@@ -1,0 +1,278 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/HACKATHON_PITCH.md</file>
+  <line>161</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/HACKATHON_PITCH.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| ❌ Discouraged | ✅ What Kaironex Does Instead | |---------------|------------------------------| | ...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>564</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/PROJECT_DOCUMENTATION.md</file>
+  <line>70</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/PROJECT_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Tab | Screen | Purpose | |-----|--------|---------| | Home | DashboardScreen | Main stats dashboar...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>321</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/PROJECT_DOCUMENTATION.md</file>
+  <line>478</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/PROJECT_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Track | Implementation | |-------|---------------| | 🧠 Marathon Agent | MarathonAgentEngine with ...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>321</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/PROJECT_DOCUMENTATION.md</file>
+  <line>496</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/PROJECT_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| File | Purpose | |------|---------| | `MainShell.kt` | Navigation shell with 5-item bar &amp; orb over...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>733</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>34</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Principle | Description | |-----------|-------------| | **Cortex (Study)** | The protected &quot;safe s...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>378</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>82</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Layer | Technology | |-------|------------| | **UI Framework** | Compose Multiplatform | | **Navig...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>284</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>177</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Tab | Icon | Destination | Description | |-----|------|-------------|-------------| | **Home** | ?...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>419</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>187</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Screen Object | File Location | Purpose | |---------------|---------------|---------| | `SplashScr...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>888</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>270</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Component | Purpose | |-----------|---------| | `CortexHeroCard.kt` | Study focus card with pressu...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>470</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>299</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Component | Purpose | |-----------|---------| | `StudyHeader.kt` | Timer, session info | | `StudyV...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>426</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>404</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Component | File | Purpose | |-----------|------|---------| | `KxButton` | `KxButton.kt` | Styled ...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>325</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>602</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Function | Description | |----------|-------------| | `startSession()` | Begin monitoring | | `sto...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>382</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>653</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Color | Hex | Usage | |-------|-----|-------| | `ElectricBlue` | `#2563EB` | Primary actions | | `...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>330</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>663</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Color | Hex | Usage | |-------|-----|-------| | `SuccessGreen` | `#22C55E` | Success states | | `A...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>187</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>670</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Name | Colors | |------|--------| | `IndigoGradient` | Purple → Indigo | | `GeminiGradient` | Blue...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>111</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>686</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Size | Value | |------|-------| | `xs` | 4.dp | | `sm` | 8.dp | | `md` | 12.dp | | `lg` | 16.dp | ...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>134</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>697</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Size | Value | |------|-------| | `small` | 8.dp | | `medium` | 12.dp | | `large` | 16.dp | | `xl`...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>153</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>791</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Feature | Status | Notes | |---------|--------|-------| | **Authentication Backend** | ❌ Placehold...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>575</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>804</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Feature | Status | Notes | |---------|--------|-------| | **PDF Viewer** | ❌ Placeholder | Real PD...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>472</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>816</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Feature | Status | Notes | |---------|--------|-------| | **Keyboard Shortcuts** | ❌ Missing | Des...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>436</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>827</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Feature | Status | Notes | |---------|--------|-------| | **Themes/Skins** | ❌ Missing | Dark mode...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>351</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>921</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Shortcut | Action | |----------|--------| | `Space` | Pause/Play timer | | `Cmd/Ctrl + K` | Summon...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>257</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md</file>
+  <line>934</line>
+  <module>Kaironex</module>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/SYSTEM_DOCUMENTATION.md" />
+  <problem_class id="MarkdownIncorrectTableFormatting" severity="WEAK WARNING" attribute_key="INFO_ATTRIBUTES">Incorrect table formatting</problem_class>
+  <description>Table is not correctly formatted</description>
+  <highlighted_element>| Code | Description | |------|-------------| | `AUTH_001` | Invalid credentials | | `AUTH_002` | Se...</highlighted_element>
+  <language>Markdown</language>
+  <offset>0</offset>
+  <length>342</length>
+</problem>
+</problems>

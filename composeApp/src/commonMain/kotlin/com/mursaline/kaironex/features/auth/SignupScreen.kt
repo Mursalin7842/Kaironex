@@ -40,7 +40,9 @@ import kaironex.composeapp.generated.resources.robot_hero
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
+@Suppress("unused")
 object SignupScreen : Screen {
+    @Suppress("unused")
     private fun readResolve(): Any = SignupScreen
 
     @OptIn(ExperimentalMaterial3Api::class)

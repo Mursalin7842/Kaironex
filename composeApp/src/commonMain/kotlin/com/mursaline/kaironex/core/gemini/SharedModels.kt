@@ -144,3 +144,10 @@ data class TeachingAdaptation(
     val action: String,
     val result: String
 )
+
+@Serializable
+data class ChatMessage(
+    val sender: String, // "user" or "ai"
+    val content: String,
+    val timestamp: Long = System.currentTimeMillis()
+)

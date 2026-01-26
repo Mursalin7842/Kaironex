@@ -13,6 +13,7 @@ interface AgentContext {
 }
 
 // Wrapper for data with confidence (The "Epistemic Layer")
+@Suppress("unused")
 data class ExtractedField<T>(
     val value: T,
     val confidence: Float = 1.0f, // 0.0 to 1.0

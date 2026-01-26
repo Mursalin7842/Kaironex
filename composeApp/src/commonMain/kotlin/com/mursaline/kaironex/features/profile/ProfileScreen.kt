@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,7 +33,9 @@ import com.mursaline.kaironex.ui.components.KxCardVariant
  * This replaces the floating profile dropdown with a full navigation destination.
  * Contains: Account info, App settings, Study statistics, System configuration.
  */
+@Suppress("unused")
 object ProfileScreen : Screen {
+    @Suppress("unused")
     private fun readResolve(): Any = ProfileScreen
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -204,7 +207,7 @@ object ProfileScreen : Screen {
                 // Support Section
                 ProfileSection("Support") {
                     SettingsRow(
-                        icon = Icons.Filled.Help,
+                        icon = Icons.AutoMirrored.Filled.Help,
                         label = "Help Center",
                         value = "",
                         onClick = {}

@@ -40,7 +40,9 @@ import kaironex.composeapp.generated.resources.robot_hero
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
+@Suppress("unused")
 object LoginScreen : Screen {
+    @Suppress("unused")
     private fun readResolve(): Any = LoginScreen
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -68,7 +70,6 @@ object LoginScreen : Screen {
             label = "floatOffset"
         )
 
-        @Suppress("UnusedBoxWithConstraintsScope")
         BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Color.White)) {
             val isDesktop = maxWidth > 800.dp
             val contentPadding = if (maxWidth > 1200.dp) 56.dp else if (maxWidth > 800.dp) 48.dp else 32.dp

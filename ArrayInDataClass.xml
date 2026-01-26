@@ -1,0 +1,28 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/core/gemini/agents/RealTimeTeacherEngine.kt</file>
+  <line>539</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.core.gemini.agents</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.core.gemini.agents.TeacherOutput TeacherOutput(com.mursaline.kaironex.core.gemini.agents.OutputType type, java.lang.String content, byte[] audioData, com.mursaline.kaironex.core.gemini.agents.VisualContent visualContent, com.mursaline.kaironex.core.gemini.agents.TeacherEmotion emotion, boolean expectsResponse)" />
+  <problem_class id="ArrayInDataClass" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Array property in data class</problem_class>
+  <description>Property with 'Array' type in a 'data' class: it is recommended to override 'equals()' and 'hashCode()'</description>
+  <highlighted_element>val audioData: ByteArray? = null</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>32</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/core/gemini/agents/RealTimeTeacherEngine.kt</file>
+  <line>595</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.core.gemini.agents</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.core.gemini.agents.SpeechResponse SpeechResponse(java.lang.String text, byte[] audioBytes)" />
+  <problem_class id="ArrayInDataClass" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Array property in data class</problem_class>
+  <description>Property with 'Array' type in a 'data' class: it is recommended to override 'equals()' and 'hashCode()'</description>
+  <highlighted_element>val audioBytes: ByteArray?</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>26</length>
+</problem>
+</problems>

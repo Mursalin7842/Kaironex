@@ -1,0 +1,28 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/agents/AgentSpaceScreen.kt</file>
+  <line>27</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.agents</package>
+  <entry_point TYPE="class" FQNAME="com.mursaline.kaironex.features.agents.AgentSpaceScreen" />
+  <problem_class id="JavaIoSerializableObjectMustHaveReadResolve" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Serializable object must implement 'readResolve'</problem_class>
+  <description>Serializable object must implement 'readResolve'</description>
+  <highlighted_element>AgentSpaceScreen</highlighted_element>
+  <language>kotlin</language>
+  <offset>7</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/auth/JudgeLoginScreen.kt</file>
+  <line>35</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.auth</package>
+  <entry_point TYPE="class" FQNAME="com.mursaline.kaironex.features.auth.JudgeLoginScreen" />
+  <problem_class id="JavaIoSerializableObjectMustHaveReadResolve" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Serializable object must implement 'readResolve'</problem_class>
+  <description>Serializable object must implement 'readResolve'</description>
+  <highlighted_element>JudgeLoginScreen</highlighted_element>
+  <language>kotlin</language>
+  <offset>7</offset>
+  <length>16</length>
+</problem>
+</problems>

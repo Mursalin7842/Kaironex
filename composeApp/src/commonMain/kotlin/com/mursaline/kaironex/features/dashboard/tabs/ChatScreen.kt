@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,11 +37,7 @@ import com.mursaline.kaironex.ui.components.KxOrb
 import com.mursaline.kaironex.ui.components.KxTextField
 import com.mursaline.kaironex.ui.theme.KaironexColors
 
-data class ChatMessage(
-    val id: String,
-    val text: String,
-    val isFromUser: Boolean
-)
+import com.mursaline.kaironex.core.gemini.ChatMessage
 
 @Composable
 fun ChatScreen() {
@@ -49,8 +45,8 @@ fun ChatScreen() {
     // Dummy history
     val messages = remember {
         listOf(
-            ChatMessage("1", "Hello, Kaironex. I need help focusing.", true),
-            ChatMessage("2", "I am here. Activating focus protocols. What is the subject?", false)
+            ChatMessage(sender = "user", content = "Hello, Kaironex. I need help focusing."),
+            ChatMessage(sender = "ai", content = "I am here. Activating focus protocols. What is the subject?")
         )
     }
 
@@ -103,7 +99,7 @@ fun ChatScreen() {
             }
             Spacer(Modifier.width(8.dp))
             KxIconButton(
-                icon = Icons.Filled.Send,
+                icon = Icons.AutoMirrored.Filled.Send,
                 onClick = { /* Send */ },
                 variant = KxIconButtonVariant.Filled
             )
@@ -113,9 +109,10 @@ fun ChatScreen() {
 
 @Composable
 fun ChatBubble(message: ChatMessage) {
-    val align = if (message.isFromUser) Alignment.CenterEnd else Alignment.CenterStart
-    val bgColor = if (message.isFromUser) KaironexColors.Indigo50 else KaironexColors.Slate100
-    val textColor = if (message.isFromUser) KaironexColors.Indigo900 else KaironexColors.Slate900
+    val isFromUser = message.sender == "user"
+    val align = if (isFromUser) Alignment.CenterEnd else Alignment.CenterStart
+    val bgColor = if (isFromUser) KaironexColors.Indigo50 else KaironexColors.Slate100
+    val textColor = if (isFromUser) KaironexColors.Indigo900 else KaironexColors.Slate900
     
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = align) {
         androidx.compose.material3.Surface(
@@ -124,7 +121,7 @@ fun ChatBubble(message: ChatMessage) {
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
             Text(
-                text = message.text,
+                text = message.content,
                 modifier = Modifier.padding(12.dp),
                 color = textColor,
                 style = androidx.compose.material3.MaterialTheme.typography.bodyMedium

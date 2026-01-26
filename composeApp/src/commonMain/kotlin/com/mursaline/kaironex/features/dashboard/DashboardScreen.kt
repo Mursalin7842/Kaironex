@@ -64,7 +64,9 @@ import androidx.compose.foundation.rememberScrollState
  * - "Am I improving?"
  * - "What should I do next?"
  */
+@Suppress("unused")
 object DashboardScreen : Screen {
+    @Suppress("unused")
     private fun readResolve(): Any = DashboardScreen
 
     @Composable
@@ -89,7 +91,6 @@ object DashboardScreen : Screen {
             )
         }
 
-        @Suppress("UnusedBoxWithConstraintsScope")
         BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
             val isMobile = this.maxWidth < 800.dp
 

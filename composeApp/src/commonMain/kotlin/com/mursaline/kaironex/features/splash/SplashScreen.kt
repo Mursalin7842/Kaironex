@@ -30,6 +30,7 @@ import org.jetbrains.compose.resources.painterResource
  * Shows the Kaironex logo with a pulse animation before navigating to login
  */
 object SplashScreen : Screen {
+    @Suppress("unused")
     private fun readResolve(): Any = SplashScreen
 
     @Composable

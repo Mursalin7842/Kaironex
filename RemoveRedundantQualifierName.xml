@@ -1,0 +1,106 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors/kaironex/composeapp/generated/resources/Drawable0.commonMain.kt</file>
+  <line>26</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="method" FQNAME="kaironex.composeapp.generated.resources.Drawable0_commonMainKt org.jetbrains.compose.resources.DrawableResource init_compose_multiplatform()" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>org.jetbrains.compose.resources</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>31</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors/kaironex/composeapp/generated/resources/Drawable0.commonMain.kt</file>
+  <line>38</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="method" FQNAME="kaironex.composeapp.generated.resources.Drawable0_commonMainKt org.jetbrains.compose.resources.DrawableResource init_login_illustration()" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>org.jetbrains.compose.resources</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>31</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors/kaironex/composeapp/generated/resources/Drawable0.commonMain.kt</file>
+  <line>49</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="method" FQNAME="kaironex.composeapp.generated.resources.Drawable0_commonMainKt org.jetbrains.compose.resources.DrawableResource init_logo()" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>org.jetbrains.compose.resources</highlighted_element>
+  <language>kotlin</language>
+  <offset>44</offset>
+  <length>31</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonMainResourceAccessors/kaironex/composeapp/generated/resources/Drawable0.commonMain.kt</file>
+  <line>60</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="method" FQNAME="kaironex.composeapp.generated.resources.Drawable0_commonMainKt org.jetbrains.compose.resources.DrawableResource init_robot_hero()" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>org.jetbrains.compose.resources</highlighted_element>
+  <language>kotlin</language>
+  <offset>50</offset>
+  <length>31</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonResClass/kaironex/composeapp/generated/resources/Res.kt</file>
+  <line>3</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>kaironex.composeapp.generated.resources</package>
+  <entry_point TYPE="file" FQNAME="file://$PROJECT_DIR$/composeApp/build/generated/compose/resourceGenerator/kotlin/commonResClass/kaironex/composeapp/generated/resources/Res.kt" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>org.jetbrains.compose.resources</highlighted_element>
+  <language>kotlin</language>
+  <offset>2</offset>
+  <length>31</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/MainShell.kt</file>
+  <line>351</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.MainShellKt void ImmersiveAssistantPanel(kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, boolean isMobile)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>org.koin.compose</highlighted_element>
+  <language>kotlin</language>
+  <offset>78</offset>
+  <length>16</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/MainShell.kt</file>
+  <line>352</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.MainShellKt void ImmersiveAssistantPanel(kotlin.jvm.functions.Function0&lt;kotlin.Unit&gt; onDismiss, boolean isMobile)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>com.mursaline.kaironex</highlighted_element>
+  <language>kotlin</language>
+  <offset>17</offset>
+  <length>22</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/zones/components/MarathonAgentMonitor.kt</file>
+  <line>217</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.zones.components</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.features.zones.components.MarathonAgentMonitorKt void CurrentThoughtBubble(java.lang.String thought, com.mursaline.kaironex.features.zones.MarathonUIStatus status)" />
+  <problem_class id="RemoveRedundantQualifierName" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant qualifier name</problem_class>
+  <description>Remove redundant qualifier name</description>
+  <highlighted_element>androidx.compose.foundation</highlighted_element>
+  <language>kotlin</language>
+  <offset>17</offset>
+  <length>27</length>
+</problem>
+</problems>

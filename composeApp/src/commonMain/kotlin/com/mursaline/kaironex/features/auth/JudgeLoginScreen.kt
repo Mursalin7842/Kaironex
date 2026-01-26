@@ -13,6 +13,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,13 +70,14 @@ object JudgeLoginScreen : Screen {
                     onValueChange = { accessCode = it },
                     label = { Text("Admin Access Code") },
                     visualTransformation = PasswordVisualTransformation(),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                    colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color(0xFF6200EA),
                         unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f),
                         cursorColor = Color(0xFF6200EA),
                         focusedLabelColor = Color(0xFF6200EA),
                         unfocusedLabelColor = Color.Gray,
-                        containerColor = Color.White.copy(alpha = 0.5f)
+                        focusedContainerColor = Color.White.copy(alpha = 0.5f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.5f)
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )

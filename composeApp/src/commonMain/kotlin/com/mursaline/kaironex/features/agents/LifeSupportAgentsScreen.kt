@@ -45,7 +45,9 @@ import com.mursaline.kaironex.core.stats.*
  * - Warnings
  * - Actionable next steps
  */
+@Suppress("unused")
 object LifeSupportAgentsScreen : Screen {
+    @Suppress("unused")
     private fun readResolve(): Any = LifeSupportAgentsScreen
 
     @OptIn(ExperimentalMaterial3Api::class)

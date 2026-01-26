@@ -23,9 +23,20 @@ val geminiKey = localProperties.getProperty("GeminiAPI") ?: ""
 kotlin {
     jvmToolchain(17)
     androidTarget {
+        compilations.all {
+            kotlinOptions {
+                freeCompilerArgs += "-Xexpect-actual-classes"
+            }
+        }
     }
     
-    jvm()
+    jvm {
+        compilations.all {
+            kotlinOptions {
+                freeCompilerArgs += "-Xexpect-actual-classes"
+            }
+        }
+    }
     
     sourceSets {
 

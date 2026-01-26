@@ -3,6 +3,7 @@ package com.mursaline.kaironex
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+@Suppress("unused")
 class ComposeAppCommonTest {
 
     @Test

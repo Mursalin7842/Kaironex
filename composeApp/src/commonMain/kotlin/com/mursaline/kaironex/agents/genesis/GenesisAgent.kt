@@ -1,8 +1,7 @@
 package com.mursaline.kaironex.agents.genesis
 
 import com.mursaline.kaironex.agents.core.ExtractedField
-import com.mursaline.kaironex.core.gemini.GeminiOrchestrator
-import com.mursaline.kaironex.features.genesis.ChatMessage
+import com.mursaline.kaironex.core.gemini.ChatMessage
 import kotlinx.serialization.json.Json
 
 class GenesisAgent {
@@ -32,72 +31,13 @@ class GenesisAgent {
             stage = GenesisStage.ACADEMIC
         }
     }
+    
+    // NOTE: In the Voice-based flow, 'processTurn' is handled by the GeminiReasoningEngine via WebSocket.
+    // This Agent class now strictly manages State (FSM) and Profile data.
+    // Future: We can hook the 'parseSidecar' into the Voice Text Frames if needed.
 
-    suspend fun processTurn(
-        userText: String?, 
-        agentName: String, 
-        userName: String
-    ): AgentResponse {
-        
-        if (userText != null) {
-            history.add(ChatMessage("user", userText))
-            
-            // INTENT DETECTION (Simple Rule-based for now)
-            if (userText.contains("wrong", ignoreCase = true) || userText.contains("mistake", ignoreCase = true)) {
-                // Heuristic: If user signals error, rollback one step
-                // (Advanced: Use Gemini to determine WHERE to rollback)
-            }
-        }
-
-        // 1. FSM PROGRESSION
-        val missing = profile.getMissingFields(stage)
-        if (missing.isEmpty() && stage != GenesisStage.COMPLETE) {
-            stage = getNextStage(stage)
-        }
-
-        // 2. GET RATIONALE (Explainability)
-        val currentField = if (stage == GenesisStage.COMPLETE) null else profile.getMissingFields(stage).firstOrNull()
-        val reason = FieldRationale.map[currentField] ?: "Required for profile setup."
-
-        // 3. BUILD PROMPT
-        val prompt = GenesisPrompts.build(
-            agentName, userName, stage, 
-            profile.getMissingFields(stage), reason
-        )
-
-        // 4. GEMINI REASONING
-        var responseText = ""
-        try {
-            val response = if (userText == null) {
-                 GeminiOrchestrator.chat(history, "Initialize Protocol.", prompt)
-            } else {
-                 GeminiOrchestrator.chat(history, userText, prompt)
-            }
-            responseText = response.text
-        } catch (e: Exception) {
-            responseText = "I'm having trouble connecting to my brain. Let's try that again. Error: ${e.message}"
-        }
-
-        // 5. SIDECAR EXTRACTION with CONFIDENCE
-        val (speech, extractedJson) = parseSidecar(responseText)
-        
-        // 6. UPDATE MEMORY (With Validation)
-        if (extractedJson != null) {
-            // Here we would check confidence if Gemini returned it.
-            // For hackathon simplicity, we assume extracted JSON is > 0.7 confidence
-            updateProfile(extractedJson)
-        }
-        
-        history.add(ChatMessage("ai", speech))
-
-        return AgentResponse(
-            displayText = speech,
-            isComplete = stage == GenesisStage.COMPLETE,
-            updatedProfile = profile
-        )
-    }
-
-    private fun parseSidecar(raw: String): Pair<String, StudentProfile?> {
+    // Logic for parsing JSON from mixed text (Shared Utility)
+    fun parseSidecar(raw: String): Pair<String, StudentProfile?> {
         val parts = raw.split("|||")
         val speech = parts[0].trim()
         var data: StudentProfile? = null
@@ -113,7 +53,7 @@ class GenesisAgent {
         return Pair(speech, data)
     }
 
-    private fun updateProfile(newData: StudentProfile) {
+    fun updateProfile(newData: StudentProfile) {
         newData.major?.let { profile = profile.copy(major = it) }
         newData.semester?.let { profile = profile.copy(semester = it) }
         newData.careerAmbition?.let { profile = profile.copy(careerAmbition = it) }
@@ -122,7 +62,12 @@ class GenesisAgent {
         newData.targetCgpa?.let { profile = profile.copy(targetCgpa = it) }
         newData.wakeTime?.let { profile = profile.copy(wakeTime = it) }
         newData.commuteTime?.let { profile = profile.copy(commuteTime = it) }
-        // ... map all fields
+        
+        // Auto-advance stage if data is sufficient
+        val missing = profile.getMissingFields(stage)
+        if (missing.isEmpty() && stage != GenesisStage.COMPLETE) {
+            stage = getNextStage(stage)
+        }
     }
 
     private fun getNextStage(current: GenesisStage): GenesisStage {
@@ -136,10 +81,4 @@ class GenesisAgent {
             GenesisStage.COMPLETE -> GenesisStage.COMPLETE
         }
     }
-    
-    data class AgentResponse(
-        val displayText: String,
-        val isComplete: Boolean,
-        val updatedProfile: StudentProfile
-    )
 }

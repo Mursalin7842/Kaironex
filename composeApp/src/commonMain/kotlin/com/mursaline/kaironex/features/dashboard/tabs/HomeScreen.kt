@@ -35,7 +35,6 @@ import com.mursaline.kaironex.ui.theme.KaironexColors
 
 @Composable
 fun HomeScreen() {
-    @Suppress("UnusedBoxWithConstraintsScope")
     BoxWithConstraints {
         val isMobile = this.maxWidth < 600.dp
 

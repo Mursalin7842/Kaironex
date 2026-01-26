@@ -1,0 +1,106 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/MainShell.kt</file>
+  <line>135</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.MainShellScreen void Content()" />
+  <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
+  <description>Assigned value is never read</description>
+  <highlighted_element>isOrbExpanded</highlighted_element>
+  <language>kotlin</language>
+  <offset>24</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/MainShell.kt</file>
+  <line>139</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.MainShellScreen void Content()" />
+  <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
+  <description>Assigned value is never read</description>
+  <highlighted_element>isOrbExpanded</highlighted_element>
+  <language>kotlin</language>
+  <offset>38</offset>
+  <length>13</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/splash/SplashScreen.kt</file>
+  <line>72</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.splash</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.features.splash.SplashScreen void Content()" />
+  <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
+  <description>Assigned value is never read</description>
+  <highlighted_element>startAnimation</highlighted_element>
+  <language>kotlin</language>
+  <offset>12</offset>
+  <length>14</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/study/viewers/InAppSecureBrowser.kt</file>
+  <line>188</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.study.viewers</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.features.study.viewers.InAppSecureBrowserKt void InAppSecureBrowser(java.lang.String currentUrl, java.lang.String pageTitle, java.util.List&lt;java.lang.String&gt; permittedDomains, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onRequestNewDomain, androidx.compose.ui.Modifier modifier)" />
+  <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
+  <description>Assigned value is never read</description>
+  <highlighted_element>showDomainRequest</highlighted_element>
+  <language>kotlin</language>
+  <offset>33</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/study/viewers/InAppSecureBrowser.kt</file>
+  <line>210</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.study.viewers</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.features.study.viewers.InAppSecureBrowserKt void InAppSecureBrowser(java.lang.String currentUrl, java.lang.String pageTitle, java.util.List&lt;java.lang.String&gt; permittedDomains, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onRequestNewDomain, androidx.compose.ui.Modifier modifier)" />
+  <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
+  <description>Assigned value is never read</description>
+  <highlighted_element>showDomainRequest</highlighted_element>
+  <language>kotlin</language>
+  <offset>24</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/study/viewers/InAppSecureBrowser.kt</file>
+  <line>211</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.study.viewers</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.features.study.viewers.InAppSecureBrowserKt void InAppSecureBrowser(java.lang.String currentUrl, java.lang.String pageTitle, java.util.List&lt;java.lang.String&gt; permittedDomains, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onRequestNewDomain, androidx.compose.ui.Modifier modifier)" />
+  <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
+  <description>Assigned value is never read</description>
+  <highlighted_element>requestedDomain</highlighted_element>
+  <language>kotlin</language>
+  <offset>24</offset>
+  <length>15</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/features/study/viewers/InAppSecureBrowser.kt</file>
+  <line>218</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.features.study.viewers</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.features.study.viewers.InAppSecureBrowserKt void InAppSecureBrowser(java.lang.String currentUrl, java.lang.String pageTitle, java.util.List&lt;java.lang.String&gt; permittedDomains, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onNavigate, kotlin.jvm.functions.Function1&lt;? super java.lang.String,kotlin.Unit&gt; onRequestNewDomain, androidx.compose.ui.Modifier modifier)" />
+  <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
+  <description>Assigned value is never read</description>
+  <highlighted_element>showDomainRequest</highlighted_element>
+  <language>kotlin</language>
+  <offset>39</offset>
+  <length>17</length>
+</problem>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/jvmMain/kotlin/com/mursaline/kaironex/main.kt</file>
+  <line>156</line>
+  <module>Kaironex.composeApp.jvmMain</module>
+  <package>com.mursaline.kaironex</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.MainKt void main()" />
+  <problem_class id="AssignedValueIsNeverRead" severity="WARNING" attribute_key="NOT_USED_ELEMENT_ATTRIBUTES">Assigned value is never read</problem_class>
+  <description>Assigned value is never read</description>
+  <highlighted_element>showPopup</highlighted_element>
+  <language>kotlin</language>
+  <offset>28</offset>
+  <length>9</length>
+</problem>
+</problems>

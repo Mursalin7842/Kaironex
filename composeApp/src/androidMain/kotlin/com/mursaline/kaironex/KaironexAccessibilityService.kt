@@ -3,14 +3,13 @@ package com.mursaline.kaironex
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
-import android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
-import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-import android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+
 import android.view.accessibility.AccessibilityEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+@Suppress("unused")
 class KaironexAccessibilityService : AccessibilityService() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO)
@@ -71,9 +70,8 @@ class KaironexAccessibilityService : AccessibilityService() {
             // This forces the Kaironex App to open ON TOP of the distraction.
             try {
                 val intent = Intent(this, MainActivity::class.java)
-                intent.addFlags(FLAG_ACTIVITY_NEW_TASK)    // Mandatory for Service -> Activity
-                intent.addFlags(FLAG_ACTIVITY_SINGLE_TOP)  // Don't open duplicates
-                intent.addFlags(FLAG_ACTIVITY_CLEAR_TOP)   // Reset the app stack
+                @Suppress("WrongConstant")
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 startActivity(intent)
                 println("🚀 ENFORCER ACTIVATED: Kaironex pulled to front!")
             } catch (e: Exception) {

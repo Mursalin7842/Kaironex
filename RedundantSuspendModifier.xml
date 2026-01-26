@@ -1,0 +1,15 @@
+<problems>
+<problem>
+  <file>file://$PROJECT_DIR$/composeApp/src/commonMain/kotlin/com/mursaline/kaironex/core/gemini/GeminiOrchestrator.kt</file>
+  <line>37</line>
+  <module>Kaironex.composeApp.commonMain</module>
+  <package>com.mursaline.kaironex.core.gemini</package>
+  <entry_point TYPE="method" FQNAME="com.mursaline.kaironex.core.gemini.GeminiOrchestrator java.lang.Object chat(java.util.List&lt;com.mursaline.kaironex.core.gemini.ChatMessage&gt; history, java.lang.String userText, java.lang.String systemPrompt, kotlin.coroutines.Continuation&lt;? super com.mursaline.kaironex.core.gemini.GeminiResponse&gt; $completion)" />
+  <problem_class id="RedundantSuspendModifier" severity="WARNING" attribute_key="WARNING_ATTRIBUTES">Redundant 'suspend' modifier</problem_class>
+  <description>Redundant 'suspend' modifier</description>
+  <highlighted_element>suspend</highlighted_element>
+  <language>kotlin</language>
+  <offset>4</offset>
+  <length>7</length>
+</problem>
+</problems>

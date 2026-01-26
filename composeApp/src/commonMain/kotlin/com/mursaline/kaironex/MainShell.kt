@@ -40,6 +40,8 @@ import com.mursaline.kaironex.features.profile.ProfileScreen
 import com.mursaline.kaironex.features.study.StudySessionsScreen
 import com.mursaline.kaironex.features.agents.LifeSupportAgentsScreen
 import com.mursaline.kaironex.ui.components.KxOrb
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 
 /**
@@ -53,7 +55,9 @@ import com.mursaline.kaironex.ui.components.KxOrb
  * NO hamburger menu. The Dashboard IS the router.
  */
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
+@Suppress("unused")
 object MainShellScreen : Screen {
+    @Suppress("unused")
     private fun readResolve(): Any = MainShellScreen
 
     @Composable
@@ -337,11 +341,30 @@ fun FiveItemNavRail(
 }
 
 // ===== 3. IMMERSIVE ASSISTANT PANEL (Full-Screen Overlay) =====
+@OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
 @Composable
 fun ImmersiveAssistantPanel(
     onDismiss: () -> Unit,
     isMobile: Boolean
 ) {
+    // Inject the Voice Engine (Gemini 2.5)
+    val reasoningEngine: com.mursaline.kaironex.brain.GeminiReasoningEngine = org.koin.compose.koinInject()
+    val apiKey = com.mursaline.kaironex.PlatformSecrets.apiKey
+    
+    // Connect when panel opens, disconnect when closes
+    LaunchedEffect(Unit) {
+        if (apiKey.isNotEmpty() && apiKey != "PLACEHOLDER") {
+            reasoningEngine.connect(apiKey)
+        }
+    }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            kotlinx.coroutines.GlobalScope.launch {
+                reasoningEngine.disconnect()
+            }
+        }
+    }
     // Floating animation
     val infiniteTransition = rememberInfiniteTransition(label = "orb")
     val orbFloat by infiniteTransition.animateFloat(

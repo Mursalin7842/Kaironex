@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -40,9 +40,9 @@ fun SettingsScreen() {
         ) {
             Column {
                 SettingsItem("Enable Voice Mode", "Allow the Reasoning Engine to speak", true)
-                Divider(color = KaironexColors.Slate100)
+                HorizontalDivider(color = KaironexColors.Slate100)
                 SettingsItem("Strict Lockdown", "Block all browsers during focus time", false)
-                Divider(color = KaironexColors.Slate100)
+                HorizontalDivider(color = KaironexColors.Slate100)
                 SettingsItem("Desktop Monitoring", "Allow window title tracking", true)
             }
         }

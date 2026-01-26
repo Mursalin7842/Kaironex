@@ -10,20 +10,22 @@ import kotlinx.serialization.json.Json
 import org.koin.dsl.module
 
 val appModule = module {
+    includes(platformModule)
     // 1. Network Client (The Ears/Mouth base)
     single {
-        HttpClient {
+        HttpClient(io.ktor.client.engine.cio.CIO) {
             install(ContentNegotiation) {
                 json(Json {
                     prettyPrint = true
                     ignoreUnknownKeys = true
                 })
             }
+            install(io.ktor.client.plugins.websocket.WebSockets)
         }
     }
 
     // 2. The Brain (Gemini Wrapper)
-    single { GeminiReasoningEngine(get()) }
+    single { GeminiReasoningEngine(get(), get(), get()) }
 
     // 3. Authentication
     single<AuthRepository> { MockAuthRepository() }
