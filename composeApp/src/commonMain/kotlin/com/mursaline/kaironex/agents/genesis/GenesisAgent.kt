@@ -32,6 +32,16 @@ class GenesisAgent {
         }
     }
     
+    fun restoreProfile(savedProfile: StudentProfile) {
+        profile = savedProfile
+        // Simple heuristic to restore stage
+        if (profile.major != null && profile.financialStakes != null) {
+            stage = GenesisStage.COMPLETE
+        } else if (profile.university.isNotEmpty()) {
+            stage = GenesisStage.ACADEMIC
+        }
+    }
+    
     // NOTE: In the Voice-based flow, 'processTurn' is handled by the GeminiReasoningEngine via WebSocket.
     // This Agent class now strictly manages State (FSM) and Profile data.
     // Future: We can hook the 'parseSidecar' into the Voice Text Frames if needed.

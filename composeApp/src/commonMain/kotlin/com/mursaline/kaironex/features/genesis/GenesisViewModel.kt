@@ -10,6 +10,7 @@ import com.mursaline.kaironex.agents.genesis.StudentProfile
 // Speaker imports removed
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.mursaline.kaironex.brain.GeminiReasoningEngine
 import com.mursaline.kaironex.brain.GeminiReasoningEngine.FunctionCallPart
 import org.koin.core.component.KoinComponent
@@ -30,13 +31,48 @@ class GenesisViewModel : ViewModel(), KoinComponent {
 
     // --- DEPENDENCIES ---
     private val reasoningEngine: GeminiReasoningEngine by inject()
+    private val profileStorage: com.mursaline.kaironex.core.storage.ProfileStorage by inject()
     
     // --- AGENT BRAIN ---
-    private val agent = GenesisAgent()
+    // Now injected as Singleton to share state with Judge View
+    private val agent: GenesisAgent by inject()
 
     // --- STATE ---
     var uiState by mutableStateOf(GenesisUiState())
         private set
+
+    init {
+        loadPersistedProfile()
+    }
+    
+    private fun loadPersistedProfile() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val savedProfile = profileStorage.loadProfile()
+            if (savedProfile != null) {
+                println("💾 Recall: Found existing profile for ${savedProfile.name}")
+                // Update the singleton agent
+                // We manually hydrate it. Since agent.updateProfile merges, we might need a "setProfile" or just rely on manual update logic.
+                // But updateProfile is logic-heavy. Let's assume we want to restore *exact* state.
+                // We'll add a 'restore' method to Agent or just rely on 'manualUpdate' logic if compatible?
+                // Actually agent.profile is read-only in public API, but we have internal methods.
+                // Let's add a 'restoreProfile' to GenesisAgent or just use reflection/backdoor? 
+                // Wait, GenesisAgent.profile has private set.
+                // clone/copy is possible if we modify GenesisAgent to allow setting it.
+                // I will modify GenesisAgent to allow restoration.
+                
+                // Temporary Hack: use manualUpdate if fields match, or just fix GenesisAgent.
+                // I will add `restoreProfile` to GenesisAgent.
+                agent.restoreProfile(savedProfile)
+                
+                // Logic: If profile is mostly complete, mark as complete?
+                if (savedProfile.major != null && savedProfile.financialStakes != null) {
+                     withContext(kotlinx.coroutines.Dispatchers.Main) {
+                         uiState = uiState.copy(isComplete = true)
+                     }
+                }
+            }
+        }
+    }
         
     // Expose Connection State for UI Orb
     val connectionState = reasoningEngine.connectionState
@@ -65,6 +101,7 @@ class GenesisViewModel : ViewModel(), KoinComponent {
         )
 
         // 3. Define Tools for Data Extraction
+        // 3. Define Tools for Data Extraction
         val toolsConfig = """
             "tools": [
                 {
@@ -78,14 +115,31 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                                     "university": { "type": "STRING" },
                                     "major": { "type": "STRING" },
                                     "semester": { "type": "STRING" },
-                                    "careerAmbition": { "type": "STRING" },
-                                    "targetCgpa": { "type": "STRING" },
-                                    "financialStakes": { "type": "STRING", "description": "VISA, SCHOLARSHIP, or NONE" },
+                                    "mainPriority": { "type": "STRING", "description": "JOB_READY or CGPA" },
+                                    "secondaryPriority": { "type": "STRING" },
+                                    "energyPreference": { "type": "STRING", "description": "MORNING or NIGHT" },
+                                    "dailyFocusCapacity": { "type": "NUMBER" },
+                                    "sleepTime": { "type": "STRING" },
+                                    "wakeTime": { "type": "STRING" },
+                                    "needsJob": { "type": "BOOLEAN" },
                                     "workHoursPerWeek": { "type": "NUMBER" },
-                                    "sleepTime": { "type": "STRING", "description": "e.g. 23:00" },
-                                    "wakeTime": { "type": "STRING", "description": "e.g. 07:00" },
-                                    "commuteTime": { "type": "STRING" },
-                                    "stressResponse": { "type": "STRING", "description": "FREEZE, PANIC, or AVOID" }
+                                    "commuteDuration": { "type": "STRING" },
+                                    "protectedTime": { "type": "STRING", "description": "Non-negotiable blocks like Prayer or Gym" },
+                                    "learningStyle": { "type": "STRING", "description": "VIDEO or READ" },
+                                    "failureCause": { 
+                                        "type": "STRING", 
+                                        "description": "The primary reason the user fails tasks: DISTRACTION (Phone/Socials), FATIGUE (Tired), or CLARITY (Don't know where to start)." 
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "name": "complete_interview",
+                            "description": "Call this to end the interview after the Handoff script is read.",
+                            "parameters": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "success": { "type": "BOOLEAN" }
                                 }
                             }
                         }
@@ -103,30 +157,59 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                         if (toolCall.name == "update_profile") {
                             // Map generic args to StudentProfile
                             val pArgs = toolCall.args ?: emptyMap()
+                            
                             val profileUpdate = StudentProfile(
-                                university = pArgs["university"] ?: "",
-                                major = pArgs["major"],
-                                semester = pArgs["semester"],
-                                careerAmbition = pArgs["careerAmbition"],
-                                targetCgpa = pArgs["targetCgpa"],
-                                financialStakes = pArgs["financialStakes"],
-                                workHoursPerWeek = pArgs["workHoursPerWeek"]?.toIntOrNull(),
-                                hasJob = pArgs["workHoursPerWeek"] != null,
-                                sleepTime = pArgs["sleepTime"],
-                                wakeTime = pArgs["wakeTime"],
-                                commuteTime = pArgs["commuteTime"],
-                                stressResponse = pArgs["stressResponse"]
+                                university = pArgs["university"] ?: agent.profile.university,
+                                major = pArgs["major"] ?: agent.profile.major,
+                                semester = pArgs["semester"] ?: agent.profile.semester,
+                                
+                                mainPriority = pArgs["mainPriority"] ?: agent.profile.mainPriority,
+                                secondaryPriority = pArgs["secondaryPriority"] ?: agent.profile.secondaryPriority,
+                                
+                                energyPreference = pArgs["energyPreference"] ?: agent.profile.energyPreference,
+                                dailyFocusCapacity = pArgs["dailyFocusCapacity"]?.toIntOrNull() ?: agent.profile.dailyFocusCapacity,
+                                sleepTime = pArgs["sleepTime"] ?: agent.profile.sleepTime,
+                                wakeTime = pArgs["wakeTime"] ?: agent.profile.wakeTime,
+                                
+                                needsJob = pArgs["needsJob"]?.toBooleanStrictOrNull() ?: agent.profile.needsJob,
+                                workHoursPerWeek = pArgs["workHoursPerWeek"]?.toDoubleOrNull() ?: agent.profile.workHoursPerWeek,
+                                hasJob = (pArgs["workHoursPerWeek"]?.toDoubleOrNull() ?: 0.0) > 0,
+                                
+                                commuteDuration = pArgs["commuteDuration"] ?: agent.profile.commuteDuration,
+                                protectedTime = pArgs["protectedTime"] ?: agent.profile.protectedTime,
+                                
+                                learningStyle = pArgs["learningStyle"] ?: agent.profile.learningStyle,
+                                failureCause = pArgs["failureCause"] ?: agent.profile.failureCause,
+                                
+                                financialStakes = pArgs["financialStakes"] ?: agent.profile.financialStakes,
+                                stressResponse = if (pArgs["failureCause"]?.contains("DISTRACTION", true) == true) "Avoid" 
+                                                 else if (pArgs["failureCause"]?.contains("CLARITY", true) == true) "Freeze"
+                                                 else agent.profile.stressResponse
                             )
                             
                             println("🧠 Agent Logic: Updating Profile -> $profileUpdate")
+                            // 5. Save to Local Persistence
                             agent.updateProfile(profileUpdate)
                             
-                            // Check completion
-                            if (agent.stage == com.mursaline.kaironex.agents.genesis.GenesisStage.COMPLETE) {
-                                uiState = uiState.copy(isComplete = true)
-                                // disconnect() // Optional: Disconnect immediately or wait for goodbye?
-                                // Let the agent say goodbye first.
+                            launch(kotlinx.coroutines.Dispatchers.IO) {
+                                profileStorage.saveProfile(agent.profile)
                             }
+
+                            // ⚡ SEND TOOL RESPONSE
+                            reasoningEngine.sendToolResponse("update_profile", mapOf("result" to "Profile Updated Successfully"), toolCall.id)
+                            
+                        } else if (toolCall.name == "complete_interview") {
+                            println("✅ Interview Complete Triggered via Tool")
+                            
+                            // Final Save
+                            launch(kotlinx.coroutines.Dispatchers.IO) {
+                                profileStorage.saveProfile(agent.profile)
+                            }
+
+                             uiState = uiState.copy(isComplete = true)
+                             
+                             // ⚡ SEND TOOL RESPONSE
+                             reasoningEngine.sendToolResponse("complete_interview", mapOf("success" to true), toolCall.id)
                         }
                     }
                 }

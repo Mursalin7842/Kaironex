@@ -142,6 +142,9 @@ class GeminiReasoningEngine(
                         }
 
                         if (messageText != null) {
+                            // Debug: Log Incoming Message (Truncated)
+                            println("📩 RX: ${messageText.take(200)}...")
+                            
                             // 1. Check for TOOLS (Function Calls)
                             if (messageText.contains("\"functionCall\"")) {
                                 try {
@@ -277,6 +280,25 @@ class GeminiReasoningEngine(
 
         send(Frame.Text(handshakeJson2))
         println("✅ Handshake sent using: $modelName")
+        
+        // ⚡ AUTO-START TRIGGER
+        // We force the model to generate the first turn (Intro) by sending an empty "Start" signal.
+        delay(500) // Small buffer
+        val kickstartJson = """
+        {
+            "client_content": {
+                "turns": [
+                    {
+                        "role": "user",
+                        "parts": [ { "text": "System Online. Start Interview." } ]
+                    }
+                ],
+                "turn_complete": true
+            }
+        }
+        """.trimIndent()
+        send(Frame.Text(kickstartJson))
+        println("🚀 Kickstart Trigger Sent (Auto-Start)")
     }
 
     suspend fun sendAudio(pcmData: ByteArray) {
@@ -304,17 +326,17 @@ class GeminiReasoningEngine(
                         val funcCall = partObj["functionCall"]?.jsonObject
                         if (funcCall != null) {
                             val name = funcCall["name"]?.jsonPrimitive?.content ?: ""
+                            val id = funcCall["id"]?.jsonPrimitive?.content ?: "" // Extract ID
                             val argsObj = funcCall["args"]?.jsonObject
                             
                             // Convert JsonObject to Map<String, String> for simplicity
-                            // Using safe casting for primitives
                             val argsMap = argsObj?.entries?.associate { (key, value) ->
                                 key to (value.jsonPrimitive.contentOrNull ?: value.toString())
                             }
                             
                             if (name.isNotEmpty()) {
-                                println("🛠️ Tool Call Detected: $name ($argsMap)")
-                                _toolCalls.emit(FunctionCallPart(name, argsMap))
+                                println("🛠️ Tool Call Detected: $name (ID: $id) args: $argsMap")
+                                _toolCalls.emit(FunctionCallPart(name, argsMap, id))
                             }
                         }
                     }
@@ -322,6 +344,52 @@ class GeminiReasoningEngine(
             }
         } catch (e: Exception) {
             println("❌ Error parsing tool call: ${e.message}")
+        }
+    }
+
+    suspend fun sendToolResponse(toolName: String, response: Map<String, Any?>, toolId: String? = null) {
+        if (session?.isActive == true) {
+            val responseJson = kotlinx.serialization.json.JsonObject(
+                response.mapValues { (_, v) -> 
+                     when(v) {
+                         is String -> kotlinx.serialization.json.JsonPrimitive(v)
+                         is Number -> kotlinx.serialization.json.JsonPrimitive(v)
+                         is Boolean -> kotlinx.serialization.json.JsonPrimitive(v)
+                         else -> kotlinx.serialization.json.JsonPrimitive(v.toString())
+                     }
+                }
+            )
+
+            // Include ID if present (Crucial for correct protocol)
+            val idField = if (!toolId.isNullOrEmpty()) "\"id\": \"$toolId\"," else ""
+
+            val json = """
+            {
+              "client_content": {
+                "turns": [
+                  {
+                    "role": "user",
+                    "parts": [
+                      {
+                        "functionResponse": {
+                          "name": "$toolName",
+                          $idField
+                          "response": {
+                            "name": "$toolName",
+                            "content": $responseJson
+                          } 
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "turn_complete": true
+              }
+            }
+            """.trimIndent()
+            
+            session?.send(Frame.Text(json))
+            println("📤 Tool Response Sent: $toolName (ID: $toolId)")
         }
     }
 
@@ -346,6 +414,7 @@ class GeminiReasoningEngine(
     @Serializable
     data class FunctionCallPart(
         val name: String,
-        val args: Map<String, String>? = null // Simplified for our flat profile structure
+        val args: Map<String, String>? = null,
+        val id: String? = null // Captured from server
     )
 }

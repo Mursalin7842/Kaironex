@@ -26,6 +26,7 @@ val appModule = module {
 
     // 2. The Brain (Gemini Wrapper)
     single { GeminiReasoningEngine(get(), get(), get()) }
+    single { com.mursaline.kaironex.agents.genesis.GenesisAgent() }
 
     // 3. Authentication
     single<AuthRepository> { MockAuthRepository() }

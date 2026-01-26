@@ -1,6 +1,7 @@
 package com.mursaline.kaironex.features.dashboard
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -188,9 +189,15 @@ object DashboardScreen : Screen {
                     )
                     Spacer(Modifier.height(if (isMobile) 6.dp else 12.dp))
 
+                    // Inject Agent to get Live Profile for the Judge View
+                    val agent: com.mursaline.kaironex.agents.genesis.GenesisAgent = org.koin.compose.koinInject()
+
                     KxCard(
                         variant = KxCardVariant.Flat,
-                        modifier = Modifier.fillMaxWidth().height(if (isMobile) 100.dp else 160.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (isMobile) 100.dp else 160.dp)
+                            .clickable { navigator.push(com.mursaline.kaironex.features.dashboard.JudgeDashboardScreen(agent.profile)) },
                         backgroundColor = KaironexColors.CanvasWhite
                     ) {
                         PressureMap(modifier = Modifier.fillMaxSize(), isMobile = isMobile)

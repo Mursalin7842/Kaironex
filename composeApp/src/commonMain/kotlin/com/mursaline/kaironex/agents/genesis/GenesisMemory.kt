@@ -23,53 +23,6 @@ object FieldRationale {
 }
 
 // The Data Schema (Typed & Confidence-Aware)
-@Serializable
-data class StudentProfile(
-    var name: String = "",
-    var university: String = "",
-    
-    // Wrapped Fields for Validity Checking
-    var major: String? = null,
-    var semester: String? = null,
-    var careerAmbition: String? = null,
-    var targetCgpa: String? = null,
-    
-    // Rhythm & Biology
-    var sleepTime: String? = null,
-    var wakeTime: String? = null,
-    var stressResponse: String? = null, // "Freeze", "Panic", "Avoid"
-    
-    // Pressure Map (Work & Finance)
-    var hasJob: Boolean = false,
-    var workHoursPerWeek: Int? = null,
-    var financialStakes: String? = null, // "Scholarship", "Visa", "Self-Funded"
-    var commuteTime: String? = null
-) {
-    // Logic: What is missing?
-    fun getMissingFields(stage: GenesisStage): List<String> {
-        return when (stage) {
-            GenesisStage.IDENTITY -> if (name.isEmpty()) listOf("name") else emptyList()
-            GenesisStage.ACADEMIC -> listOfNotNull(
-                if (university.isEmpty()) "university" else null,
-                if (major == null) "major" else null,
-                if (semester == null) "semester" else null
-            )
-            GenesisStage.GOALS -> listOfNotNull(
-                if (careerAmbition == null) "careerAmbition" else null,
-                if (targetCgpa == null) "targetCgpa" else null,
-                if (financialStakes == null) "financialStakes" else null
-            )
-            GenesisStage.RHYTHM -> listOfNotNull(
-                if (sleepTime == null) "sleepTime" else null,
-                if (wakeTime == null) "wakeTime" else null,
-                if (workHoursPerWeek == null && hasJob) "workHoursPerWeek" else null // Only ask if hasJob logic is handled or we ask "Do you work?" first
-            )
-            GenesisStage.CONSTRAINTS -> listOfNotNull(
-                if (commuteTime == null) "commuteTime" else null,
-                if (stressResponse == null) "stressResponse" else null
-            )
-            // ... add other stages
-            else -> emptyList()
-        }
-    }
-}
+// StudentProfile moved to StudentProfile.kt
+// GenesisStage enum retained for reference/logic use
+

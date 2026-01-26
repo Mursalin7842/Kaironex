@@ -20,4 +20,9 @@ actual val platformModule = module {
             override fun stop() {}
         }
     }
+    
+    // Persistence
+    single<com.mursaline.kaironex.core.storage.ProfileStorage> { 
+        com.mursaline.kaironex.core.storage.JvmProfileStorage() 
+    }
 }
