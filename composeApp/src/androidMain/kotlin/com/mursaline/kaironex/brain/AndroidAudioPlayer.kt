@@ -9,7 +9,7 @@ class AndroidAudioPlayer : AudioPlayer {
 
     private var audioTrack: AudioTrack? = null
     // Gemini Live output sample rate. Trying 16kHz to match input if 24kHz was wrong.
-    private val SAMPLE_RATE = 24000 // Reverting to 24000 as per spec, but let's double check logic.
+    private val SAMPLE_RATE = 16000 // Reverted to 16kHz for stability
     // Wait, user said "only noise".
     // If I play Base64 STRING as PCM, it sounds like static noise.
     // Ensure we are not accidentally playing the JSON text as audio bytes?
@@ -26,15 +26,29 @@ class AndroidAudioPlayer : AudioPlayer {
     private val SAMPLE_RATE_FIXED = 24000 
     private val CHANNEL_CONFIG = AudioFormat.CHANNEL_OUT_MONO
     private val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-    // Reduce buffer to 4x to minimize latency while maintaining stability
-    private val BUFFER_SIZE = AudioTrack.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * 4
+    // Increase buffer massively (8x) to ensure smooth playback even with network jitter
+    private val BUFFER_SIZE = AudioTrack.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * 8
+    
+    // Jitter Buffer: Wait for this many bytes before starting playback
+    // 24000Hz * 2 bytes = 48000 bytes/sec. 
+    // Target 200ms = 9600 bytes.
+    // minBufferSize is likely ~4800 (100ms).
+    // Let's stick to minBufferSize * 1 for safety but fast start.
+    // Jitter Buffer: Smart balance. 
+    // MinBuffer * 1 (approx 50ms-100ms) prevents chop but starts fast.
+    // Jitter Buffer: 2x min buffer (~160ms) - Balanced for speed + stability with underrun recovery
+    private val START_THRESHOLD = AudioTrack.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * 2
+    private var bytesBuffered = 0
+    private var isPlayingState = false
+
+    override fun isPlaying(): Boolean = isPlayingState
 
     init {
         try {
             audioTrack = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build()
                 )
@@ -49,8 +63,7 @@ class AndroidAudioPlayer : AudioPlayer {
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .build()
 
-            audioTrack?.play()
-            Log.d("KaironexAudio", "🔊 AudioTrack Initialized at $SAMPLE_RATE Hz")
+            Log.d("KaironexAudio", "🔊 AudioTrack Initialized at $SAMPLE_RATE Hz (Jitter Buffer: $START_THRESHOLD bytes)")
         } catch (e: Exception) {
             Log.e("KaironexAudio", "❌ Failed to init AudioTrack: ${e.message}")
         }
@@ -58,10 +71,32 @@ class AndroidAudioPlayer : AudioPlayer {
 
     override fun play(pcmData: ByteArray) {
         try {
-            if (audioTrack?.playState != AudioTrack.PLAYSTATE_PLAYING) {
-                audioTrack?.play()
+             if (audioTrack == null) return
+
+            // 0. Underrun Recovery Check
+            // If we think we are playing, but the track stopped, it's an underrun.
+            if (isPlayingState && audioTrack?.playState != AudioTrack.PLAYSTATE_PLAYING) {
+                Log.w("KaironexAudio", "⚠️ Audio Underrun Detected! Re-buffering...")
+                isPlayingState = false
+                bytesBuffered = 0 // Force re-buffer
+                audioTrack?.flush()
             }
-            audioTrack?.write(pcmData, 0, pcmData.size)
+
+            // 1. Write data to the buffer
+            val bytesWritten = audioTrack?.write(pcmData, 0, pcmData.size) ?: 0
+            
+            if (bytesWritten > 0) {
+                bytesBuffered += bytesWritten
+            }
+            
+            // 2. Check if we should start playing (Jitter Buffer Logic)
+            if (audioTrack?.playState != AudioTrack.PLAYSTATE_PLAYING) {
+                if (bytesBuffered >= START_THRESHOLD) {
+                    Log.d("KaironexAudio", "🚀 Jitter Buffer Full ($bytesBuffered bytes). Starting Playback.")
+                    audioTrack?.play()
+                    isPlayingState = true
+                }
+            }
         } catch (e: Exception) {
             Log.e("KaironexAudio", "❌ Write failed: ${e.message}")
         }
@@ -69,8 +104,11 @@ class AndroidAudioPlayer : AudioPlayer {
 
     override fun stop() {
         try {
+            isPlayingState = false
             audioTrack?.pause()
             audioTrack?.flush()
+            bytesBuffered = 0 // Reset jitter buffer count
+            Log.d("KaironexAudio", "🛑 Audio Stopped & Flushed")
         } catch (e: Exception) {
             // Ignore
         }

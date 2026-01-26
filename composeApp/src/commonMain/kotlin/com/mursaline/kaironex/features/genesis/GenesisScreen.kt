@@ -51,7 +51,7 @@ data class GenesisScreen(
                 GenesisInterviewScreen(
                     viewModel = viewModel,
                     onInterviewComplete = {
-                        navigator.replaceAll(MainShellScreen)
+                        navigator.replaceAll(com.mursaline.kaironex.MainShellScreen)
                     }
                 )
             }

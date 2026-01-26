@@ -18,20 +18,27 @@ import com.mursaline.kaironex.ui.theme.KaironexColors
 @Composable
 fun VoiceOrb(
     connectionState: ConnectionState,
+    audioRms: Float = 0f, // New param
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "OrbPulse")
     
-    // Scale animation to simulate breathing/listening
-    val scale by infiniteTransition.animateFloat(
+    // Base breathing animation
+    val breathScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (connectionState is ConnectionState.Connected) 1.2f else 1.05f,
+        targetValue = if (connectionState is ConnectionState.Connected) 1.05f else 1.02f,
         animationSpec = infiniteRepeatable(
             animation = tween(1500, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "OrbScale"
+        label = "OrbBreath"
     )
+
+    // Dynamic Voice Reactivity (RMS) - Multiplier
+    // RMS is typically 0.0 to 0.5. Scale up to 1.5x
+    val voiceScale = 1f + (audioRms * 2.5f).coerceIn(0f, 0.5f)
+    
+    val finalScale = breathScale * voiceScale
 
     // Glow Animation
     val glowAlpha by infiniteTransition.animateFloat(
@@ -61,7 +68,7 @@ fun VoiceOrb(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .scale(scale * 1.2f)
+                    .scale(finalScale * 1.2f)
                     .background(
                         Brush.radialGradient(
                             colors = listOf(orbColor.copy(alpha = glowAlpha), Color.Transparent)
@@ -75,7 +82,7 @@ fun VoiceOrb(
         Box(
             modifier = Modifier
                 .size(80.dp)
-                .scale(scale)
+                .scale(finalScale)
                 .background(
                     Brush.radialGradient(
                         colors = listOf(

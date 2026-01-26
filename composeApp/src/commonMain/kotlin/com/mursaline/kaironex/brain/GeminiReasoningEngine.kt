@@ -5,9 +5,18 @@ import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import io.ktor.util.encodeBase64
 import io.ktor.util.decodeBase64Bytes
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.JsonObject
 
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -21,31 +30,98 @@ class GeminiReasoningEngine(
     // ✅ USE v1beta for the Live API
     private val BASE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 
+    // Dedicated thread for audio processing to avoid UI jank and buffer underruns
+    private val audioDispatcher = kotlinx.coroutines.newSingleThreadContext("AudioThread")
+
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     val connectionState = _connectionState.asStateFlow()
 
+    private val _audioRms = MutableStateFlow(0f)
+    val audioRms = _audioRms.asStateFlow()
+
+    // Tool Call Stream for Agent Logic
+    private val _toolCalls = MutableSharedFlow<FunctionCallPart>()
+    val toolCalls = _toolCalls.asSharedFlow()
+
+    // JSON Parser for internal use
+    private val jsonParser = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; isLenient = true }
+
     private var session: DefaultClientWebSocketSession? = null
 
-    suspend fun connect(apiKey: String, systemInstruction: String? = null) {
+    private class QuotaExceededException(message: String) : Exception(message)
+
+    suspend fun connect(apiKey: String, systemInstruction: String? = null, toolsConfig: String? = null) {
+        // Enforcing Standardization: Using 2.5 Native Audio for all Live Interactions
+        val modelName = com.mursaline.kaironex.core.gemini.GeminiModels.LIVE_SMART_VOICE
+
+        try {
+            attemptConnection(apiKey, systemInstruction, modelName, toolsConfig)
+            println("✅ Session ended normally.")
+        } catch (e: Exception) {
+             println("❌ Connection Failed: ${e.message}")
+             _connectionState.value = ConnectionState.Error(e.message ?: "Unknown Error")
+        }
+    }
+
+    private var isInterruptedLocally = false
+
+    private suspend fun attemptConnection(apiKey: String, systemInstruction: String?, modelName: String, toolsConfig: String?) {
         try {
             _connectionState.value = ConnectionState.Connecting
-            println("🔌 Connecting to Live API (Native Audio Dialog)...")
-
-            val urlString = "$BASE_URL?key=$apiKey"
-
-            client.webSocket(urlString) {
+            println("🔌 Connecting to Live API ($modelName)...")
+            // ... (rest of connection logic)
+            // Need to pass toolsConfig to sendHandshake
+            client.webSocket("$BASE_URL?key=$apiKey") {
                 session = this
                 _connectionState.value = ConnectionState.Connected
-                println("⚡ SOCKET OPENED. Sending Handshake...")
+                println("⚡ SOCKET OPENED. Sending Handshake ($modelName)...")
 
-                sendHandshake(systemInstruction)
+                sendHandshake(systemInstruction, modelName, toolsConfig)
+                
+                // ... (rest of logic)
 
                 // LAUNCH AUDIO RECORDER
                 val audioJob = launch {
                     println("🎤 Starting Audio Recorder...")
                     try {
-                        audioRecorder.startRecording().collect { pcmData ->
-                            sendAudio(pcmData)
+                        audioRecorder.startRecording { // onVolumeDetected (Binary)
+                            // ⚡ INSTANT LOCAL INTERRUPTION
+                            if (audioPlayer.isPlaying()) { 
+                                audioPlayer.stop()
+                                isInterruptedLocally = true
+                                println("⚡ Local VAD: User Speaking -> Muted Bot")
+                                
+                                launch {
+                                    delay(1200) // 1.2s silence window (Balancing ghost audio vs latency)
+                                    if (isInterruptedLocally) isInterruptedLocally = false
+                                }
+                            }
+                        }.collect { pcmData ->
+                            // Calculate approximate RMS for UI feedback (Visuals only)
+                             // Since strict RMS is done in recorder, we can just do a rough calc here or update recorder interface to pass float.
+                             // For now, let's just make it pulse if we get data?
+                             // No, better to have dynamic size.
+                             // Let's calculate simple RMS here again for UI (cheap operation)
+                             // RMS Calculation
+                             var sum = 0.0
+                             for (i in 0 until pcmData.size step 8) { // Sample every 8th
+                                if (i + 1 < pcmData.size) {
+                                   val sample = (pcmData[i].toInt() and 0xFF) or (pcmData[i + 1].toInt() shl 8)
+                                   val norm = sample.toShort() / 32768.0f
+                                   sum += norm * norm
+                                }
+                             }
+                             val rms = kotlin.math.sqrt(sum / (pcmData.size / 8)).toFloat()
+                             _audioRms.value = rms
+
+                             _audioRms.value = rms
+ 
+                             // ⚡ TRILLION DOLLAR STRATEGY: ALWAYS STREAM
+                             // We trust the Gemini Server VAD (trained on billions of hours) to distinguish 
+                             // between "Silence/Hiss" and "Speech".
+                             // Client-side filtering adds latency and risk. 
+                             // Streaming everything ensures the server hears the *exact* millisecond speech ends.
+                             sendAudio(pcmData)
                         }
                     } catch (e: Exception) {
                         if (e is kotlinx.coroutines.CancellationException) {
@@ -56,43 +132,43 @@ class GeminiReasoningEngine(
                         }
                     }
                 }
-// ...
-        val handshakeJson2 = """
-        {
-          "setup": {
-            "model": "models/gemini-2.0-flash-exp",
-            "generationConfig": {
-              "responseModalities": ["AUDIO"],
-              "speechConfig": {
-                "voiceConfig": {
-                  "prebuiltVoiceConfig": {
-                    "voiceName": "Puck"
-                  }
-                }
-              }
-            }
-          }
-        }
-        """.trimIndent()
-
+                
                 try {
                     for (frame in incoming) {
                         val messageText = when (frame) {
                             is Frame.Text -> frame.readText()
-                            is Frame.Binary -> String(frame.readBytes()) // Try to decode binary as UTF-8 JSON
+                            is Frame.Binary -> String(frame.readBytes())
                             else -> null
                         }
 
                         if (messageText != null) {
-                            // Print first 100 chars to debug
-                            // println("📥 Rx: ${messageText.take(100)}...") 
-                            
+                            // 1. Check for TOOLS (Function Calls)
+                            if (messageText.contains("\"functionCall\"")) {
+                                try {
+                                    // Quick dirty parse to find the tool name and args
+                                    // Ideally use full JSON parser, but for speed regarding Part structure:
+                                    // We'll trust the flow logic to observe tool calls if we parsed them fully.
+                                    // For now, let's just log it or notify a listener.
+                                    // Better: We should expose a Flow<FunctionCall> !
+                                    
+                                    // Let's implement a listener/callback for tools
+                                    onToolCall(messageText)
+                                } catch (e: Exception) {
+                                    println("❌ Tool Parse Failed: ${e.message}")
+                                }
+                            }
                             if (messageText.contains("\"interrupted\": true")) {
-                                println("🛑 Interruption detected! Clearing audio buffer.")
+                                println("🛑 Server Confirmed Interruption. Resetting.")
+                                isInterruptedLocally = false
                                 audioPlayer.stop()
                             }
 
                             if (messageText.contains("audio/pcm")) {
+                                if (isInterruptedLocally) {
+                                    // println("👻 Dropping Ghost Audio Packet (Interrupted)")
+                                    continue // SKIP THIS PACKET
+                                }
+                                
                                 try {
                                     val dataMarker = "\"data\": \""
                                     val startIndex = messageText.indexOf(dataMarker)
@@ -102,7 +178,8 @@ class GeminiReasoningEngine(
                                         if (endQuote != -1) {
                                             val base64 = messageText.substring(startQuote, endQuote)
                                             val pcm = base64.decodeBase64Bytes()
-                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                            // Offload blocking audio write to dedicated thread
+                                            kotlinx.coroutines.withContext(audioDispatcher) {
                                                 audioPlayer.play(pcm)
                                             }
                                         }
@@ -114,43 +191,74 @@ class GeminiReasoningEngine(
                         }
 
                         if (frame is Frame.Close) {
-                            println("📪 Server requested close: ${frame.readReason()}")
+                            val reason = frame.readReason()?.message ?: ""
+                            println("📪 Server requested close: $reason")
+                            if (reason.contains("quota", ignoreCase = true)) {
+                                throw QuotaExceededException(reason)
+                            }
                         }
                     }
                     println("📪 Incoming loop finished (Server closed connection?)")
+                } catch (e: QuotaExceededException) {
+                    throw e // Propagate up
                 } catch (e: Exception) {
                     println("❌ Error in incoming loop: ${e.message}")
                 } finally {
-                    val reason = session?.closeReason?.await()
+                    val reason = session?.closeReason?.await()?.message ?: ""
                     println("📪 Connection closed. Reason: $reason")
+                    
+                     if (reason.contains("quota", ignoreCase = true)) {
+                        audioJob.cancel()
+                        audioPlayer.stop()
+                        throw QuotaExceededException(reason) // Throw for fallback
+                    }
+
                     audioJob.cancel()
                     audioPlayer.stop()
                     println("🎤 Audio Recorder Stopped")
                 }
             }
-        } catch (e: Exception) {
-            println("❌ SOCKET ERROR: ${e.message}")
-            _connectionState.value = ConnectionState.Error(e.message ?: "Unknown Error")
         } finally {
              audioRecorder.stopRecording()
         }
     }
 
-    private suspend fun DefaultClientWebSocketSession.sendHandshake(systemInstruction: String?) {
-        val systemInstructionJson = if (systemInstruction != null) {
-            """,
+    private suspend fun DefaultClientWebSocketSession.sendHandshake(systemInstruction: String?, modelName: String, toolsConfig: String?) {
+        // Best Practice: Structured System Instructions
+        val structuredSystemInstruction = systemInstruction ?: """
+            **Persona:**
+            You are Kaironex, an advanced AI tutor. You are helpful, concise, and focused on learning.
+            
+            **Conversational Rules:**
+            1. **Listen Activey:** Wait for the user to finish fully before answering complex queries.
+            2. **Be Concise:** Give short, punchy answers unless asked for detail.
+            3. **No Robot Talk:** Speak naturally.
+            
+            **Guardrails:**
+            - Do not hallucinate facts.
+            - If unsure, say "I don't know".
+        """.trimIndent()
+
+        val systemInstructionJson = """
             "systemInstruction": {
               "parts": [
-                { "text": "${systemInstruction.replace("\n", " ").replace("\"", "\\\"")}" }
+                { "text": "${structuredSystemInstruction.replace("\n", "\\n").replace("\"", "\\\"")}" }
               ]
             }
-            """.trimIndent()
-        } else ""
+        """.trimIndent()
+
+        // Best Practice: Define Tools
+        // Use provided toolsConfig, or default to Grounding if null
+        val toolsJson = toolsConfig ?: """
+            "tools": [
+                { "google_search_retrieval": {} } 
+            ]
+        """.trimIndent()
 
         val handshakeJson2 = """
         {
           "setup": {
-            "model": "models/gemini-2.5-flash-native-audio-preview-12-2025",
+            "model": "$modelName",
             "generationConfig": {
               "responseModalities": ["AUDIO"],
               "speechConfig": {
@@ -160,13 +268,15 @@ class GeminiReasoningEngine(
                   }
                 }
               }
-            }$systemInstructionJson
+            },
+            $systemInstructionJson,
+            $toolsJson
           }
         }
         """.trimIndent()
 
         send(Frame.Text(handshakeJson2))
-        println("✅ Handshake sent using: gemini-2.5-flash-native-audio-preview-12-2025 (with Voice Config)")
+        println("✅ Handshake sent using: $modelName")
     }
 
     suspend fun sendAudio(pcmData: ByteArray) {
@@ -178,6 +288,43 @@ class GeminiReasoningEngine(
         }
     }
     
+    private suspend fun onToolCall(jsonString: String) {
+        try {
+            val element = jsonParser.parseToJsonElement(jsonString)
+            // Traverse safety: serverContent -> modelTurn -> parts -> functionCall
+            val serverContent = element.jsonObject["serverContent"]?.jsonObject
+            val modelTurn = serverContent?.get("modelTurn")?.jsonObject
+            val parts = modelTurn?.get("parts")?.jsonArray
+            
+            if (parts != null) {
+                for (part in parts) {
+                    val partObj = part.jsonObject
+                    // Check if functionCall exists
+                    if ("functionCall" in partObj) {
+                        val funcCall = partObj["functionCall"]?.jsonObject
+                        if (funcCall != null) {
+                            val name = funcCall["name"]?.jsonPrimitive?.content ?: ""
+                            val argsObj = funcCall["args"]?.jsonObject
+                            
+                            // Convert JsonObject to Map<String, String> for simplicity
+                            // Using safe casting for primitives
+                            val argsMap = argsObj?.entries?.associate { (key, value) ->
+                                key to (value.jsonPrimitive.contentOrNull ?: value.toString())
+                            }
+                            
+                            if (name.isNotEmpty()) {
+                                println("🛠️ Tool Call Detected: $name ($argsMap)")
+                                _toolCalls.emit(FunctionCallPart(name, argsMap))
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Error parsing tool call: ${e.message}")
+        }
+    }
+
     suspend fun disconnect() {
         session?.close()
         _connectionState.value = ConnectionState.Disconnected
@@ -189,4 +336,16 @@ class GeminiReasoningEngine(
         data object Connected : ConnectionState()
         data class Error(val message: String) : ConnectionState()
     }
+
+    @Serializable
+    data class Part(
+        val text: String? = null,
+        val functionCall: FunctionCallPart? = null
+    )
+
+    @Serializable
+    data class FunctionCallPart(
+        val name: String,
+        val args: Map<String, String>? = null // Simplified for our flat profile structure
+    )
 }

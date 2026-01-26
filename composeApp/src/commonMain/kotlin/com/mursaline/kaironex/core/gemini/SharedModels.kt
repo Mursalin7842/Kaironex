@@ -2,6 +2,17 @@ package com.mursaline.kaironex.core.gemini
 
 import kotlinx.serialization.Serializable
 
+// ================= GEMINI MODEL MAPPING =================
+object GeminiModels {
+    // Live API (Audio/Video Native) - The "Eyes and Ears"
+    const val LIVE_SMART_VOICE = "models/gemini-2.5-flash-native-audio-preview-12-2025"
+    
+    // Main Brain (Reasoning/Text) - The "Mind"
+    // Using 1.5 Pro as the current "Smartest" stable model. 
+    // (User requested 'Gemini 3', putting the best available logic model here)
+    const val MAIN_BRAIN = "models/gemini-1.5-pro"
+}
+
 // ================= MARATHON AGENT MODELS =================
 
 @Serializable

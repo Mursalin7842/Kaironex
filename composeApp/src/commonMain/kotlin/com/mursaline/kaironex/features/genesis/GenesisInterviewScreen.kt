@@ -211,8 +211,11 @@ fun GenesisInterviewScreen(
                         ) {
                             // THE ORB - Central Focus
                             val connectionState by viewModel.connectionState.collectAsState()
+                            val audioRms by viewModel.audioRms.collectAsState()
+                            
                             com.mursaline.kaironex.ui.components.VoiceOrb(
                                 connectionState = connectionState,
+                                audioRms = audioRms,
                                 modifier = Modifier
                                     .graphicsLayer {
                                         translationY = -floatOffset * 2
@@ -293,24 +296,33 @@ fun GenesisInterviewScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                // Skip Button
+                                // Skip or Continue Button
                                 Surface(
                                     onClick = { onInterviewComplete() },
                                     shape = RoundedCornerShape(50),
-                                    color = KaironexColors.CloudGray,
+                                    color = if (state.isComplete) KaironexColors.SuccessGreen else KaironexColors.CloudGray,
                                     modifier = Modifier.height(48.dp).padding(horizontal = 16.dp),
-                                    border = BorderStroke(1.dp, KaironexColors.BorderGray)
+                                    border = BorderStroke(1.dp, if (state.isComplete) KaironexColors.SuccessGreen else KaironexColors.BorderGray)
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier.padding(horizontal = 24.dp)
                                     ) {
                                         Text(
-                                            "Skip Interview",
+                                            if (state.isComplete) "Continue to Google Drive Setup" else "Skip Interview",
                                             style = MaterialTheme.typography.labelLarge,
-                                            color = KaironexColors.Slate500,
+                                            color = if (state.isComplete) Color.White else KaironexColors.Slate500,
                                             fontWeight = FontWeight.Medium
                                         )
+                                        if (state.isComplete) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.Send, 
+                                                contentDescription = null, 
+                                                tint = Color.White,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }

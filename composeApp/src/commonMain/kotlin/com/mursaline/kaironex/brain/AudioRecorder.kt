@@ -3,6 +3,6 @@ package com.mursaline.kaironex.brain
 import kotlinx.coroutines.flow.Flow
 
 interface AudioRecorder {
-    fun startRecording(): Flow<ByteArray>
+    fun startRecording(onVolumeDetected: () -> Unit): Flow<ByteArray>
     fun stopRecording()
 }

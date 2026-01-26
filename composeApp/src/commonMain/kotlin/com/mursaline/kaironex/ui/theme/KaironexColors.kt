@@ -29,7 +29,9 @@ object KaironexColors {
     // Mapping old Slate/Indigo to new palette for backward compat during refactor:
     val Slate900 = InkBlack
     val Slate800 = InkBlack
+    val Slate700 = Color(0xFF374151) // Adding missing color
     val Slate500 = SlateGray
+    val Slate300 = Color(0xFFD1D5DB) // Adding missing color
     val Slate100 = CloudGray
     val Slate50 = CanvasWhite // Was background
     
