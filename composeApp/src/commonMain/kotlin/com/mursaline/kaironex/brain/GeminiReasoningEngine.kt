@@ -42,6 +42,9 @@ class GeminiReasoningEngine(
     // Tool Call Stream for Agent Logic
     private val _toolCalls = MutableSharedFlow<FunctionCallPart>()
     val toolCalls = _toolCalls.asSharedFlow()
+    
+    // 🛡️ Track Active Tools to prevent responding to Cancelled/Interrupted tools
+    private val activeToolIds = java.util.Collections.synchronizedSet(HashSet<String>())
 
     // JSON Parser for internal use
     private val jsonParser = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; isLenient = true }
@@ -64,6 +67,7 @@ class GeminiReasoningEngine(
     }
 
     private var isInterruptedLocally = false
+    private var isProcessingTool = false // 🔒 Guard: Stop sending audio when Tool is active
 
     private suspend fun attemptConnection(apiKey: String, systemInstruction: String?, modelName: String, toolsConfig: String?) {
         try {
@@ -142,8 +146,12 @@ class GeminiReasoningEngine(
                         }
 
                         if (messageText != null) {
-                            // Debug: Log Incoming Message (Truncated)
-                            println("📩 RX: ${messageText.take(200)}...")
+                            // Debug: Log Incoming Message (Only if NOT audio)
+                            if (!messageText.contains("audio/pcm")) {
+                                println("📩 RX: ${messageText.take(200)}...")
+                            } else {
+                                // print(".") // Optional: progress indicator
+                            }
                             
                             // 1. Check for TOOLS (Function Calls)
                             if (messageText.contains("\"functionCall\"")) {
@@ -163,7 +171,27 @@ class GeminiReasoningEngine(
                             if (messageText.contains("\"interrupted\": true")) {
                                 println("🛑 Server Confirmed Interruption. Resetting.")
                                 isInterruptedLocally = false
+                                isProcessingTool = false // 🔄 Resume Audio if interrupted during tool
+                                activeToolIds.clear() // 🛡️ Clear all pending tools
                                 audioPlayer.stop()
+                            }
+                            
+                            if (messageText.contains("\"toolCallCancellation\"")) {
+                                println("🚫 Tool Call Cancelled by Server. Resuming Audio.")
+                                isProcessingTool = false // 🔄 Resume Audio
+                                
+                                // Extract cancelled IDs if possible, or just clear all for safety?
+                                // Better: Parse the cancellation JSON to get IDs.
+                                try {
+                                    val element = jsonParser.parseToJsonElement(messageText)
+                                    val cancelledIds = element.jsonObject["toolCallCancellation"]?.jsonObject?.get("ids")?.jsonArray?.map { it.jsonPrimitive.content }
+                                    cancelledIds?.forEach { id -> 
+                                        activeToolIds.remove(id) 
+                                        println("🗑️ Removed Cancelled Tool ID: $id")
+                                    }
+                                } catch (e: Exception) {
+                                    println("⚠️ Error parsing cancellation: ${e.message}")
+                                }
                             }
 
                             if (messageText.contains("audio/pcm")) {
@@ -283,6 +311,11 @@ class GeminiReasoningEngine(
         
         // ⚡ AUTO-START TRIGGER
         // We force the model to generate the first turn (Intro) by sending an empty "Start" signal.
+        // FIXED: Re-enabling Kickstart now that input streaming is Paused on Tool Call.
+        // ⚡ AUTO-START TRIGGER
+        // We force the model to generate the first turn (Intro) by sending an empty "Start" signal.
+        // FIXED: Re-enabling Kickstart now that input streaming is Paused on Tool Call.
+        
         delay(500) // Small buffer
         val kickstartJson = """
         {
@@ -290,7 +323,7 @@ class GeminiReasoningEngine(
                 "turns": [
                     {
                         "role": "user",
-                        "parts": [ { "text": "System Online. Start Interview." } ]
+                        "parts": [ { "text": "Start Interview." } ]
                     }
                 ],
                 "turn_complete": true
@@ -299,12 +332,16 @@ class GeminiReasoningEngine(
         """.trimIndent()
         send(Frame.Text(kickstartJson))
         println("🚀 Kickstart Trigger Sent (Auto-Start)")
+        // println("🚀 Kickstart Disabled for Stability. Waiting for User Voice...")
     }
 
     suspend fun sendAudio(pcmData: ByteArray) {
         if (session?.isActive == true) {
+            // 🔒 Guard: Do not send audio if we are processing a tool (Wait for Response)
+            if (isProcessingTool) return 
+
             val json = """
-            {"realtime_input": {"media_chunks": [{"mime_type": "audio/pcm", "data": "${pcmData.encodeBase64()}"}]}}
+            {"realtime_input": {"media_chunks": [{"mime_type": "audio/pcm;rate=16000", "data": "${pcmData.encodeBase64()}"}]}}
             """.trimIndent()
             session?.send(Frame.Text(json))
         }
@@ -334,8 +371,12 @@ class GeminiReasoningEngine(
                                 key to (value.jsonPrimitive.contentOrNull ?: value.toString())
                             }
                             
+                            
                             if (name.isNotEmpty()) {
                                 println("🛠️ Tool Call Detected: $name (ID: $id) args: $argsMap")
+                                isProcessingTool = true // ⏸️ Pause Audio Streaming
+                                if (id.isNotEmpty()) activeToolIds.add(id) // 🛡️ Track ID
+                                println("⏸️ Pausing Audio Upload for Tool Execution...")
                                 _toolCalls.emit(FunctionCallPart(name, argsMap, id))
                             }
                         }
@@ -348,6 +389,17 @@ class GeminiReasoningEngine(
     }
 
     suspend fun sendToolResponse(toolName: String, response: Map<String, Any?>, toolId: String? = null) {
+        // ▶️ Resume Audio Streaming immediately before or after sending
+        isProcessingTool = false 
+        println("▶️ Resuming Audio Upload (Tool Response Ready)")
+
+        // 🛡️ Prevent sending response for cancelled tool
+        if (toolId != null && !activeToolIds.contains(toolId)) {
+            println("🛑 IGNORING Tool Response for CANCELLED ID: $toolId")
+            return
+        }
+        if (toolId != null) activeToolIds.remove(toolId)
+
         if (session?.isActive == true) {
             val responseJson = kotlinx.serialization.json.JsonObject(
                 response.mapValues { (_, v) -> 

@@ -8,8 +8,8 @@ import android.util.Log
 class AndroidAudioPlayer : AudioPlayer {
 
     private var audioTrack: AudioTrack? = null
-    // Gemini Live output sample rate. Trying 16kHz to match input if 24kHz was wrong.
-    private val SAMPLE_RATE = 16000 // Reverted to 16kHz for stability
+    // Gemini Live output sample rate. using 24kHz to match Gemini output.
+    private val SAMPLE_RATE = 24000 
     // Wait, user said "only noise".
     // If I play Base64 STRING as PCM, it sounds like static noise.
     // Ensure we are not accidentally playing the JSON text as audio bytes?

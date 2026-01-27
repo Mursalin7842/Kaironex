@@ -19,9 +19,9 @@ class AndroidAudioRecorder(private val context: Context) : AudioRecorder {
     private var acousticEchoCanceler: android.media.audiofx.AcousticEchoCanceler? = null
     private var noiseSuppressor: android.media.audiofx.NoiseSuppressor? = null
 
-    // Gemini 2.5 Native Audio expects 16kHz or 24kHz PCM. 
-    // Switched to 24kHz to fix "Compressed Voice" complaint and match Model Output.
-    private val SAMPLE_RATE = 24000
+    // Gemini Input standard is 16kHz. Output is 24kHz.
+    // Keeping Input at 16kHz to avoid "Chipmunk" effect.
+    private val SAMPLE_RATE = 16000
     private val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
     private val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
     private val BUFFER_SIZE = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * 2
