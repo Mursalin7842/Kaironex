@@ -9,7 +9,7 @@ import com.mursaline.kaironex.brain.AudioPlayer
 
 actual val platformModule = module {
     single<AudioRecorder> { AndroidAudioRecorder(androidContext()) }
-    single<AudioPlayer> { AndroidAudioPlayer() }
+    single<AudioPlayer> { AndroidAudioPlayer(androidContext()) }
     
     // Persistence
     single<com.mursaline.kaironex.core.storage.ProfileStorage> { 

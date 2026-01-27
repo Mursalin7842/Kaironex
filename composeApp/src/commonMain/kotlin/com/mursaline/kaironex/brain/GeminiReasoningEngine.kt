@@ -20,6 +20,8 @@ import kotlinx.serialization.json.JsonObject
 
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class GeminiReasoningEngine(
     private val client: HttpClient,
@@ -31,7 +33,7 @@ class GeminiReasoningEngine(
     private val BASE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 
     // Dedicated thread for audio processing to avoid UI jank and buffer underruns
-    private val audioDispatcher = kotlinx.coroutines.newSingleThreadContext("AudioThread")
+    private val audioDispatcher = kotlinx.coroutines.Dispatchers.Default
 
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     val connectionState = _connectionState.asStateFlow()
@@ -44,7 +46,8 @@ class GeminiReasoningEngine(
     val toolCalls = _toolCalls.asSharedFlow()
     
     // 🛡️ Track Active Tools to prevent responding to Cancelled/Interrupted tools
-    private val activeToolIds = java.util.Collections.synchronizedSet(HashSet<String>())
+    private val activeToolIds = mutableSetOf<String>()
+    private val activeToolIdsLock = Mutex()
 
     // JSON Parser for internal use
     private val jsonParser = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; isLenient = true }
@@ -129,6 +132,11 @@ class GeminiReasoningEngine(
                              // between "Silence/Hiss" and "Speech".
                              // Client-side filtering adds latency and risk. 
                              // Streaming everything ensures the server hears the *exact* millisecond speech ends.
+                             
+                             // 🛡️ FULL DUPLEX RESTORED
+                             // We rely on AEC (Acoustic Echo Cancellation) in AndroidAudioRecorder
+                             // and the Server's ability to filter echo. 
+                             // Muting the mic (Half-Duplex) caused the User's input to be lost if they spoke "too soon".
                              sendAudio(pcmData)
                         }
                     } catch (e: Exception) {
@@ -175,26 +183,36 @@ class GeminiReasoningEngine(
                             if (messageText.contains("\"interrupted\": true")) {
                                 println("🛑 Server Confirmed Interruption. Resetting.")
                                 isInterruptedLocally = false
-                                isProcessingTool = false // 🔄 Resume Audio if interrupted during tool
-                                activeToolIds.clear() // 🛡️ Clear all pending tools
+                                
+                                launch {
+                                    activeToolIdsLock.withLock {
+                                        activeToolIds.clear()
+                                        isProcessingTool = false // 🔄 Full Reset
+                                    }
+                                }
                                 audioPlayer.stop()
                             }
                             
                             if (messageText.contains("\"toolCallCancellation\"")) {
-                                println("🚫 Tool Call Cancelled by Server. Resuming Audio.")
-                                isProcessingTool = false // 🔄 Resume Audio
-                                
-                                // Extract cancelled IDs if possible, or just clear all for safety?
-                                // Better: Parse the cancellation JSON to get IDs.
-                                try {
-                                    val element = jsonParser.parseToJsonElement(messageText)
-                                    val cancelledIds = element.jsonObject["toolCallCancellation"]?.jsonObject?.get("ids")?.jsonArray?.map { it.jsonPrimitive.content }
-                                    cancelledIds?.forEach { id -> 
-                                        activeToolIds.remove(id) 
-                                        println("🗑️ Removed Cancelled Tool ID: $id")
+                                launch {
+                                    activeToolIdsLock.withLock {
+                                        // Extract cancelled IDs
+                                        try {
+                                            val element = jsonParser.parseToJsonElement(messageText)
+                                            val cancelledIds = element.jsonObject["toolCallCancellation"]?.jsonObject?.get("ids")?.jsonArray?.map { it.jsonPrimitive.content }
+                                            cancelledIds?.forEach { id -> 
+                                                activeToolIds.remove(id) 
+                                                println("🗑️ Removed Cancelled Tool ID: $id")
+                                            }
+                                        } catch (e: Exception) {
+                                            println("⚠️ Error parsing cancellation: ${e.message}")
+                                        }
+                                        
+                                        // 🛡️ SAFETY DELAY: Wait for Server State to Settle
+                                        delay(500)
+                                        isProcessingTool = activeToolIds.isNotEmpty()
+                                        if (!isProcessingTool) println("▶️ Audio Resumed (after cancellation delay)")
                                     }
-                                } catch (e: Exception) {
-                                    println("⚠️ Error parsing cancellation: ${e.message}")
                                 }
                             }
 
@@ -345,13 +363,13 @@ class GeminiReasoningEngine(
             if (isProcessingTool) return 
 
             val json = """
-            {"realtime_input": {"media_chunks": [{"mime_type": "audio/pcm;rate=16000", "data": "${pcmData.encodeBase64()}"}]}}
+            {"realtimeInput": {"media_chunks": [{"mime_type": "audio/pcm", "data": "${pcmData.encodeBase64()}"}]}}
             """.trimIndent()
             session?.send(Frame.Text(json))
         }
     }
     
-    private suspend fun onToolCall(jsonString: String) {
+    private suspend fun DefaultClientWebSocketSession.onToolCall(jsonString: String) {
         try {
             val element = jsonParser.parseToJsonElement(jsonString)
             // Traverse safety: serverContent -> modelTurn -> parts -> functionCall
@@ -378,8 +396,12 @@ class GeminiReasoningEngine(
                             
                             if (name.isNotEmpty()) {
                                 println("🛠️ Tool Call Detected: $name (ID: $id) args: $argsMap")
-                                isProcessingTool = true // ⏸️ Pause Audio Streaming
-                                if (id.isNotEmpty()) activeToolIds.add(id) // 🛡️ Track ID
+                                this@onToolCall.launch {
+                                    activeToolIdsLock.withLock {
+                                        isProcessingTool = true // ⏸️ Pause Audio Streaming
+                                        if (id.isNotEmpty()) activeToolIds.add(id) // 🛡️ Track ID
+                                    }
+                                }
                                 println("⏸️ Pausing Audio Upload for Tool Execution...")
                                 _toolCalls.emit(FunctionCallPart(name, argsMap, id))
                             }
@@ -393,16 +415,19 @@ class GeminiReasoningEngine(
     }
 
     suspend fun sendToolResponse(toolName: String, response: Map<String, Any?>, toolId: String? = null) {
-        // ▶️ Resume Audio Streaming immediately before or after sending
-        isProcessingTool = false 
-        println("▶️ Resuming Audio Upload (Tool Response Ready)")
-
         // 🛡️ Prevent sending response for cancelled tool
-        if (toolId != null && !activeToolIds.contains(toolId)) {
-            println("🛑 IGNORING Tool Response for CANCELLED ID: $toolId")
-            return
+        var isCancelled = false
+        activeToolIdsLock.withLock {
+            if (toolId != null && !activeToolIds.contains(toolId)) {
+                println("🛑 IGNORING Tool Response for CANCELLED ID: $toolId")
+                isCancelled = true
+            } else {
+                if (toolId != null) activeToolIds.remove(toolId)
+                // Only resume audio if NO MORE tools are pending
+                isProcessingTool = activeToolIds.isNotEmpty()
+            }
         }
-        if (toolId != null) activeToolIds.remove(toolId)
+        if (isCancelled) return
 
         if (session?.isActive == true) {
             val responseJson = kotlinx.serialization.json.JsonObject(
@@ -430,10 +455,7 @@ class GeminiReasoningEngine(
                         "functionResponse": {
                           "name": "$toolName",
                           $idField
-                          "response": {
-                            "name": "$toolName",
-                            "content": $responseJson
-                          } 
+                          "response": $responseJson
                         }
                       }
                     ]
