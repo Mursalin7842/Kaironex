@@ -180,40 +180,44 @@ class GeminiReasoningEngine(
                                     println("❌ Tool Parse Failed: ${e.message}")
                                 }
                             }
-                            if (messageText.contains("\"interrupted\": true")) {
-                                println("🛑 Server Confirmed Interruption. Resetting.")
-                                isInterruptedLocally = false
+                            try {
+                                val json = jsonParser.parseToJsonElement(messageText).jsonObject
                                 
-                                launch {
+                                // A. HANDLE INTERRUPTION
+                                if (messageText.contains("\"interrupted\": true")) {
+                                    println("🛑 Server Confirmed Interruption. Resetting.")
+                                    isInterruptedLocally = false
+                                    // 🔄 Sequential Update: Do NOT launch. 
+                                    // We need this state cleared immediately before processing next frames.
                                     activeToolIdsLock.withLock {
                                         activeToolIds.clear()
-                                        isProcessingTool = false // 🔄 Full Reset
+                                        isProcessingTool = false
                                     }
+                                    audioPlayer.stop()
                                 }
-                                audioPlayer.stop()
-                            }
-                            
-                            if (messageText.contains("\"toolCallCancellation\"")) {
-                                launch {
+
+                                // B. HANDLE TOOL CANCELLATION
+                                val toolCancellation = json["toolCallCancellation"]?.jsonObject
+                                if (toolCancellation != null) {
+                                    val ids = toolCancellation["ids"]?.jsonArray
+                                    // 🔄 Sequential Update: Ensure cancellation is recorded BEFORE any response logic.
                                     activeToolIdsLock.withLock {
-                                        // Extract cancelled IDs
-                                        try {
-                                            val element = jsonParser.parseToJsonElement(messageText)
-                                            val cancelledIds = element.jsonObject["toolCallCancellation"]?.jsonObject?.get("ids")?.jsonArray?.map { it.jsonPrimitive.content }
-                                            cancelledIds?.forEach { id -> 
-                                                activeToolIds.remove(id) 
-                                                println("🗑️ Removed Cancelled Tool ID: $id")
-                                            }
-                                        } catch (e: Exception) {
-                                            println("⚠️ Error parsing cancellation: ${e.message}")
+                                        ids?.forEach { 
+                                            val id = it.jsonPrimitive.content
+                                            println("🚫 Server CANCELLED Tool ID: $id")
+                                            activeToolIds.remove(id) 
                                         }
-                                        
-                                        // 🛡️ SAFETY DELAY: Wait for Server State to Settle
-                                        delay(500)
                                         isProcessingTool = activeToolIds.isNotEmpty()
-                                        if (!isProcessingTool) println("▶️ Audio Resumed (after cancellation delay)")
                                     }
                                 }
+
+                                // C. HANDLE FUNCTION CALL
+                                if (messageText.contains("\"functionCall\"") || messageText.contains("\"functionCalls\"")) {
+                                    onToolCall(messageText)
+                                }
+
+                            } catch (e: Exception) {
+                                // If not JSON or other error, just log and continue
                             }
 
                             if (messageText.contains("audio/pcm")) {
@@ -341,14 +345,14 @@ class GeminiReasoningEngine(
         delay(500) // Small buffer
         val kickstartJson = """
         {
-            "client_content": {
+            "clientContent": {
                 "turns": [
                     {
                         "role": "user",
                         "parts": [ { "text": "Start Interview." } ]
                     }
                 ],
-                "turn_complete": true
+                "turnComplete": true
             }
         }
         """.trimIndent()
@@ -360,7 +364,8 @@ class GeminiReasoningEngine(
     suspend fun sendAudio(pcmData: ByteArray) {
         if (session?.isActive == true) {
             // 🔒 Guard: Do not send audio if we are processing a tool (Wait for Response)
-            if (isProcessingTool) return 
+            val isBusy = activeToolIdsLock.withLock { isProcessingTool }
+            if (isBusy) return 
 
             val json = """
             {"realtimeInput": {"media_chunks": [{"mime_type": "audio/pcm", "data": "${pcmData.encodeBase64()}"}]}}
@@ -372,45 +377,65 @@ class GeminiReasoningEngine(
     private suspend fun DefaultClientWebSocketSession.onToolCall(jsonString: String) {
         try {
             val element = jsonParser.parseToJsonElement(jsonString)
-            // Traverse safety: serverContent -> modelTurn -> parts -> functionCall
-            val serverContent = element.jsonObject["serverContent"]?.jsonObject
-            val modelTurn = serverContent?.get("modelTurn")?.jsonObject
-            val parts = modelTurn?.get("parts")?.jsonArray
             
-            if (parts != null) {
-                for (part in parts) {
-                    val partObj = part.jsonObject
-                    // Check if functionCall exists
-                    if ("functionCall" in partObj) {
-                        val funcCall = partObj["functionCall"]?.jsonObject
-                        if (funcCall != null) {
-                            val name = funcCall["name"]?.jsonPrimitive?.content ?: ""
-                            val id = funcCall["id"]?.jsonPrimitive?.content ?: "" // Extract ID
-                            val argsObj = funcCall["args"]?.jsonObject
-                            
-                            // Convert JsonObject to Map<String, String> for simplicity
-                            val argsMap = argsObj?.entries?.associate { (key, value) ->
-                                key to (value.jsonPrimitive.contentOrNull ?: value.toString())
-                            }
-                            
-                            
-                            if (name.isNotEmpty()) {
-                                println("🛠️ Tool Call Detected: $name (ID: $id) args: $argsMap")
-                                this@onToolCall.launch {
-                                    activeToolIdsLock.withLock {
-                                        isProcessingTool = true // ⏸️ Pause Audio Streaming
-                                        if (id.isNotEmpty()) activeToolIds.add(id) // 🛡️ Track ID
-                                    }
+            // 🔎 ULTRA-ROBUST SEARCH: Find any "functionCall" objects regardless of nesting
+            // This handles modelTurn -> parts -> functionCall AND serverContent -> toolCall -> functionCalls patterns.
+            
+            suspend fun findFunctionCalls(el: kotlinx.serialization.json.JsonElement) {
+                when (el) {
+                    is kotlinx.serialization.json.JsonObject -> {
+                        if ("functionCall" in el) {
+                            val fc = el["functionCall"]?.jsonObject
+                            handleFunc(fc)
+                        } else if ("functionCalls" in el) {
+                            val calls = el["functionCalls"]?.jsonArray
+                            if (calls != null) {
+                                for (call in calls) {
+                                    handleFunc(call.jsonObject)
                                 }
-                                println("⏸️ Pausing Audio Upload for Tool Execution...")
-                                _toolCalls.emit(FunctionCallPart(name, argsMap, id))
+                            }
+                        } else {
+                            for (v in el.values) {
+                                findFunctionCalls(v)
                             }
                         }
                     }
+                    is kotlinx.serialization.json.JsonArray -> {
+                        for (item in el) {
+                            findFunctionCalls(item)
+                        }
+                    }
+                    else -> {}
                 }
             }
+            
+            findFunctionCalls(element)
+
         } catch (e: Exception) {
             println("❌ Error parsing tool call: ${e.message}")
+        }
+    }
+
+    private suspend fun DefaultClientWebSocketSession.handleFunc(funcCall: kotlinx.serialization.json.JsonObject?) {
+        if (funcCall == null) return
+        val name = funcCall["name"]?.jsonPrimitive?.content ?: ""
+        val id = funcCall["id"]?.jsonPrimitive?.content ?: ""
+        val argsObj = funcCall["args"]?.jsonObject
+
+        val argsMap = argsObj?.entries?.associate { (key, value) ->
+            key to (value.jsonPrimitive.contentOrNull ?: value.toString())
+        }
+
+        if (name.isNotEmpty()) {
+            println("🛠️ Tool Call Detected: $name (ID: $id) args: $argsMap")
+            // 🔄 Synchronous State Lock
+            // Do NOT use launch here; we must stop audio upload IMMEDIATELY before processing next frame.
+            activeToolIdsLock.withLock {
+                isProcessingTool = true
+                if (id.isNotEmpty()) activeToolIds.add(id)
+            }
+            println("⏸️ Pausing Audio Upload for Tool Execution...")
+            launch { _toolCalls.emit(FunctionCallPart(name, argsMap, id)) }
         }
     }
 
@@ -430,39 +455,41 @@ class GeminiReasoningEngine(
         if (isCancelled) return
 
         if (session?.isActive == true) {
-            // 1. Build the Result JSON (Inner Content)
-            val responseJson = kotlinx.serialization.json.JsonObject(
-                response.mapValues { (_, v) -> 
-                     when(v) {
-                         is String -> kotlinx.serialization.json.JsonPrimitive(v)
-                         is Number -> kotlinx.serialization.json.JsonPrimitive(v)
-                         is Boolean -> kotlinx.serialization.json.JsonPrimitive(v)
-                         else -> kotlinx.serialization.json.JsonPrimitive(v.toString())
-                     }
+            // 1. Build the Result Payload (Manual for Safety)
+            // The structure MUST be: { "tool_response": { "function_responses": [ { "id": "...", "name": "...", "response": { "result": { ... } } } ] } }
+            
+            val resultEntries = response.entries.joinToString(",") { (k, v) ->
+                val valueStr = when(v) {
+                    is String -> "\"$v\""
+                    is Number, is Boolean -> "$v"
+                    else -> "\"$v\""
                 }
-            )
+                "\"$k\": $valueStr"
+            }
+            val resultJson = "{ $resultEntries }"
 
-            // 2. Build the Live API Wrapper (The Fix)
-            // ❌ OLD (REST Format - CAUSES CRASH): "client_content": { "turns": ... }
-            // ✅ NEW (Live Format): "tool_response": { "function_responses": ... }
-            val json = """
+            val msg = """
             {
-              "tool_response": {
-                "function_responses": [
+              "toolResponse": {
+                "functionResponses": [
                   {
                     "id": "$toolId",
                     "name": "$toolName",
                     "response": {
-                      "result": $responseJson
+                      "result": $resultJson
                     }
                   }
                 ]
               }
             }
             """.trimIndent()
-            
-            session?.send(Frame.Text(json))
-            println("📤 Tool Response Sent: $toolName (ID: $toolId)")
+
+            try {
+                session?.send(Frame.Text(msg))
+                println("📤 Tool Response Sent: $toolName (ID: $toolId)")
+            } catch (e: Exception) {
+                println("❌ Failed to send tool response: ${e.message}")
+            }
         }
     }
 
