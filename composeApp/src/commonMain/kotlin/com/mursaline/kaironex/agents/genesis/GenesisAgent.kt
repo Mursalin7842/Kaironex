@@ -71,7 +71,10 @@ class GenesisAgent {
         // --- NEW ACADEMIC FIELDS ---
         newData.isInternationalStudent?.let { profile = profile.copy(isInternationalStudent = it) }
         newData.homeCountry?.let { profile = profile.copy(homeCountry = it) }
+        newData.currentCountry?.let { profile = profile.copy(currentCountry = it) }
         newData.academicResults?.let { profile = profile.copy(academicResults = it) }
+        newData.totalSemesters?.let { profile = profile.copy(totalSemesters = it) }
+        newData.currentCgpa?.let { profile = profile.copy(currentCgpa = it) }
 
         // --- NEW JOB FIELDS ---
         newData.jobDescription?.let { profile = profile.copy(jobDescription = it) }
@@ -97,7 +100,18 @@ class GenesisAgent {
         newData.needsJob?.let { profile = profile.copy(needsJob = it) }
         newData.workHoursPerWeek?.let { profile = profile.copy(workHoursPerWeek = it) }
         newData.commuteDuration?.let { profile = profile.copy(commuteDuration = it) }
+        newData.commuteDuration?.let { profile = profile.copy(commuteDuration = it) }
         newData.protectedTime?.let { profile = profile.copy(protectedTime = it) }
+        if (newData.classSchedule.isNotEmpty()) { profile = profile.copy(classSchedule = newData.classSchedule) }
+        if (newData.customCommitments.isNotEmpty()) { profile = profile.copy(customCommitments = newData.customCommitments) }
+        if (newData.nonNegotiables.isNotEmpty()) { profile = profile.copy(nonNegotiables = newData.nonNegotiables) }
+        if (newData.commuteMap.isNotEmpty()) { profile = profile.copy(commuteMap = newData.commuteMap) }
+        
+        newData.visaStatus?.let { profile = profile.copy(visaStatus = it) }
+        newData.workRestrictions?.let { profile = profile.copy(workRestrictions = it) }
+        
+        newData.routineFile?.let { profile = profile.copy(routineFile = it) }
+
         newData.scheduleSource?.let { profile = profile.copy(scheduleSource = it) }
         newData.learningStyle?.let { profile = profile.copy(learningStyle = it) }
         newData.primaryStudyMaterial?.let { profile = profile.copy(primaryStudyMaterial = it) }

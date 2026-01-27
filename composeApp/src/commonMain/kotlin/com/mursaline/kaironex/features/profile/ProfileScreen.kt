@@ -140,10 +140,10 @@ object ProfileScreen : Screen {
                     )
                     HorizontalDivider(color = KaironexColors.BorderGray)
                     SettingsRow(
-                        icon = Icons.Filled.School,
-                        label = "University",
-                        value = "Not Set",
-                        onClick = {}
+                        icon = Icons.Filled.Tune, // Changed icon to Tune
+                        label = "Profile Calibration",
+                        value = "Review Data",
+                        onClick = { navigator.push(com.mursaline.kaironex.features.dashboard.ProfileCalibrationScreen()) }
                     )
                 }
 

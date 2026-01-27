@@ -220,6 +220,16 @@ class GeminiReasoningEngine(
                                     onToolCall(messageText)
                                 }
 
+                                // D. HANDLE TURN COMPLETE
+                                if (messageText.contains("\"turnComplete\": true")) {
+                                     // 🛑 End of Server Audio. 
+                                     // We tell the player to "drain" (finish playing what it has) then pause.
+                                     // This prevents "Buffer Underrun" warnings during the User's turn.
+                                     kotlinx.coroutines.withContext(audioDispatcher) {
+                                         audioPlayer.endStream()
+                                     }
+                                }
+
                             } catch (e: Exception) {
                                 // If not JSON or other error, just log and continue
                             }
@@ -492,7 +502,8 @@ class GeminiReasoningEngine(
                 session?.send(Frame.Text(msg))
                 println("📤 Tool Response Sent: $toolName (ID: $toolId)")
             } catch (e: Exception) {
-                println("❌ Failed to send tool response: ${e.message}")
+                // Should not crash the app if socket is closed during a race condition
+                println("❌ Failed to send tool response: ${e.message} (Ignored)")
             }
         }
     }

@@ -30,4 +30,7 @@ val appModule = module {
 
     // 3. Authentication
     single<AuthRepository> { MockAuthRepository() }
+    
+    // 4. ViewModels
+    factory { com.mursaline.kaironex.features.dashboard.ProfileCalibrationViewModel(get()) }
 }

@@ -18,6 +18,7 @@ import org.koin.core.component.inject
 import com.mursaline.kaironex.agents.genesis.GenesisPrompts
 import com.mursaline.kaironex.PlatformSecrets
 
+import kotlinx.serialization.json.*
 import com.mursaline.kaironex.core.gemini.ChatMessage
 
 data class GenesisUiState(
@@ -97,10 +98,10 @@ class GenesisViewModel : ViewModel(), KoinComponent {
             user = userName,
             stage = agent.stage,
             missing = agent.profile.getMissingFields(agent.stage),
-            rationale = "Let's get you set up to optimize your student life."
+            rationale = "Let's get you set up to optimize your student life.",
+            hasJob = agent.profile.hasJob
         )
 
-        // 3. Define Tools for Data Extraction
         // 3. Define Tools for Data Extraction
         val toolsConfig = """
             "tools": [
@@ -115,6 +116,19 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                                     "university": { "type": "STRING" },
                                     "major": { "type": "STRING" },
                                     "semester": { "type": "STRING" },
+                                    "totalSemesters": { "type": "STRING" },
+                                    "currentCgpa": { "type": "STRING" },
+                                    "isInternationalStudent": { "type": "BOOLEAN" },
+                                    "homeCountry": { "type": "STRING" },
+                                    "currentCountry": { "type": "STRING" },
+                                    "visaStatus": { "type": "STRING" },
+                                    
+                                    "hasJob": { "type": "BOOLEAN" },
+                                    "jobDescription": { "type": "STRING" },
+                                    "jobSchedule": { "type": "STRING" },
+                                    "jobWorkDays": { "type": "STRING" },
+                                    "wantsJobHelp": { "type": "BOOLEAN" },
+                                    
                                     "mainPriority": { "type": "STRING", "description": "JOB_READY or CGPA" },
                                     "secondaryPriority": { "type": "STRING" },
                                     "energyPreference": { "type": "STRING", "description": "MORNING or NIGHT" },
@@ -123,8 +137,44 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                                     "wakeTime": { "type": "STRING" },
                                     "needsJob": { "type": "BOOLEAN" },
                                     "workHoursPerWeek": { "type": "NUMBER" },
+                                    
+                                    "commute_HomeToUni": { "type": "STRING" },
+                                    "commute_UniToHome": { "type": "STRING" },
+                                    "commute_UniToJob": { "type": "STRING" },
+                                    "commute_JobToHome": { "type": "STRING" },
+                                    
                                     "commuteDuration": { "type": "STRING" },
-                                    "protectedTime": { "type": "STRING", "description": "Non-negotiable blocks like Prayer or Gym" },
+                                    
+                                    "nonNegotiables": {
+                                        "type": "ARRAY",
+                                        "description": "List of non-negotiable constraints.",
+                                        "items": {
+                                            "type": "OBJECT",
+                                            "properties": {
+                                                "activity": { "type": "STRING", "description": "e.g. Prayer, Gym, Family" },
+                                                "time": { "type": "STRING", "description": "e.g. Fri 1pm-2pm" }
+                                            }
+                                        }
+                                    },
+                                    "customCommitments": {
+                                        "type": "ARRAY",
+                                        "description": "Other commitments.",
+                                        "items": {
+                                            "type": "OBJECT",
+                                            "properties": {
+                                                "activity": { "type": "STRING" },
+                                                "time": { "type": "STRING" }
+                                            }
+                                        }
+                                    },
+
+                                    "workRestrictions": { "type": "STRING", "description": "Legal work limits e.g. 20h/week" },
+                                    "classSchedule": { "type": "STRING", "description": "Brief verbal summary of class routine" },
+                                    
+                                    "financialStakes": { "type": "STRING", "description": "How high are the stakes? e.g. Scholarship, Debt, Self-Funded" },
+                                    "careerAmbition": { "type": "STRING", "description": "What is the end goal? e.g. Big Tech, Researcher, Entrepreneur" },
+                                    "targetCgpa": { "type": "STRING", "description": "What CGPA are you aiming for in the long run?" },
+                                    
                                     "learningStyle": { "type": "STRING", "description": "VIDEO or READ" },
                                     "failureCause": { 
                                         "type": "STRING", 
@@ -158,11 +208,54 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                             // Map generic args to StudentProfile
                             val pArgs = toolCall.args ?: emptyMap()
                             
+                            // 🗺️ Build Commute Map
+                            val newCommuteMap = mutableMapOf<String, String>()
+                            pArgs["commute_HomeToUni"]?.let { newCommuteMap["HomeToUni"] = it }
+                            pArgs["commute_UniToHome"]?.let { newCommuteMap["UniToHome"] = it }
+                            pArgs["commute_UniToJob"]?.let { newCommuteMap["UniToJob"] = it }
+                            pArgs["commute_JobToHome"]?.let { newCommuteMap["JobToHome"] = it }
+
+                            // 🗺️ Build Constraints Map (Parse JSON Array)
+                            // Helper to parse: "[{activity:A, time:B}, ...]"
+                            fun parseConstraints(jsonStr: String?): Map<String, String> {
+                                if (jsonStr.isNullOrBlank()) return emptyMap()
+                                return try {
+                                    val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
+                                    val array = jsonParser.parseToJsonElement(jsonStr).jsonArray
+                                    array.associate { element ->
+                                        val obj = element.jsonObject
+                                        val act = obj["activity"]?.jsonPrimitive?.content ?: "Unknown"
+                                        val time = obj["time"]?.jsonPrimitive?.content ?: ""
+                                        act to time
+                                    }
+                                } catch (e: Exception) {
+                                    println("⚠️ Failed to parse constraints JSON: $jsonStr")
+                                    emptyMap()
+                                }
+                            }
+
+                            val newNonNegotiables = parseConstraints(pArgs["nonNegotiables"])
+                            val newCustomCommitments = parseConstraints(pArgs["customCommitments"])
+                            
                             val profileUpdate = StudentProfile(
                                 university = pArgs["university"] ?: agent.profile.university,
                                 major = pArgs["major"] ?: agent.profile.major,
                                 semester = pArgs["semester"] ?: agent.profile.semester,
+                                totalSemesters = pArgs["totalSemesters"] ?: agent.profile.totalSemesters,
+                                currentCgpa = pArgs["currentCgpa"] ?: agent.profile.currentCgpa,
                                 
+                                isInternationalStudent = pArgs["isInternationalStudent"]?.toBooleanStrictOrNull() ?: agent.profile.isInternationalStudent,
+                                homeCountry = pArgs["homeCountry"] ?: agent.profile.homeCountry,
+                                currentCountry = pArgs["currentCountry"] ?: agent.profile.currentCountry,
+                                visaStatus = pArgs["visaStatus"] ?: agent.profile.visaStatus,
+                                workRestrictions = pArgs["workRestrictions"] ?: agent.profile.workRestrictions,
+                                
+                                hasJob = pArgs["hasJob"]?.toBooleanStrictOrNull() ?: agent.profile.hasJob,
+                                jobDescription = pArgs["jobDescription"] ?: agent.profile.jobDescription,
+                                jobSchedule = pArgs["jobSchedule"] ?: agent.profile.jobSchedule,
+                                jobWorkDays = pArgs["jobWorkDays"] ?: agent.profile.jobWorkDays,
+                                wantsJobHelp = pArgs["wantsJobHelp"]?.toBooleanStrictOrNull() ?: agent.profile.wantsJobHelp,
+
                                 mainPriority = pArgs["mainPriority"] ?: agent.profile.mainPriority,
                                 secondaryPriority = pArgs["secondaryPriority"] ?: agent.profile.secondaryPriority,
                                 
@@ -170,18 +263,25 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                                 dailyFocusCapacity = pArgs["dailyFocusCapacity"]?.toIntOrNull() ?: agent.profile.dailyFocusCapacity,
                                 sleepTime = pArgs["sleepTime"] ?: agent.profile.sleepTime,
                                 wakeTime = pArgs["wakeTime"] ?: agent.profile.wakeTime,
+                                // Save Verbal Schedule as Summary
+                                classSchedule = pArgs["classSchedule"]?.let { mapOf("Summary" to it) } ?: agent.profile.classSchedule,
                                 
                                 needsJob = pArgs["needsJob"]?.toBooleanStrictOrNull() ?: agent.profile.needsJob,
                                 workHoursPerWeek = pArgs["workHoursPerWeek"]?.toDoubleOrNull() ?: agent.profile.workHoursPerWeek,
-                                hasJob = (pArgs["workHoursPerWeek"]?.toDoubleOrNull() ?: 0.0) > 0,
                                 
                                 commuteDuration = pArgs["commuteDuration"] ?: agent.profile.commuteDuration,
-                                protectedTime = pArgs["protectedTime"] ?: agent.profile.protectedTime,
+                                commuteMap = if (newCommuteMap.isNotEmpty()) newCommuteMap else agent.profile.commuteMap,
+                                
+                                protectedTime = null, // Legacy field deprecated
+                                nonNegotiables = if (newNonNegotiables.isNotEmpty()) newNonNegotiables else agent.profile.nonNegotiables,
+                                customCommitments = if (newCustomCommitments.isNotEmpty()) newCustomCommitments else agent.profile.customCommitments,
                                 
                                 learningStyle = pArgs["learningStyle"] ?: agent.profile.learningStyle,
                                 failureCause = pArgs["failureCause"] ?: agent.profile.failureCause,
                                 
                                 financialStakes = pArgs["financialStakes"] ?: agent.profile.financialStakes,
+                                careerAmbition = pArgs["careerAmbition"] ?: agent.profile.careerAmbition,
+                                targetCgpa = pArgs["targetCgpa"] ?: agent.profile.targetCgpa,
                                 stressResponse = if (pArgs["failureCause"]?.contains("DISTRACTION", true) == true) "Avoid" 
                                                  else if (pArgs["failureCause"]?.contains("CLARITY", true) == true) "Freeze"
                                                  else agent.profile.stressResponse
