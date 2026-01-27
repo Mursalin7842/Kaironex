@@ -66,9 +66,23 @@ class GenesisAgent {
     fun updateProfile(newData: StudentProfile) {
         newData.major?.let { profile = profile.copy(major = it) }
         newData.semester?.let { profile = profile.copy(semester = it) }
+        newData.university.takeIf { it.isNotEmpty() }?.let { profile = profile.copy(university = it) }
+        
+        // --- NEW ACADEMIC FIELDS ---
+        newData.isInternationalStudent?.let { profile = profile.copy(isInternationalStudent = it) }
+        newData.homeCountry?.let { profile = profile.copy(homeCountry = it) }
+        newData.academicResults?.let { profile = profile.copy(academicResults = it) }
+
+        // --- NEW JOB FIELDS ---
+        newData.jobDescription?.let { profile = profile.copy(jobDescription = it) }
+        newData.jobSchedule?.let { profile = profile.copy(jobSchedule = it) }
+        newData.jobWorkDays?.let { profile = profile.copy(jobWorkDays = it) }
+        newData.jobCommuteTime?.let { profile = profile.copy(jobCommuteTime = it) }
+        newData.wantsJobHelp?.let { profile = profile.copy(wantsJobHelp = it) }
+
+        // --- LEGACY ---
         newData.careerAmbition?.let { profile = profile.copy(careerAmbition = it) }
         newData.sleepTime?.let { profile = profile.copy(sleepTime = it) }
-        newData.university.takeIf { it.isNotEmpty() }?.let { profile = profile.copy(university = it) }
         newData.targetCgpa?.let { profile = profile.copy(targetCgpa = it) }
         newData.wakeTime?.let { profile = profile.copy(wakeTime = it) }
         newData.commuteTime?.let { profile = profile.copy(commuteTime = it) }

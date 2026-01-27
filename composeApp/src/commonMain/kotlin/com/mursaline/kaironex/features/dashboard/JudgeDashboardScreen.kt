@@ -123,7 +123,7 @@ fun JudgeDashboardContent(
             // WORK LOAD
             PressureCard(
                 title = "WORK LOAD",
-                value = if (profile.hasJob) "${profile.workHoursPerWeek ?: 0.0} hrs/wk" else "FULL-TIME STUDENT",
+                value = if (profile.hasJob == true) "${profile.workHoursPerWeek ?: 0.0} hrs/wk" else "FULL-TIME STUDENT",
                 riskLevel = if ((profile.workHoursPerWeek ?: 0.0) > 20.0) "HIGH BURN" else "SUSTAINABLE",
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Work
