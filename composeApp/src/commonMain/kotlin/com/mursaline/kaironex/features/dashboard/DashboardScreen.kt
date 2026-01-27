@@ -196,8 +196,8 @@ object DashboardScreen : Screen {
                         variant = KxCardVariant.Flat,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(if (isMobile) 100.dp else 160.dp)
-                            .clickable { navigator.push(com.mursaline.kaironex.features.dashboard.JudgeDashboardScreen(agent.profile)) },
+                            .height(if (isMobile) 100.dp else 160.dp),
+                        onClick = { navigator.push(com.mursaline.kaironex.features.dashboard.JudgeDashboardScreen(agent.profile)) },
                         backgroundColor = KaironexColors.CanvasWhite
                     ) {
                         PressureMap(modifier = Modifier.fillMaxSize(), isMobile = isMobile)

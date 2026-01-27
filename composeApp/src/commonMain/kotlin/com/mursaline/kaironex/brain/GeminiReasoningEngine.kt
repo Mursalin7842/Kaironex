@@ -64,8 +64,12 @@ class GeminiReasoningEngine(
             attemptConnection(apiKey, systemInstruction, modelName, toolsConfig)
             println("✅ Session ended normally.")
         } catch (e: Exception) {
-             println("❌ Connection Failed: ${e.message}")
-             _connectionState.value = ConnectionState.Error(e.message ?: "Unknown Error")
+             if (e is kotlinx.coroutines.CancellationException) {
+                 println("✅ Connection closed gracefully.")
+             } else {
+                 println("❌ Connection Failed: ${e.message}")
+                 _connectionState.value = ConnectionState.Error(e.message ?: "Unknown Error")
+             }
         }
     }
 

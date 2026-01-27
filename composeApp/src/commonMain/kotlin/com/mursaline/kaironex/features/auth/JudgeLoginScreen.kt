@@ -30,7 +30,9 @@ import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.mursaline.kaironex.features.onboarding.SystemSetupScreen
 import kotlinx.coroutines.launch
+
 
 object JudgeLoginScreen : Screen {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -96,7 +98,7 @@ object JudgeLoginScreen : Screen {
                             authRepo.judgeLogin(accessCode)
                                 .onSuccess {
                                     // For judges, skip to main app directly
-                                    navigator.replaceAll(com.mursaline.kaironex.MainShellScreen)
+                                    navigator.replaceAll(SystemSetupScreen(userName = "Judge"))
                                     // Optionally push AgentSpaceScreen if MainShell handles tabs:
                                     // But since MainShell defaults to Dashboard, we might want to ensure they land on Agents.
                                     // For now, let's stick to MainShellScreen and rely on user clicking "Agents".
