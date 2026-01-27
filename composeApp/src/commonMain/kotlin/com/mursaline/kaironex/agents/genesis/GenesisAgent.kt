@@ -73,6 +73,23 @@ class GenesisAgent {
         newData.wakeTime?.let { profile = profile.copy(wakeTime = it) }
         newData.commuteTime?.let { profile = profile.copy(commuteTime = it) }
         
+        // 🔧 FIX: Map MISSING fields to prevent data loss
+        newData.mainPriority?.let { profile = profile.copy(mainPriority = it) }
+        newData.secondaryPriority?.let { profile = profile.copy(secondaryPriority = it) }
+        newData.financialStakes?.let { profile = profile.copy(financialStakes = it) }
+        newData.energyPreference?.let { profile = profile.copy(energyPreference = it) }
+        newData.dailyFocusCapacity?.let { profile = profile.copy(dailyFocusCapacity = it) }
+        newData.hasJob?.let { profile = profile.copy(hasJob = it) }
+        newData.needsJob?.let { profile = profile.copy(needsJob = it) }
+        newData.workHoursPerWeek?.let { profile = profile.copy(workHoursPerWeek = it) }
+        newData.commuteDuration?.let { profile = profile.copy(commuteDuration = it) }
+        newData.protectedTime?.let { profile = profile.copy(protectedTime = it) }
+        newData.scheduleSource?.let { profile = profile.copy(scheduleSource = it) }
+        newData.learningStyle?.let { profile = profile.copy(learningStyle = it) }
+        newData.primaryStudyMaterial?.let { profile = profile.copy(primaryStudyMaterial = it) }
+        newData.failureCause?.let { profile = profile.copy(failureCause = it) }
+        newData.stressResponse?.let { profile = profile.copy(stressResponse = it) }
+        
         // Auto-advance stage if data is sufficient
         val missing = profile.getMissingFields(stage)
         if (missing.isEmpty() && stage != GenesisStage.COMPLETE) {

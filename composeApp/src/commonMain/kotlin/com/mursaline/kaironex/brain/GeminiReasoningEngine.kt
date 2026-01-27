@@ -497,7 +497,36 @@ class GeminiReasoningEngine(
         }
     }
 
+
+    suspend fun sendContextUpdate(message: String) {
+        if (session?.isActive != true) return
+        
+        // We wrap this as a "User" message internally so the model processes it
+        // as immediate context.
+        val json = """
+        {
+          "clientContent": {
+            "turns": [
+              {
+                "role": "user",
+                "parts": [ { "text": "$message" } ]
+              }
+            ],
+            "turnComplete": false 
+          }
+        }
+        """.trimIndent()
+        
+        try {
+            session?.send(Frame.Text(json))
+            println("🧠 Context Injected: $message")
+        } catch (e: Exception) {
+            println("❌ Context Injection Failed: ${e.message}")
+        }
+    }
+
     suspend fun disconnect() {
+
         session?.close()
         _connectionState.value = ConnectionState.Disconnected
     }

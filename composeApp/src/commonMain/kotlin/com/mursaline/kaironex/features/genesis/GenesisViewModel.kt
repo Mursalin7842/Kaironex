@@ -195,8 +195,26 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                                 profileStorage.saveProfile(agent.profile)
                             }
 
-                            // ⚡ SEND TOOL RESPONSE
-                            reasoningEngine.sendToolResponse("update_profile", mapOf("result" to "Profile Updated Successfully"), toolCall.id)
+                            // 3. 🔧 THE FIX: INJECT STATE *INTO* THE TOOL RESPONSE
+                            // This ensures the model sees the status IMMEDIATELY as part of the action result,
+                            // avoiding the latency and race conditions of sending a separate User Turn.
+                            val currentStage = agent.stage
+                            val missingFields = agent.profile.getMissingFields(currentStage)
+                            
+                            // Bundle the status into the response payload
+                            // Compressed for Latency:
+                            val contextMsg = "STATUS: Saved. Stage: $currentStage. Missing: $missingFields. ACTION: Ask for MISSING."
+                            
+                            val responsePayload = mapOf(
+                                "success" to true,
+                                "system_status" to contextMsg
+                            )
+
+                            // ⚡ SEND TOOL RESPONSE (Bundled)
+                            reasoningEngine.sendToolResponse("update_profile", responsePayload, toolCall.id)
+                            
+                            // REMOVED: reasoningEngine.sendContextUpdate(contextMsg) 
+                            // (This was causing the "Slow Response" / Turn Bloat)
                             
                         } else if (toolCall.name == "complete_interview") {
                             println("✅ Interview Complete Triggered via Tool")

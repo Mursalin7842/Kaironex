@@ -44,9 +44,37 @@ data class StudentProfile(
     val stressResponse: String? = null // Keeping this as it's used in Judge View
 ) {
     fun getMissingFields(stage: GenesisStage): List<String> {
-        // ... (Your existing validation logic)
-        // For Master Build, we blindly follow the script flow usually, 
-        // but let's keep it empty as requested in plan.
-        return emptyList() 
+        val missing = mutableListOf<String>()
+        
+        when (stage) {
+            GenesisStage.IDENTITY -> {
+                 // Nothing strictly required here, usually just transitions to Academic
+            }
+            GenesisStage.ACADEMIC -> {
+                if (university.isBlank()) missing.add("university")
+                if (major.isNullOrBlank()) missing.add("major")
+            }
+            GenesisStage.GOALS -> {
+                if (mainPriority.isNullOrBlank()) missing.add("mainPriority")
+            }
+            GenesisStage.RHYTHM -> {
+                if (energyPreference.isNullOrBlank()) missing.add("energyPreference")
+                // Focus Capacity is Int, so null check is fine
+                if (dailyFocusCapacity == null) missing.add("dailyFocusCapacity")
+            }
+            GenesisStage.CONSTRAINTS -> {
+                if (learningStyle.isNullOrBlank()) missing.add("learningStyle")
+                if (protectedTime.isNullOrBlank()) missing.add("protectedTime") 
+            }
+            GenesisStage.CONFIRMATION -> {
+               if (failureCause.isNullOrBlank()) missing.add("failureCause")
+            }
+            GenesisStage.COMPLETE -> {
+                // Nothing missing
+            }
+            else -> {}
+        }
+        
+        return missing
     }
 }

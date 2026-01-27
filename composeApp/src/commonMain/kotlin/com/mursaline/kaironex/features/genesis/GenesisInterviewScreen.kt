@@ -309,7 +309,7 @@ fun GenesisInterviewScreen(
                                         modifier = Modifier.padding(horizontal = 24.dp)
                                     ) {
                                         Text(
-                                            if (state.isComplete) "Continue to Google Drive Setup" else "Skip Interview",
+                                            if (state.isComplete) "Enter Kaironex System" else "Skip Interview",
                                             style = MaterialTheme.typography.labelLarge,
                                             color = if (state.isComplete) Color.White else KaironexColors.Slate500,
                                             fontWeight = FontWeight.Medium
