@@ -8,10 +8,17 @@ import android.util.Log
 class AndroidAudioPlayer : AudioPlayer {
 
     private var audioTrack: AudioTrack? = null
+    companion object {
+        // ------------------------------------------------------------
+        // 🔧 TUNING FOR 24kHz (Gemini Live)
+        // ------------------------------------------------------------
+        // ✅ NEW (Doubled for stability)
+        // We need more data buffered before starting to prevent "underrun"
+        private const val JITTER_THRESHOLD_BYTES = 1024 * 10 
+    } 
+    
     // Gemini Live output sample rate. using 24kHz to match Gemini output.
-    private val SAMPLE_RATE = 24000 
-    // Wait, user said "only noise".
-    // If I play Base64 STRING as PCM, it sounds like static noise.
+    private val SAMPLE_RATE = 24000
     // Ensure we are not accidentally playing the JSON text as audio bytes?
     // In Frame.Binary, we play bytes directly. If Gemini sends JSON in Binary frame? No.
     
@@ -37,7 +44,8 @@ class AndroidAudioPlayer : AudioPlayer {
     // Jitter Buffer: Smart balance. 
     // MinBuffer * 1 (approx 50ms-100ms) prevents chop but starts fast.
     // Jitter Buffer: 2x min buffer (~160ms) - Balanced for speed + stability with underrun recovery
-    private val START_THRESHOLD = AudioTrack.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * 2
+    // Jitter Buffer: 2x min buffer (~160ms) - Balanced for speed + stability with underrun recovery
+    // private val START_THRESHOLD = AudioTrack.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * 2
     private var bytesBuffered = 0
     private var isPlayingState = false
 
@@ -63,7 +71,7 @@ class AndroidAudioPlayer : AudioPlayer {
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .build()
 
-            Log.d("KaironexAudio", "🔊 AudioTrack Initialized at $SAMPLE_RATE Hz (Jitter Buffer: $START_THRESHOLD bytes)")
+            Log.d("KaironexAudio", "🔊 AudioTrack Initialized at $SAMPLE_RATE Hz (Jitter Buffer: $JITTER_THRESHOLD_BYTES bytes)")
         } catch (e: Exception) {
             Log.e("KaironexAudio", "❌ Failed to init AudioTrack: ${e.message}")
         }
@@ -90,8 +98,9 @@ class AndroidAudioPlayer : AudioPlayer {
             }
             
             // 2. Check if we should start playing (Jitter Buffer Logic)
+            // 2. Check if we should start playing (Jitter Buffer Logic)
             if (audioTrack?.playState != AudioTrack.PLAYSTATE_PLAYING) {
-                if (bytesBuffered >= START_THRESHOLD) {
+                if (bytesBuffered >= JITTER_THRESHOLD_BYTES) {
                     Log.d("KaironexAudio", "🚀 Jitter Buffer Full ($bytesBuffered bytes). Starting Playback.")
                     audioTrack?.play()
                     isPlayingState = true
