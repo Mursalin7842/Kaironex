@@ -430,6 +430,7 @@ class GeminiReasoningEngine(
         if (isCancelled) return
 
         if (session?.isActive == true) {
+            // 1. Build the Result JSON (Inner Content)
             val responseJson = kotlinx.serialization.json.JsonObject(
                 response.mapValues { (_, v) -> 
                      when(v) {
@@ -441,27 +442,21 @@ class GeminiReasoningEngine(
                 }
             )
 
-            // Include ID if present (Crucial for correct protocol)
-            val idField = if (!toolId.isNullOrEmpty()) "\"id\": \"$toolId\"," else ""
-
+            // 2. Build the Live API Wrapper (The Fix)
+            // ❌ OLD (REST Format - CAUSES CRASH): "client_content": { "turns": ... }
+            // ✅ NEW (Live Format): "tool_response": { "function_responses": ... }
             val json = """
             {
-              "client_content": {
-                "turns": [
+              "tool_response": {
+                "function_responses": [
                   {
-                    "role": "user",
-                    "parts": [
-                      {
-                        "functionResponse": {
-                          "name": "$toolName",
-                          $idField
-                          "response": $responseJson
-                        }
-                      }
-                    ]
+                    "id": "$toolId",
+                    "name": "$toolName",
+                    "response": {
+                      "result": $responseJson
+                    }
                   }
-                ],
-                "turn_complete": true
+                ]
               }
             }
             """.trimIndent()
