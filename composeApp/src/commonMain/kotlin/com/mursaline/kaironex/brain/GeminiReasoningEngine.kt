@@ -90,6 +90,9 @@ class GeminiReasoningEngine(
                     try {
                         audioRecorder.startRecording { // onVolumeDetected (Binary)
                             // ⚡ INSTANT LOCAL INTERRUPTION
+                            // ⚡ SLF-SABOTAGE FIX: Disabled Local Interruption. 
+                            // We rely on Server VAD to detect interruptions to avoid Echo muting the bot.
+                            /*
                             if (audioPlayer.isPlaying()) { 
                                 audioPlayer.stop()
                                 isInterruptedLocally = true
@@ -100,6 +103,7 @@ class GeminiReasoningEngine(
                                     if (isInterruptedLocally) isInterruptedLocally = false
                                 }
                             }
+                            */
                         }.collect { pcmData ->
                             // Calculate approximate RMS for UI feedback (Visuals only)
                              // Since strict RMS is done in recorder, we can just do a rough calc here or update recorder interface to pass float.
