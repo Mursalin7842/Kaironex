@@ -74,21 +74,26 @@ class AndroidAudioPlayer(context: Context) : AudioPlayer {
                 val playedBytes = playedFrames * 2
                 val pendingBytes = totalBytesWritten - playedBytes
 
-                // 4. Smart Playback Control
+                // 4. Smart Playback Control & Underrun Recovery
                 if (!isPlaying) {
-                    // Start Threshold: Wait for solid buffer (Full Jitter Threshold)
+                    // Start Threshold: Wait for solid buffer
                     if (pendingBytes >= JITTER_THRESHOLD_BYTES) {
                         println("🚀 Buffer Healthy ($pendingBytes bytes >= $JITTER_THRESHOLD_BYTES). Starting Playback.")
                         audioTrack?.play()
                         isPlaying = true
                     }
                 } else {
-                    // RECOVERY: If paused (underrun behavior) or barely playing
-                    // If track is stopped/paused due to starvation, we wait for *some* buffer before resuming.
-                    // We check loop state.
-                    if (audioTrack?.playState != AudioTrack.PLAYSTATE_PLAYING && pendingBytes >= JITTER_THRESHOLD_BYTES / 4) {
-                        println("⚠️ Auto-Resume after refill ($pendingBytes bytes).")
-                        audioTrack?.play()
+                    // RECOVERY: The OS might stop the track if it underruns ("dry").
+                    // We must check the actual hardware state, not just our boolean.
+                    val state = audioTrack?.playState
+                    
+                    if (state == AudioTrack.PLAYSTATE_PAUSED || state == AudioTrack.PLAYSTATE_STOPPED) {
+                        // If we have *any* meaningful data, force restart.
+                        // We lower the threshold here to avoid a "stutter-stop-buffer" loop.
+                        if (pendingBytes >= JITTER_THRESHOLD_BYTES / 8) {
+                            println("♻️ UNDERRUN RECOVERY: Restarting Track ($pendingBytes bytes pending).")
+                            audioTrack?.play()
+                        }
                     }
                 }
             } catch (e: Exception) {

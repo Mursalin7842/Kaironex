@@ -335,19 +335,44 @@ class GeminiReasoningEngine(
     // --- PRIVATE HELPERS MOVED BACK INSIDE CLASS ---
 
     private suspend fun DefaultClientWebSocketSession.sendHandshake(systemInstruction: String?, modelName: String, toolsConfig: String?) {
-        // 1. Define the Silent Sync Protocol
+        // 1. Define the Silent Sync Protocol (Safety Net)
         val syncProtocol = """
             
-            **CRITICAL REAL-TIME PROTOCOL:**
-            - When a tool executes, you will receive the Tool Result followed immediately by the text "[SYSTEM_SYNC]".
-            - **RULE:** Do NOT read out "[SYSTEM_SYNC]". Do NOT ask "What is this?".
-            - **ACTION:** Treat "[SYSTEM_SYNC]" as an immediate command to verbalize the tool's output to the student naturally.
+            **CRITICAL PROTOCOL:**
+            - **ASK ONE QUESTION AT A TIME.**
+            - When the user answers, validate the answer.
+            - **IMMEDIATELY** call the tool `update_profile` with the value.
+            - **WAIT** for the tool to execute.
+            - **THEN** (after tool result) confirm briefly (e.g., "Got it") and **IMMEDIATELY** ask the next question.
+            - Do NOT read out "[SYSTEM_SYNC]".
         """.trimIndent()
 
-        // Combine instructions
+        // 2. The "Perfect" Interviewer Persona & Script
         val baseInstruction = systemInstruction ?: """
-            **Persona:**
-            You are Kaironex, an advanced AI tutor.
+            You are Kairo, a professional, warm, and efficient AI interviewer for 'Kaironex'.
+            Your goal is to calibrate a user's profile by asking specific questions one by one.
+            
+            **INTERVIEW SCRIPT (Strict Order):**
+            1. University Name?
+            2. Major/Field of study?
+            3. Current Semester (e.g., Fall 2024, 5th)?
+            4. Current CGPA?
+            5. Are you an International Student? (Yes/No)
+            6. Do you currently have a job? (Yes/No)
+            7. Do you want help finding a job? (Yes/No)
+            8. Describe your ideal job?
+            9. Commute duration?
+            10. High or Low Energy environments?
+            11. Daily focus capacity (hours)?
+            12. Non-negotiables?
+            13. Learning style?
+            14. Stress response?
+            15. Common cause of failure?
+            
+            **RULES:**
+            - If user's answer is unclear, ask for clarification.
+            - Keep the tone professional but friendly.
+            - Focus on SPEED and EFFICIENCY.
         """.trimIndent()
         
         val finalInstruction = baseInstruction + syncProtocol
@@ -444,8 +469,25 @@ class GeminiReasoningEngine(
                 }
             }
             findFunctionCalls(element)
+            
+            // 🔎 DEBUG: Log Text Responses if Audio Failed
+            val serverContent = try {
+                 jsonParser.parseToJsonElement(jsonString).jsonObject["serverContent"]?.jsonObject
+            } catch(e: Exception) { null }
+            
+            if (serverContent != null) {
+                val modelTurn = serverContent["modelTurn"]?.jsonObject
+                val parts = modelTurn?.get("parts")?.jsonArray
+                parts?.forEach { part ->
+                    val text = part.jsonObject["text"]?.jsonPrimitive?.contentOrNull
+                    if (text != null) {
+                        println("🗣️ MODEL TEXT: $text") // This will show up even if audio fails
+                    }
+                }
+            }
+            
         } catch (e: Exception) {
-            println("❌ Error parsing tool call: ${e.message}")
+            println("❌ Error parsing message: ${e.message}")
         }
     }
 

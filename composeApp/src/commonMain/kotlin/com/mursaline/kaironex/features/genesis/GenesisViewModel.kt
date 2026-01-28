@@ -102,94 +102,41 @@ class GenesisViewModel : ViewModel(), KoinComponent {
         )
 
         // 3. Define Tools for Data Extraction
+        // 3. Define Tools EXACTLY as per TS Implementation
         val toolsConfig = """
             "tools": [
                 {
                     "function_declarations": [
                         {
-                            "name": "update_profile",
-                            "description": "Updates the student profile with extracted information.",
+                            "name": "saveField",
+                            "description": "Saves a validated answer for a specific user profile field. Call this immediately after the user provides an answer.",
                             "parameters": {
                                 "type": "OBJECT",
                                 "properties": {
-                                    "university": { "type": "STRING" },
-                                    "major": { "type": "STRING" },
-                                    "semester": { "type": "STRING" },
-                                    "totalSemesters": { "type": "STRING" },
-                                    "currentCgpa": { "type": "STRING" },
-                                    "isInternationalStudent": { "type": "BOOLEAN" },
-                                    "homeCountry": { "type": "STRING" },
-                                    "currentCountry": { "type": "STRING" },
-                                    "visaStatus": { "type": "STRING" },
-                                    
-                                    "hasJob": { "type": "BOOLEAN" },
-                                    "jobDescription": { "type": "STRING" },
-                                    "jobSchedule": { "type": "STRING" },
-                                    "jobWorkDays": { "type": "STRING" },
-                                    "wantsJobHelp": { "type": "BOOLEAN" },
-                                    
-                                    "mainPriority": { "type": "STRING", "description": "JOB_READY or CGPA" },
-                                    "secondaryPriority": { "type": "STRING" },
-                                    "energyPreference": { "type": "STRING", "description": "MORNING or NIGHT" },
-                                    "dailyFocusCapacity": { "type": "NUMBER" },
-                                    "sleepTime": { "type": "STRING" },
-                                    "wakeTime": { "type": "STRING" },
-                                    "needsJob": { "type": "BOOLEAN" },
-                                    "workHoursPerWeek": { "type": "NUMBER" },
-                                    
-                                    "commute_HomeToUni": { "type": "STRING" },
-                                    "commute_UniToHome": { "type": "STRING" },
-                                    "commute_UniToJob": { "type": "STRING" },
-                                    "commute_JobToHome": { "type": "STRING" },
-                                    
-                                    "commuteDuration": { "type": "STRING" },
-                                    
-                                    "nonNegotiables": {
-                                        "type": "ARRAY",
-                                        "description": "List of non-negotiable constraints.",
-                                        "items": {
-                                            "type": "OBJECT",
-                                            "properties": {
-                                                "activity": { "type": "STRING", "description": "e.g. Prayer, Gym, Family" },
-                                                "time": { "type": "STRING", "description": "e.g. Fri 1pm-2pm" }
-                                            }
-                                        }
+                                    "field": {
+                                        "type": "STRING",
+                                        "enum": [
+                                            "university", "major", "semester", "currentCgpa", "isInternationalStudent",
+                                            "hasJob", "wantsJobHelp", "jobDescription", "commuteDuration",
+                                            "energyPreference", "dailyFocusCapacity", "nonNegotiables",
+                                            "learningStyle", "stressResponse", "failureCause"
+                                        ],
+                                        "description": "The specific field being saved."
                                     },
-                                    "customCommitments": {
-                                        "type": "ARRAY",
-                                        "description": "Other commitments.",
-                                        "items": {
-                                            "type": "OBJECT",
-                                            "properties": {
-                                                "activity": { "type": "STRING" },
-                                                "time": { "type": "STRING" }
-                                            }
-                                        }
-                                    },
-
-                                    "workRestrictions": { "type": "STRING", "description": "Legal work limits e.g. 20h/week" },
-                                    "classSchedule": { "type": "STRING", "description": "Brief verbal summary of class routine" },
-                                    
-                                    "financialStakes": { "type": "STRING", "description": "How high are the stakes? e.g. Scholarship, Debt, Self-Funded" },
-                                    "careerAmbition": { "type": "STRING", "description": "What is the end goal? e.g. Big Tech, Researcher, Entrepreneur" },
-                                    "targetCgpa": { "type": "STRING", "description": "What CGPA are you aiming for in the long run?" },
-                                    
-                                    "learningStyle": { "type": "STRING", "description": "VIDEO or READ" },
-                                    "failureCause": { 
-                                        "type": "STRING", 
-                                        "description": "The primary reason the user fails tasks: DISTRACTION (Phone/Socials), FATIGUE (Tired), or CLARITY (Don't know where to start)." 
+                                    "value": {
+                                        "type": "STRING",
+                                        "description": "The extracted and validated value from the user answer."
                                     }
-                                }
+                                },
+                                "required": ["field", "value"]
                             }
                         },
                         {
-                            "name": "complete_interview",
-                            "description": "Call this to end the interview after the Handoff script is read.",
+                            "name": "endInterview",
+                            "description": "Call this when all questions have been asked and the interview is complete.",
                             "parameters": {
                                 "type": "OBJECT",
-                                "properties": {
-                                    "success": { "type": "BOOLEAN" }
-                                }
+                                "properties": {}
                             }
                         }
                     ]
@@ -203,108 +150,54 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                 // Launch Tool Listener
                 launch {
                     reasoningEngine.toolCalls.collect { toolCall ->
-                        if (toolCall.name == "update_profile") {
-                            // Map generic args to StudentProfile
-                            val pArgs = toolCall.args ?: emptyMap()
+                        if (toolCall.name == "saveField") {
+                            // Atomic Field Update
+                            val args = toolCall.args ?: emptyMap()
+                            val field = args["field"] as? String
+                            val value = args["value"] as? String
                             
-                            // 🗺️ Build Commute Map
-                            val newCommuteMap = mutableMapOf<String, String>()
-                            pArgs["commute_HomeToUni"]?.let { newCommuteMap["HomeToUni"] = it }
-                            pArgs["commute_UniToHome"]?.let { newCommuteMap["UniToHome"] = it }
-                            pArgs["commute_UniToJob"]?.let { newCommuteMap["UniToJob"] = it }
-                            pArgs["commute_JobToHome"]?.let { newCommuteMap["JobToHome"] = it }
-
-                            // 🗺️ Build Constraints Map (Parse JSON Array)
-                            // Helper to parse: "[{activity:A, time:B}, ...]"
-                            fun parseConstraints(jsonStr: String?): Map<String, String> {
-                                if (jsonStr.isNullOrBlank()) return emptyMap()
-                                return try {
-                                    val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
-                                    val array = jsonParser.parseToJsonElement(jsonStr).jsonArray
-                                    array.associate { element ->
-                                        val obj = element.jsonObject
-                                        val act = obj["activity"]?.jsonPrimitive?.content ?: "Unknown"
-                                        val time = obj["time"]?.jsonPrimitive?.content ?: ""
-                                        act to time
-                                    }
-                                } catch (e: Exception) {
-                                    println("⚠️ Failed to parse constraints JSON: $jsonStr")
-                                    emptyMap()
+                            if (field != null && value != null) {
+                                println("💾 Saving Field: $field = $value")
+                                
+                                // Directly update the profile based on field name
+                                // We use a helper helper to map string -> profile property
+                                // Note: Kotlin Copy is robust.
+                                val current = agent.profile
+                                val updated = when(field) {
+                                    "university" -> current.copy(university = value)
+                                    "major" -> current.copy(major = value)
+                                    "semester" -> current.copy(semester = value)
+                                    "currentCgpa" -> current.copy(currentCgpa = value)
+                                    "isInternationalStudent" -> current.copy(isInternationalStudent = value.toBoolean())
+                                    "hasJob" -> current.copy(hasJob = value.toBoolean())
+                                    "wantsJobHelp" -> current.copy(wantsJobHelp = value.toBoolean())
+                                    "jobDescription" -> current.copy(jobDescription = value)
+                                    "commuteDuration" -> current.copy(commuteDuration = value)
+                                    "energyPreference" -> current.copy(energyPreference = value)
+                                    "dailyFocusCapacity" -> current.copy(dailyFocusCapacity = value.toIntOrNull() ?: 4)
+                                    "nonNegotiables" -> current.copy(nonNegotiables = mapOf("Summary" to value))
+                                    "learningStyle" -> current.copy(learningStyle = value)
+                                    "stressResponse" -> current.copy(stressResponse = value)
+                                    "failureCause" -> current.copy(failureCause = value)
+                                    else -> current
                                 }
-                            }
-
-                            val newNonNegotiables = parseConstraints(pArgs["nonNegotiables"])
-                            val newCustomCommitments = parseConstraints(pArgs["customCommitments"])
-                            
-                            val profileUpdate = StudentProfile(
-                                university = pArgs["university"] ?: agent.profile.university,
-                                major = pArgs["major"] ?: agent.profile.major,
-                                semester = pArgs["semester"] ?: agent.profile.semester,
-                                totalSemesters = pArgs["totalSemesters"] ?: agent.profile.totalSemesters,
-                                currentCgpa = pArgs["currentCgpa"] ?: agent.profile.currentCgpa,
                                 
-                                isInternationalStudent = pArgs["isInternationalStudent"]?.toBooleanStrictOrNull() ?: agent.profile.isInternationalStudent,
-                                homeCountry = pArgs["homeCountry"] ?: agent.profile.homeCountry,
-                                currentCountry = pArgs["currentCountry"] ?: agent.profile.currentCountry,
-                                visaStatus = pArgs["visaStatus"] ?: agent.profile.visaStatus,
-                                workRestrictions = pArgs["workRestrictions"] ?: agent.profile.workRestrictions,
+                                agent.updateProfile(updated)
                                 
-                                hasJob = pArgs["hasJob"]?.toBooleanStrictOrNull() ?: agent.profile.hasJob,
-                                jobDescription = pArgs["jobDescription"] ?: agent.profile.jobDescription,
-                                jobSchedule = pArgs["jobSchedule"] ?: agent.profile.jobSchedule,
-                                jobWorkDays = pArgs["jobWorkDays"] ?: agent.profile.jobWorkDays,
-                                wantsJobHelp = pArgs["wantsJobHelp"]?.toBooleanStrictOrNull() ?: agent.profile.wantsJobHelp,
-
-                                mainPriority = pArgs["mainPriority"] ?: agent.profile.mainPriority,
-                                secondaryPriority = pArgs["secondaryPriority"] ?: agent.profile.secondaryPriority,
-                                
-                                energyPreference = pArgs["energyPreference"] ?: agent.profile.energyPreference,
-                                dailyFocusCapacity = pArgs["dailyFocusCapacity"]?.toIntOrNull() ?: agent.profile.dailyFocusCapacity,
-                                sleepTime = pArgs["sleepTime"] ?: agent.profile.sleepTime,
-                                wakeTime = pArgs["wakeTime"] ?: agent.profile.wakeTime,
-                                // Save Verbal Schedule as Summary
-                                classSchedule = pArgs["classSchedule"]?.let { mapOf("Summary" to it) } ?: agent.profile.classSchedule,
-                                
-                                needsJob = pArgs["needsJob"]?.toBooleanStrictOrNull() ?: agent.profile.needsJob,
-                                workHoursPerWeek = pArgs["workHoursPerWeek"]?.toDoubleOrNull() ?: agent.profile.workHoursPerWeek,
-                                
-                                commuteDuration = pArgs["commuteDuration"] ?: agent.profile.commuteDuration,
-                                commuteMap = if (newCommuteMap.isNotEmpty()) newCommuteMap else agent.profile.commuteMap,
-                                
-                                protectedTime = null, // Legacy field deprecated
-                                nonNegotiables = if (newNonNegotiables.isNotEmpty()) newNonNegotiables else agent.profile.nonNegotiables,
-                                customCommitments = if (newCustomCommitments.isNotEmpty()) newCustomCommitments else agent.profile.customCommitments,
-                                
-                                learningStyle = pArgs["learningStyle"] ?: agent.profile.learningStyle,
-                                failureCause = pArgs["failureCause"] ?: agent.profile.failureCause,
-                                
-                                financialStakes = pArgs["financialStakes"] ?: agent.profile.financialStakes,
-                                careerAmbition = pArgs["careerAmbition"] ?: agent.profile.careerAmbition,
-                                targetCgpa = pArgs["targetCgpa"] ?: agent.profile.targetCgpa,
-                                stressResponse = if (pArgs["failureCause"]?.contains("DISTRACTION", true) == true) "Avoid" 
-                                                 else if (pArgs["failureCause"]?.contains("CLARITY", true) == true) "Freeze"
-                                                 else agent.profile.stressResponse
-                            )
-                            
-                            println("🧠 Agent Logic: Updating Profile -> $profileUpdate")
-                            // 5. Save to Local Persistence
-                            agent.updateProfile(profileUpdate)
-                            
-                            // 🔄 RE-CALCULATE VIA FLOW ENGINE (Deterministic State Machine)
-                            val nextStep = GenesisFlow.getNextStep(agent.profile)
-                            
-                            println("🤖 Flow Engine: User answered '${pArgs.keys}', Next Step: ${nextStep.fieldId}")
-                            
-                            reasoningEngine.sendToolResponse(
-                                toolName = toolCall.name,
-                                toolId = toolCall.id,
-                                response = mapOf(
-                                    "status" to "Profile Updated",
-                                    "system_instruction" to nextStep.instruction
+                                reasoningEngine.sendToolResponse(
+                                    toolName = toolCall.name,
+                                    toolId = toolCall.id,
+                                    response = mapOf("result" to "Field saved successfully.")
                                 )
-                            )
+                            } else {
+                                reasoningEngine.sendToolResponse(
+                                    toolName = toolCall.name,
+                                    toolId = toolCall.id,
+                                    response = mapOf("error" to "Missing field or value")
+                                )
+                            }
                             
-                        } else if (toolCall.name == "complete_interview") {
+                        } else if (toolCall.name == "endInterview") {
                             println("✅ Interview Complete Triggered via Tool")
                             
                             // Final Save
@@ -312,10 +205,11 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                                 profileStorage.saveProfile(agent.profile)
                             }
 
-                             uiState = uiState.copy(isComplete = true)
+                             withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                uiState = uiState.copy(isComplete = true)
+                             }
                              
-                             // ⚡ SEND TOOL RESPONSE
-                             reasoningEngine.sendToolResponse("complete_interview", mapOf("success" to true), toolCall.id)
+                             reasoningEngine.sendToolResponse("endInterview", mapOf("result" to "Interview ended."), toolCall.id)
                         }
                     }
                 }
