@@ -440,19 +440,7 @@ class GeminiReasoningEngine(
         val argsObj = funcCall["args"]?.jsonObject
 
         val argsMap = argsObj?.entries?.associate { (key, value) ->
-            // FIX: Handle Complex Types (Arrays/Objects) gracefully by stringifying them.
-            // Using `jsonPrimitive` on an Array throws an exception.
-            val safeValue = try {
-                when (value) {
-                    is kotlinx.serialization.json.JsonPrimitive -> value.contentOrNull ?: value.toString()
-                    is kotlinx.serialization.json.JsonArray -> value.toString() // Keep as JSON Array String
-                    is kotlinx.serialization.json.JsonObject -> value.toString() // Keep as JSON Object String
-                    else -> value.toString()
-                }
-            } catch (e: Exception) {
-               value.toString() // Fallback
-            }
-            key to safeValue
+            key to (value.jsonPrimitive.contentOrNull ?: value.toString())
         }
 
         if (name.isNotEmpty()) {
