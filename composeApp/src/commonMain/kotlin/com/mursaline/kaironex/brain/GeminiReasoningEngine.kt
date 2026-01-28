@@ -297,251 +297,7 @@ class GeminiReasoningEngine(
         }
     }
 
-    private suspend fun DefaultClientWebSocketSession.sendHandshake(systemInstruction: String?, modelName: String, toolsConfig: String?) {
-        // Best Practice: Structured System Instructions
-        val structuredSystemInstruction = systemInstruction ?: """
-            **Persona:**
-            You are Kaironex, an advanced AI tutor. You are helpful, concise, and focused on learning.
-            
-            **Conversational Rules:**
-            1. **Listen Activey:** Wait for the user to finish fully before answering complex queries.
-            2. **Be Concise:** Give short, punchy answers unless asked for detail.
-            3. **No Robot Talk:** Speak naturally.
-            
-            **Guardrails:**
-            - Do not hallucinate facts.
-            - If unsure, say "I don't know".
-        """.trimIndent()
 
-        val systemInstructionJson = """
-            "systemInstruction": {
-              "parts": [
-                { "text": "${structuredSystemInstruction.replace("\n", "\\n").replace("\"", "\\\"")}" }
-              ]
-            }
-        """.trimIndent()
-
-        // Best Practice: Define Tools
-        // Use provided toolsConfig, or default to Grounding if null
-        val toolsJson = toolsConfig ?: """
-            "tools": [
-                { "google_search_retrieval": {} } 
-            ]
-        """.trimIndent()
-
-        val handshakeJson2 = """
-        {
-          "setup": {
-            "model": "$modelName",
-            "generationConfig": {
-              "responseModalities": ["AUDIO"],
-              "speechConfig": {
-                "voiceConfig": {
-                  "prebuiltVoiceConfig": {
-                    "voiceName": "Puck"
-                  }
-                }
-              }
-            },
-            $systemInstructionJson,
-            $toolsJson
-          }
-        }
-        """.trimIndent()
-
-        send(Frame.Text(handshakeJson2))
-        println("✅ Handshake sent using: $modelName")
-        
-        // ⚡ AUTO-START TRIGGER
-        // We force the model to generate the first turn (Intro) by sending an empty "Start" signal.
-        // FIXED: Re-enabling Kickstart now that input streaming is Paused on Tool Call.
-        // ⚡ AUTO-START TRIGGER
-        // We force the model to generate the first turn (Intro) by sending an empty "Start" signal.
-        // FIXED: Re-enabling Kickstart now that input streaming is Paused on Tool Call.
-        
-        delay(500) // Small buffer
-        val kickstartJson = """
-        {
-            "clientContent": {
-                "turns": [
-                    {
-                        "role": "user",
-                        "parts": [ { "text": "Start Interview." } ]
-                    }
-                ],
-                "turnComplete": true
-            }
-        }
-        """.trimIndent()
-        send(Frame.Text(kickstartJson))
-        println("🚀 Kickstart Trigger Sent (Auto-Start)")
-        // println("🚀 Kickstart Disabled for Stability. Waiting for User Voice...")
-    }
-
-    suspend fun sendAudio(pcmData: ByteArray) {
-        if (session?.isActive == true) {
-            // 🔒 Guard: Do not send audio if we are processing a tool (Wait for Response)
-            val isBusy = activeToolIdsLock.withLock { isProcessingTool }
-            if (isBusy) return 
-
-            val json = """
-            {"realtimeInput": {"media_chunks": [{"mime_type": "audio/pcm", "data": "${pcmData.encodeBase64()}"}]}}
-            """.trimIndent()
-            session?.send(Frame.Text(json))
-        }
-    }
-    
-    private suspend fun DefaultClientWebSocketSession.onToolCall(jsonString: String) {
-        try {
-            val element = jsonParser.parseToJsonElement(jsonString)
-            
-            // 🔎 ULTRA-ROBUST SEARCH: Find any "functionCall" objects regardless of nesting
-            // This handles modelTurn -> parts -> functionCall AND serverContent -> toolCall -> functionCalls patterns.
-            
-            suspend fun findFunctionCalls(el: kotlinx.serialization.json.JsonElement) {
-                when (el) {
-                    is kotlinx.serialization.json.JsonObject -> {
-                        if ("functionCall" in el) {
-                            val fc = el["functionCall"]?.jsonObject
-                            handleFunc(fc)
-                        } else if ("functionCalls" in el) {
-                            val calls = el["functionCalls"]?.jsonArray
-                            if (calls != null) {
-                                for (call in calls) {
-                                    handleFunc(call.jsonObject)
-                                }
-                            }
-                        } else {
-                            for (v in el.values) {
-                                findFunctionCalls(v)
-                            }
-                        }
-                    }
-                    is kotlinx.serialization.json.JsonArray -> {
-                        for (item in el) {
-                            findFunctionCalls(item)
-                        }
-                    }
-                    else -> {}
-                }
-            }
-            
-            findFunctionCalls(element)
-
-        } catch (e: Exception) {
-            println("❌ Error parsing tool call: ${e.message}")
-        }
-    }
-
-    private suspend fun DefaultClientWebSocketSession.handleFunc(funcCall: kotlinx.serialization.json.JsonObject?) {
-        if (funcCall == null) return
-        val name = funcCall["name"]?.jsonPrimitive?.content ?: ""
-        val id = funcCall["id"]?.jsonPrimitive?.content ?: ""
-        val argsObj = funcCall["args"]?.jsonObject
-
-        val argsMap = argsObj?.entries?.associate { (key, value) ->
-            key to (value.jsonPrimitive.contentOrNull ?: value.toString())
-        }
-
-        if (name.isNotEmpty()) {
-            println("🛠️ Tool Call Detected: $name (ID: $id) args: $argsMap")
-            
-            // 🛑 STOP AUDIO IMMEDIATELY
-            // Prevent "Double Speak" where agent keeps talking while tool executes.
-            // This ensures a snappy "Action -> Reaction" flow.
-            audioPlayer.stop()
-
-            // 🔄 Synchronous State Lock
-            // Do NOT use launch here; we must stop audio upload IMMEDIATELY before processing next frame.
-            activeToolIdsLock.withLock {
-                isProcessingTool = true
-                if (id.isNotEmpty()) activeToolIds.add(id)
-            }
-            println("⏸️ Pausing Audio Upload for Tool Execution...")
-            launch { _toolCalls.emit(FunctionCallPart(name, argsMap, id)) }
-        }
-    }
-
-    suspend fun sendToolResponse(toolName: String, response: Map<String, Any?>, toolId: String? = null) {
-        // 🛡️ Prevent sending response for cancelled tool
-        var isCancelled = false
-        activeToolIdsLock.withLock {
-            if (toolId != null && !activeToolIds.contains(toolId)) {
-                println("🛑 IGNORING Tool Response for CANCELLED ID: $toolId")
-                isCancelled = true
-            } else {
-                if (toolId != null) activeToolIds.remove(toolId)
-                // Only resume audio if NO MORE tools are pending
-                isProcessingTool = activeToolIds.isNotEmpty()
-            }
-        }
-        if (isCancelled) return
-
-        if (session?.isActive == true) {
-            // 1. Build the Result Payload (Manual for Safety)
-            // The structure MUST be: { "tool_response": { "function_responses": [ { "id": "...", "name": "...", "response": { "result": { ... } } } ] } }
-            
-            val resultEntries = response.entries.joinToString(",") { (k, v) ->
-                val valueStr = when(v) {
-                    is String -> "\"$v\""
-                    is Number, is Boolean -> "$v"
-                    else -> "\"$v\""
-                }
-                "\"$k\": $valueStr"
-            }
-            val resultJson = "{ $resultEntries }"
-
-            val msg = """
-            {
-              "toolResponse": {
-                "functionResponses": [
-                  {
-                    "id": "$toolId",
-                    "name": "$toolName",
-                    "response": {
-                      "result": $resultJson
-                    }
-                  }
-                ]
-              }
-            }
-            """.trimIndent()
-
-            try {
-                session?.send(Frame.Text(msg))
-                println("📤 Tool Response Sent: $toolName (ID: $toolId)")
-                
-                println("📤 Tool Response Sent: $toolName (ID: $toolId)")
-                
-                // ⚡ KICKSTART REMOVED: 
-                // The Tool Response itself (with system_instruction) is sufficient to trigger the model.
-                // Sending a secondary "." causes repetition / race conditions.
-                /*
-                delay(200) 
-                
-                val kickstart = """
-                {
-                  "clientContent": {
-                    "turns": [
-                      {
-                        "role": "user",
-                        "parts": [ { "text": "." } ]
-                      }
-                    ],
-                    "turnComplete": true
-                  }
-                }
-                """.trimIndent()
-                session?.send(Frame.Text(kickstart))
-                println("🚀 Tool-Response Kickstart Sent (Forcing Audio with '.')")
-                */
-                
-            } catch (e: Exception) {
-                // Should not crash the app if socket is closed during a race condition
-                println("❌ Failed to send tool response: ${e.message} (Ignored)")
-            }
-        }
-    }
 
 
     suspend fun sendContextUpdate(message: String) {
@@ -572,9 +328,217 @@ class GeminiReasoningEngine(
     }
 
     suspend fun disconnect() {
-
         session?.close()
         _connectionState.value = ConnectionState.Disconnected
+    }
+    
+    // --- PRIVATE HELPERS MOVED BACK INSIDE CLASS ---
+
+    private suspend fun DefaultClientWebSocketSession.sendHandshake(systemInstruction: String?, modelName: String, toolsConfig: String?) {
+        // 1. Define the Silent Sync Protocol
+        val syncProtocol = """
+            
+            **CRITICAL REAL-TIME PROTOCOL:**
+            - When a tool executes, you will receive the Tool Result followed immediately by the text "[SYSTEM_SYNC]".
+            - **RULE:** Do NOT read out "[SYSTEM_SYNC]". Do NOT ask "What is this?".
+            - **ACTION:** Treat "[SYSTEM_SYNC]" as an immediate command to verbalize the tool's output to the student naturally.
+        """.trimIndent()
+
+        // Combine instructions
+        val baseInstruction = systemInstruction ?: """
+            **Persona:**
+            You are Kaironex, an advanced AI tutor.
+        """.trimIndent()
+        
+        val finalInstruction = baseInstruction + syncProtocol
+
+        val systemInstructionJson = """
+            "systemInstruction": {
+              "parts": [
+                { "text": "${finalInstruction.replace("\n", "\\n").replace("\"", "\\\"")}" }
+              ]
+            }
+        """.trimIndent()
+
+        val toolsJson = toolsConfig ?: """
+            "tools": [
+                { "google_search_retrieval": {} } 
+            ]
+        """.trimIndent()
+
+        val handshakeJson2 = """
+        {
+          "setup": {
+            "model": "$modelName",
+            "generationConfig": {
+              "responseModalities": ["AUDIO"],
+              "speechConfig": {
+                "voiceConfig": {
+                  "prebuiltVoiceConfig": {
+                    "voiceName": "Puck"
+                  }
+                }
+              }
+            },
+            $systemInstructionJson,
+            $toolsJson
+          }
+        }
+        """.trimIndent()
+
+        send(Frame.Text(handshakeJson2))
+        println("✅ Handshake sent using: $modelName")
+        
+        delay(500) // Small buffer
+        val kickstart = """
+        {
+            "clientContent": {
+                "turns": [
+                    {
+                        "role": "user",
+                        "parts": [ { "text": ". Start Interview." } ]
+                    }
+                ],
+                "turnComplete": true
+            }
+        }
+        """.trimIndent()
+        send(Frame.Text(kickstart))
+        println("🚀 Kickstart Trigger Sent (Auto-Start)")
+    }
+
+    suspend fun sendAudio(pcmData: ByteArray) {
+        if (session?.isActive == true) {
+            val isBusy = activeToolIdsLock.withLock { isProcessingTool }
+            if (isBusy) return 
+
+            val json = """
+            {"realtimeInput": {"media_chunks": [{"mime_type": "audio/pcm", "data": "${pcmData.encodeBase64()}"}]}}
+            """.trimIndent()
+            session?.send(Frame.Text(json))
+        }
+    }
+    
+    private suspend fun DefaultClientWebSocketSession.onToolCall(jsonString: String) {
+        try {
+            val element = jsonParser.parseToJsonElement(jsonString)
+            suspend fun findFunctionCalls(el: kotlinx.serialization.json.JsonElement) {
+                when (el) {
+                    is kotlinx.serialization.json.JsonObject -> {
+                        if ("functionCall" in el) {
+                            val fc = el["functionCall"]?.jsonObject
+                            handleFunc(fc)
+                        } else if ("functionCalls" in el) {
+                            val calls = el["functionCalls"]?.jsonArray
+                            if (calls != null) {
+                                for (call in calls) handleFunc(call.jsonObject)
+                            }
+                        } else {
+                            for (v in el.values) findFunctionCalls(v)
+                        }
+                    }
+                    is kotlinx.serialization.json.JsonArray -> {
+                        for (item in el) findFunctionCalls(item)
+                    }
+                    else -> {}
+                }
+            }
+            findFunctionCalls(element)
+        } catch (e: Exception) {
+            println("❌ Error parsing tool call: ${e.message}")
+        }
+    }
+
+    private suspend fun DefaultClientWebSocketSession.handleFunc(funcCall: kotlinx.serialization.json.JsonObject?) {
+        if (funcCall == null) return
+        val name = funcCall["name"]?.jsonPrimitive?.content ?: ""
+        val id = funcCall["id"]?.jsonPrimitive?.content ?: ""
+        val argsObj = funcCall["args"]?.jsonObject
+
+        val argsMap = argsObj?.entries?.associate { (key, value) ->
+            key to (value.jsonPrimitive.contentOrNull ?: value.toString())
+        }
+
+        if (name.isNotEmpty()) {
+            println("🛠️ Tool Call Detected: $name (ID: $id) args: $argsMap")
+            
+            audioPlayer.stop()
+
+            activeToolIdsLock.withLock {
+                isProcessingTool = true
+                if (id.isNotEmpty()) activeToolIds.add(id)
+            }
+            println("⏸️ Pausing Audio Upload for Tool Execution...")
+            launch { _toolCalls.emit(FunctionCallPart(name, argsMap, id)) }
+        }
+    }
+
+    suspend fun sendToolResponse(toolName: String, response: Map<String, Any?>, toolId: String? = null) {
+        var isCancelled = false
+        activeToolIdsLock.withLock {
+            if (toolId != null && !activeToolIds.contains(toolId)) {
+                isCancelled = true
+            } else {
+                if (toolId != null) activeToolIds.remove(toolId)
+                isProcessingTool = activeToolIds.isNotEmpty()
+            }
+        }
+        if (isCancelled) return
+
+        if (session?.isActive == true) {
+            val resultEntries = response.entries.joinToString(",") { (k, v) ->
+                val valueStr = when(v) {
+                    is String -> "\"$v\""
+                    is Number, is Boolean -> "$v"
+                    else -> "\"$v\""
+                }
+                "\"$k\": $valueStr"
+            }
+            val resultJson = "{ $resultEntries }"
+
+            val msg = """
+            {
+              "toolResponse": {
+                "functionResponses": [
+                  {
+                    "id": "$toolId",
+                    "name": "$toolName",
+                    "response": {
+                      "result": $resultJson
+                    }
+                  }
+                ]
+              }
+            }
+            """.trimIndent()
+
+            try {
+                session?.send(Frame.Text(msg))
+                println("📤 Tool Response Sent: $toolName (ID: $toolId)")
+                
+                // 2. THE SILENT KICKSTART
+                delay(50) 
+                
+                val kickstart = """
+                {
+                  "clientContent": {
+                    "turns": [
+                      {
+                        "role": "user",
+                        "parts": [ { "text": "[SYSTEM_SYNC]" } ]
+                      }
+                    ],
+                    "turnComplete": true
+                  }
+                }
+                """.trimIndent()
+                session?.send(Frame.Text(kickstart))
+                println("🚀 Silent Sync Triggered (Avoiding Deadlock)")
+                
+            } catch (e: Exception) {
+                println("❌ Failed to send tool response: ${e.message} (Ignored)")
+            }
+        }
     }
 
     sealed class ConnectionState {
