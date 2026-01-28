@@ -513,10 +513,10 @@ class GeminiReasoningEngine(
                 
                 println("📤 Tool Response Sent: $toolName (ID: $toolId)")
                 
-                // ⚡ KICKSTART RESTORED (With Delay): 
-                // The API requires a user-turn to resume generation after a Tool Response in some contexts.
-                // We add a small delay to ensure the Tool Response is processed first.
-                // We use "." as a neutral signal.
+                // ⚡ KICKSTART REMOVED: 
+                // The Tool Response itself (with system_instruction) is sufficient to trigger the model.
+                // Sending a secondary "." causes repetition / race conditions.
+                /*
                 delay(200) 
                 
                 val kickstart = """
@@ -534,6 +534,7 @@ class GeminiReasoningEngine(
                 """.trimIndent()
                 session?.send(Frame.Text(kickstart))
                 println("🚀 Tool-Response Kickstart Sent (Forcing Audio with '.')")
+                */
                 
             } catch (e: Exception) {
                 // Should not crash the app if socket is closed during a race condition

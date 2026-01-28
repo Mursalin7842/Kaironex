@@ -300,7 +300,7 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                                 toolId = toolCall.id,
                                 response = mapOf(
                                     "status" to "Profile Updated",
-                                    "system_instruction" to "CRITICAL: Acknowledge briefly (Got it), then ASK: '${nextStep.instruction}'. DO NOT ask anything else."
+                                    "system_instruction" to nextStep.instruction
                                 )
                             )
                             

@@ -14,89 +14,89 @@ object GenesisFlow {
         
         // --- 1. ACADEMIC BASE (The Foundation) ---
         if (profile.university.isBlank()) 
-            return ask("university", "Ask: 'First, which university are you currently attending?'")
+            return ask("university", "First, which university are you currently attending?")
         
         if (profile.major.isNullOrBlank()) 
-            return ask("major", "Ask: 'Nice. And what is your major or department?'")
+            return ask("major", "Nice. And what is your major or department?")
         
         if (profile.totalSemesters.isNullOrBlank()) 
-            return ask("totalSemesters", "Ask: 'How many total semesters are in your program?'")
+            return ask("totalSemesters", "How many total semesters are in your program?")
             
         if (profile.semester.isNullOrBlank()) 
-            return ask("semester", "Ask: 'Which semester are you currently in?'")
+            return ask("semester", "Which semester are you currently in?")
 
         if (profile.currentCgpa.isNullOrBlank()) 
-             return ask("currentCgpa", "Ask: 'What is your current CGPA until now?'")
+             return ask("currentCgpa", "What is your current CGPA until now?")
 
         // --- 2. INTERNATIONAL STATUS (Crucial Branch) ---
         if (profile.isInternationalStudent == null) 
-            return ask("isInternationalStudent", "Ask: 'Are you studying as an international student?'")
+            return ask("isInternationalStudent", "Are you studying as an international student?")
 
         if (profile.isInternationalStudent == true) {
             if (profile.homeCountry.isNullOrBlank()) 
-                return ask("homeCountry", "Ask: 'Where are you originally from?'")
+                return ask("homeCountry", "Where are you originally from?")
             if (profile.currentCountry.isNullOrBlank()) 
-                return ask("currentCountry", "Ask: 'And which country are you studying in right now?'")
+                return ask("currentCountry", "And which country are you studying in right now?")
             if (profile.visaStatus.isNullOrBlank()) 
-                return ask("visaStatus", "Ask: 'What is your visa status? (for example F1, Student Route)'")
+                return ask("visaStatus", "What is your visa status? (for example F1, Student Route)")
             if (profile.workRestrictions.isNullOrBlank()) 
-                return ask("workRestrictions", "Ask: 'Do you have any strict work hour limits I should know about?'")
+                return ask("workRestrictions", "Do you have any strict work hour limits I should know about?")
         }
 
         // --- 3. JOB & CAREER (Complex Branch) ---
         if (profile.hasJob == null) 
-            return ask("hasJob", "Ask: 'Do you currently have a part-time job or internship alongside your studies?'")
+            return ask("hasJob", "Do you currently have a part-time job or internship alongside your studies?")
 
         if (profile.hasJob == true) {
             // Employed Logic
             if (profile.jobDescription.isNullOrBlank()) 
-                return ask("jobDescription", "Ask: 'That is hardworking. What is your role? (for example Barista, Developer)'")
+                return ask("jobDescription", "That is hardworking. What is your role? (for example Barista, Developer)")
             
             if (profile.jobSchedule.isNullOrBlank()) 
-                return ask("jobSchedule", "Ask: 'What are your usual work timings? (for example 9am to 5pm)'")
+                return ask("jobSchedule", "What are your usual work timings? (for example 9am to 5pm)")
 
              if (profile.jobWorkDays.isNullOrBlank()) 
-                return ask("jobWorkDays", "Ask: 'And which days of the week do you work?'")
+                return ask("jobWorkDays", "And which days of the week do you work?")
             
             if (profile.jobCommuteTime.isNullOrBlank()) 
-                return ask("jobCommuteTime", "Ask: 'How long does it take to get from Uni to your Job?'")
+                return ask("jobCommuteTime", "How long does it take to get from Uni to your Job?")
         } else {
             // Unemployed Logic
             if (profile.wantsJobHelp == null) 
-                return ask("wantsJobHelp", "Ask: 'I see. Would you like Kaironex to help you find a suitable job?'")
+                return ask("wantsJobHelp", "I see. Would you like Kaironex to help you find a suitable job?")
         }
 
         // --- 4. COMMUTE (If not captured in Job) ---
         // Note: Logic above captures Uni-Job, here we want general Uni commute
         if (profile.commuteDuration.isNullOrBlank()) 
-            return ask("commuteDuration", "Ask: 'Roughly how long is your daily commute to university?'")
+            return ask("commuteDuration", "Roughly how long is your daily commute to university?")
 
         // --- 5. STRATEGY & GOALS ---
         val priorityPrompt = if (profile.hasJob == true) "Improving Job Performance" else "Getting a Job"
         if (profile.mainPriority.isNullOrBlank()) 
-            return ask("mainPriority", "Ask: 'Moving on. What is your #1 priority right now: $priorityPrompt or Maximizing CGPA?'")
+            return ask("mainPriority", "Moving on. What is your #1 priority right now: $priorityPrompt or Maximizing CGPA?")
         
         // Removed targetCgpa/financialStakes for brevity as per user "Minimise Load" request,
         // but adding Energy/Biology as they are key features
         
         // --- 6. BIOLOGY ---
         if (profile.energyPreference.isNullOrBlank()) 
-            return ask("energyPreference", "Ask: 'Let's check your biology. Are you a Morning Bird or a Night Owl?'")
+            return ask("energyPreference", "Let's check your biology. Are you a Morning Bird or a Night Owl?")
             
          if (profile.dailyFocusCapacity == null)
-            return ask("dailyFocusCapacity", "Ask: 'Realistically, how many hours of deep focus can you manage per day?'")
+            return ask("dailyFocusCapacity", "Realistically, how many hours of deep focus can you manage per day?")
 
         // --- 7. CONSTRAINTS ---
         if (profile.learningStyle.isNullOrBlank()) 
-            return ask("learningStyle", "Ask: 'Do you learn better by Watching Videos or Reading Documentation?'")
+            return ask("learningStyle", "Do you learn better by Watching Videos or Reading Documentation?")
 
         if (profile.failureCause.isNullOrBlank()) 
-            return ask("failureCause", "Ask: 'Last one: What usually stops you from studying? Is it Phone Distraction, Fatigue, or Confusion?'")
+            return ask("failureCause", "Last one: What usually stops you from studying? Is it Phone Distraction, Fatigue, or Confusion?")
 
         // --- COMPLETE ---
         return InterviewStep(
             fieldId = "DONE",
-            instruction = "Say: 'Perfect! Profile Calibrated. 🚀 I have everything I need. Your engine is ready. Just say Hey Kaironex whenever you need me.'",
+            instruction = "Perfect! Profile Calibrated. 🚀 I have everything I need. Your engine is ready. Just say Hey Kaironex whenever you need me.",
             isTerminal = true
         )
     }
