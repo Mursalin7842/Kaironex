@@ -119,21 +119,29 @@ class GenesisAgent {
         newData.stressResponse?.let { profile = profile.copy(stressResponse = it) }
         
         // Auto-advance stage if data is sufficient
-        val missing = profile.getMissingFields(stage)
-        if (missing.isEmpty() && stage != GenesisStage.COMPLETE) {
-            stage = getNextStage(stage)
+        val missing = profile.getMissingFields()
+        // Determine Stage based on sequential logic (Reverse engineering the stage from missing fields)
+        // Actually, getMissingFields returns fields from the FIRST incomplete section.
+        // We can map the *first missing field* to a Stage to keep UI in sync.
+        
+        if (missing.isEmpty()) {
+            stage = GenesisStage.COMPLETE
+        } else {
+            // Heuristic: Map missing field to stage
+            val first = missing.first()
+            stage = when {
+                first == "university" || first == "major" || first == "semester" || first == "currentCgpa" || first == "isInternationalStudent" -> GenesisStage.ACADEMIC
+                first == "hasJob" || first == "wantsJobHelp" || first == "jobDescription" || first == "commuteDuration" -> GenesisStage.GOALS
+                first == "energyPreference" || first == "dailyFocusCapacity" -> GenesisStage.RHYTHM
+                first == "nonNegotiables" || first == "learningStyle" || first == "stressResponse" -> GenesisStage.CONSTRAINTS
+                first == "failureCause" -> GenesisStage.CONFIRMATION
+                else -> GenesisStage.ACADEMIC // Default
+            }
         }
     }
 
+    // getNextStage is no longer needed as we calculate dynamic stage above
     private fun getNextStage(current: GenesisStage): GenesisStage {
-        return when (current) {
-            GenesisStage.IDENTITY -> GenesisStage.ACADEMIC
-            GenesisStage.ACADEMIC -> GenesisStage.GOALS
-            GenesisStage.GOALS -> GenesisStage.RHYTHM
-            GenesisStage.RHYTHM -> GenesisStage.CONSTRAINTS
-            GenesisStage.CONSTRAINTS -> GenesisStage.CONFIRMATION
-            GenesisStage.CONFIRMATION -> GenesisStage.COMPLETE
-            GenesisStage.COMPLETE -> GenesisStage.COMPLETE
-        }
+        return GenesisStage.COMPLETE // Placeholder or remove
     }
 }

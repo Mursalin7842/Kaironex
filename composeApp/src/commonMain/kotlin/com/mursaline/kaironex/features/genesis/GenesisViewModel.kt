@@ -97,7 +97,7 @@ class GenesisViewModel : ViewModel(), KoinComponent {
             agentName = wakeWord.ifEmpty { "Kaironex" },
             user = userName,
             stage = agent.stage,
-            missing = agent.profile.getMissingFields(agent.stage),
+            missing = agent.profile.getMissingFields(),
             rationale = "Let's get you set up to optimize your student life.",
             hasJob = agent.profile.hasJob
         )
@@ -295,26 +295,25 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                                 profileStorage.saveProfile(agent.profile)
                             }
 
-                            // 3. 🔧 THE FIX: INJECT STATE *INTO* THE TOOL RESPONSE
-                            // This ensures the model sees the status IMMEDIATELY as part of the action result,
-                            // avoiding the latency and race conditions of sending a separate User Turn.
-                            val currentStage = agent.stage
-                            val missingFields = agent.profile.getMissingFields(currentStage)
+                            // 🔄 RE-CALCULATE MISSING FIELDS (State-Driven Prompting)
+                            val nextMissing = agent.profile.getMissingFields()
                             
-                            // Bundle the status into the response payload
-                            // Compressed for Latency:
-                            val contextMsg = "STATUS: Saved. Stage: $currentStage. Missing: $missingFields. ACTION: Ask for MISSING."
+                            // 📤 Send Response with Next Steps
+                            // ✂️ CONTEXT PRUNING: Send only what is needed
+                            val prunedContext = agent.profile.getRelevantContext(nextMissing)
                             
-                            val responsePayload = mapOf(
-                                "success" to true,
-                                "system_status" to contextMsg
+                            reasoningEngine.sendToolResponse(
+                                toolName = toolCall.name,
+                                toolId = toolCall.id,
+                                response = mapOf(
+                                    "status" to "Profile Updated",
+                                    // "updated_fields" to pArgs.keys.joinToString(", "), // REMOVED to save tokens
+                                    "pruned_context" to prunedContext.toString(), 
+                                    "next_missing_fields" to nextMissing.joinToString(", "),
+                                    "current_stage" to agent.stage.name,
+                                    "system_instruction" to "Say 'Got it', then ASK: ${nextMissing.firstOrNull() ?: "nothing, done"}. NO HEADERS."
+                                )
                             )
-
-                            // ⚡ SEND TOOL RESPONSE (Bundled)
-                            reasoningEngine.sendToolResponse("update_profile", responsePayload, toolCall.id)
-                            
-                            // REMOVED: reasoningEngine.sendContextUpdate(contextMsg) 
-                            // (This was causing the "Slow Response" / Turn Bloat)
                             
                         } else if (toolCall.name == "complete_interview") {
                             println("✅ Interview Complete Triggered via Tool")

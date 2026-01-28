@@ -17,6 +17,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
 
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -184,15 +185,15 @@ class GeminiReasoningEngine(
                                     println("❌ Tool Parse Failed: ${e.message}")
                                 }
                             }
+                            // 🔎 ROBUST JSON PARSING (Fixes truncated audio / compact JSON issues)
                             try {
-                                val json = jsonParser.parseToJsonElement(messageText).jsonObject
-                                
+                                val root = jsonParser.parseToJsonElement(messageText).jsonObject
+                                val serverContent = root["serverContent"]?.jsonObject
+
                                 // A. HANDLE INTERRUPTION
-                                if (messageText.contains("\"interrupted\": true")) {
+                                if (serverContent?.get("interrupted")?.jsonPrimitive?.booleanOrNull == true) {
                                     println("🛑 Server Confirmed Interruption. Resetting.")
                                     isInterruptedLocally = false
-                                    // 🔄 Sequential Update: Do NOT launch. 
-                                    // We need this state cleared immediately before processing next frames.
                                     activeToolIdsLock.withLock {
                                         activeToolIds.clear()
                                         isProcessingTool = false
@@ -201,10 +202,9 @@ class GeminiReasoningEngine(
                                 }
 
                                 // B. HANDLE TOOL CANCELLATION
-                                val toolCancellation = json["toolCallCancellation"]?.jsonObject
+                                val toolCancellation = root["toolCallCancellation"]?.jsonObject
                                 if (toolCancellation != null) {
                                     val ids = toolCancellation["ids"]?.jsonArray
-                                    // 🔄 Sequential Update: Ensure cancellation is recorded BEFORE any response logic.
                                     activeToolIdsLock.withLock {
                                         ids?.forEach { 
                                             val id = it.jsonPrimitive.content
@@ -215,49 +215,52 @@ class GeminiReasoningEngine(
                                     }
                                 }
 
-                                // C. HANDLE FUNCTION CALL
+                                // C. PROCESSING CONTENT (Audio, Text, Tools)
+                                if (serverContent != null) {
+                                    val modelTurn = serverContent["modelTurn"]?.jsonObject
+                                    val parts = modelTurn?.get("parts")?.jsonArray
+
+                                    parts?.forEach { part ->
+                                        val pObj = part.jsonObject
+                                        
+                                        // 1. Audio (inlineData)
+                                        val inlineData = pObj["inlineData"]?.jsonObject
+                                        if (inlineData != null) {
+                                            val mimeType = inlineData["mimeType"]?.jsonPrimitive?.content ?: ""
+                                            if (mimeType.startsWith("audio")) {
+                                                val dataBase64 = inlineData["data"]?.jsonPrimitive?.content
+                                                if (dataBase64 != null && !isInterruptedLocally) {
+                                                     val pcm = dataBase64.decodeBase64Bytes()
+                                                     kotlinx.coroutines.withContext(audioDispatcher) {
+                                                         audioPlayer.play(pcm)
+                                                     }
+                                                }
+                                            }
+                                        }
+
+                                        // 2. Function Calls
+                                        if ("functionCall" in pObj) {
+                                            onToolCall(pObj.toString()) // Reuse existing parser or pass object
+                                        }
+                                    }
+                                }
+                                
+                                // D. SECONDARY TOOL SEARCH (Legacy / Root level)
                                 if (messageText.contains("\"functionCall\"") || messageText.contains("\"functionCalls\"")) {
+                                    // Keep this as backup or for non-standard structures
                                     onToolCall(messageText)
                                 }
 
-                                // D. HANDLE TURN COMPLETE
-                                if (messageText.contains("\"turnComplete\": true")) {
-                                     // 🛑 End of Server Audio. 
-                                     // We tell the player to "drain" (finish playing what it has) then pause.
-                                     // This prevents "Buffer Underrun" warnings during the User's turn.
+                                // E. HANDLE TURN COMPLETE (After Audio)
+                                if (serverContent?.get("turnComplete")?.jsonPrimitive?.booleanOrNull == true) {
                                      kotlinx.coroutines.withContext(audioDispatcher) {
                                          audioPlayer.endStream()
                                      }
                                 }
-
+                            
                             } catch (e: Exception) {
-                                // If not JSON or other error, just log and continue
-                            }
-
-                            if (messageText.contains("audio/pcm")) {
-                                if (isInterruptedLocally) {
-                                    // println("👻 Dropping Ghost Audio Packet (Interrupted)")
-                                    continue // SKIP THIS PACKET
-                                }
-                                
-                                try {
-                                    val dataMarker = "\"data\": \""
-                                    val startIndex = messageText.indexOf(dataMarker)
-                                    if (startIndex != -1) {
-                                        val startQuote = startIndex + dataMarker.length
-                                        val endQuote = messageText.indexOf("\"", startQuote)
-                                        if (endQuote != -1) {
-                                            val base64 = messageText.substring(startQuote, endQuote)
-                                            val pcm = base64.decodeBase64Bytes()
-                                            // Offload blocking audio write to dedicated thread
-                                            kotlinx.coroutines.withContext(audioDispatcher) {
-                                                audioPlayer.play(pcm)
-                                            }
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    println("❌ Audio Decode Error: ${e.message}")
-                                }
+                                println("❌ Error Parsing Message: ${e.message}")
+                                e.printStackTrace()
                             }
                         }
 
@@ -437,11 +440,29 @@ class GeminiReasoningEngine(
         val argsObj = funcCall["args"]?.jsonObject
 
         val argsMap = argsObj?.entries?.associate { (key, value) ->
-            key to (value.jsonPrimitive.contentOrNull ?: value.toString())
+            // FIX: Handle Complex Types (Arrays/Objects) gracefully by stringifying them.
+            // Using `jsonPrimitive` on an Array throws an exception.
+            val safeValue = try {
+                when (value) {
+                    is kotlinx.serialization.json.JsonPrimitive -> value.contentOrNull ?: value.toString()
+                    is kotlinx.serialization.json.JsonArray -> value.toString() // Keep as JSON Array String
+                    is kotlinx.serialization.json.JsonObject -> value.toString() // Keep as JSON Object String
+                    else -> value.toString()
+                }
+            } catch (e: Exception) {
+               value.toString() // Fallback
+            }
+            key to safeValue
         }
 
         if (name.isNotEmpty()) {
             println("🛠️ Tool Call Detected: $name (ID: $id) args: $argsMap")
+            
+            // 🛑 STOP AUDIO IMMEDIATELY
+            // Prevent "Double Speak" where agent keeps talking while tool executes.
+            // This ensures a snappy "Action -> Reaction" flow.
+            audioPlayer.stop()
+
             // 🔄 Synchronous State Lock
             // Do NOT use launch here; we must stop audio upload IMMEDIATELY before processing next frame.
             activeToolIdsLock.withLock {
@@ -501,6 +522,31 @@ class GeminiReasoningEngine(
             try {
                 session?.send(Frame.Text(msg))
                 println("📤 Tool Response Sent: $toolName (ID: $toolId)")
+                
+                println("📤 Tool Response Sent: $toolName (ID: $toolId)")
+                
+                // ⚡ KICKSTART RESTORED (With Delay): 
+                // The API requires a user-turn to resume generation after a Tool Response in some contexts.
+                // We add a small delay to ensure the Tool Response is processed first.
+                // We use "." as a neutral signal.
+                delay(200) 
+                
+                val kickstart = """
+                {
+                  "clientContent": {
+                    "turns": [
+                      {
+                        "role": "user",
+                        "parts": [ { "text": "." } ]
+                      }
+                    ],
+                    "turnComplete": true
+                  }
+                }
+                """.trimIndent()
+                session?.send(Frame.Text(kickstart))
+                println("🚀 Tool-Response Kickstart Sent (Forcing Audio with '.')")
+                
             } catch (e: Exception) {
                 // Should not crash the app if socket is closed during a race condition
                 println("❌ Failed to send tool response: ${e.message} (Ignored)")

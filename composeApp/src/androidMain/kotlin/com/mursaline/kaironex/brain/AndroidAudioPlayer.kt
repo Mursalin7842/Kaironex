@@ -16,23 +16,24 @@ class AndroidAudioPlayer(context: Context) : AudioPlayer {
     private var audioTrack: AudioTrack? = null
     @Volatile private var isPlaying = false
     private val lock = Any()
-    private var bufferedBytes = 0
+    
+    // Track total bytes written to calculate pending buffer
+    private var totalBytesWritten = 0L
 
     override fun play(pcmData: ByteArray) {
         synchronized(lock) {
             try {
-                // 0. Safety Check
                 if (pcmData.isEmpty()) return
 
-                // 1. Initialize Track if needed (with 8x capacity for safety)
+                // 1. Initialize Track if needed
                 if (audioTrack == null) {
                     val minBufferSize = AudioTrack.getMinBufferSize(
                         sampleRate,
                         AudioFormat.CHANNEL_OUT_MONO,
                         AudioFormat.ENCODING_PCM_16BIT
                     )
-                    // Massive buffer to absorb network jitter
-                    val safeBufferSize = maxOf(minBufferSize * 8, JITTER_THRESHOLD_BYTES * 2)
+                    // INCREASED BUFFER: 8x Min Buffer or 3s worth of audio to handle slow networks
+                    val safeBufferSize = maxOf(minBufferSize * 8, JITTER_THRESHOLD_BYTES * 3)
 
                     audioTrack = AudioTrack.Builder()
                         .setAudioAttributes(
@@ -53,42 +54,49 @@ class AndroidAudioPlayer(context: Context) : AudioPlayer {
                         .build()
                         
                     Log.d("KaironexAudio", "🔊 AudioTrack Initialized at $sampleRate Hz (Buffer: $safeBufferSize bytes)")
+                    totalBytesWritten = 0L // Reset on new track
                 }
 
-                // 2. Write Data with Resilience
+                // 2. Write Data
                 val result = audioTrack?.write(pcmData, 0, pcmData.size) ?: 0
                 if (result < 0) {
                      println("⚠️ Audio Write Failed (Code: $result). Recreating Track.")
-                     // If write fails (e.g. track dead), valid strategy is to null it so it rebuilds next frame
+                     try { audioTrack?.release() } catch(e:Exception){}
                      audioTrack = null
                      return
                 }
-                bufferedBytes += result
+                totalBytesWritten += result
 
-                // 3. THE "GREEDY" START LOGIC
+                // 3. Calculate Actual Buffer Health
+                // Head position is in FRAMES. 1 Frame = 2 Bytes (16-bit Mono)
+                // WARN: playbackHeadPosition wrap-around is possible but unlikely in one session (hours of audio)
+                val playedFrames = audioTrack?.playbackHeadPosition?.toLong() ?: 0L
+                val playedBytes = playedFrames * 2
+                val pendingBytes = totalBytesWritten - playedBytes
+
+                // 4. Smart Playback Control
                 if (!isPlaying) {
-                     // Don't start until we have 1.5 SECONDS of audio
-                    if (bufferedBytes >= JITTER_THRESHOLD_BYTES) {
-                        println("🚀 Buffer Healthy ($bufferedBytes bytes). Starting Playback.")
+                    // Start Threshold: Wait for solid buffer (Full Jitter Threshold)
+                    if (pendingBytes >= JITTER_THRESHOLD_BYTES) {
+                        println("🚀 Buffer Healthy ($pendingBytes bytes >= $JITTER_THRESHOLD_BYTES). Starting Playback.")
                         audioTrack?.play()
                         isPlaying = true
                     }
                 } else {
-                    // 4. UNDERRUN RECOVERY
-                    if (audioTrack?.playState == AudioTrack.PLAYSTATE_PAUSED) {
-                        if (bufferedBytes >= JITTER_THRESHOLD_BYTES / 2) { // Wait for 50% refill
-                            println("⚠️ Underrun Recovered. Resuming.")
-                            audioTrack?.play()
-                        }
+                    // RECOVERY: If paused (underrun behavior) or barely playing
+                    // If track is stopped/paused due to starvation, we wait for *some* buffer before resuming.
+                    // We check loop state.
+                    if (audioTrack?.playState != AudioTrack.PLAYSTATE_PLAYING && pendingBytes >= JITTER_THRESHOLD_BYTES / 4) {
+                        println("⚠️ Auto-Resume after refill ($pendingBytes bytes).")
+                        audioTrack?.play()
                     }
                 }
             } catch (e: Exception) {
                 println("⚠️ Audio Write Error: ${e.message}")
-                 // Force reset on critical error
                 try { audioTrack?.release() } catch(e:Exception){}
                 audioTrack = null
                 isPlaying = false
-                bufferedBytes = 0
+                totalBytesWritten = 0L
             }
         }
     }
@@ -97,13 +105,14 @@ class AndroidAudioPlayer(context: Context) : AudioPlayer {
         synchronized(lock) {
             try {
                 if (isPlaying) {
-                    audioTrack?.pause() // Pause immediately
-                    audioTrack?.flush() // Clear buffer
+                     // Pause and flush to kill immediate sound
+                    audioTrack?.pause()
+                    audioTrack?.flush()
                 }
                 isPlaying = false
-                bufferedBytes = 0
+                totalBytesWritten = 0L // Reset counter as flush clears hardware buffer
+                // We keep the track to avoid expensive re-init
             } catch (e: Exception) {
-                // Ignore stop errors
             }
         }
     }
@@ -112,13 +121,12 @@ class AndroidAudioPlayer(context: Context) : AudioPlayer {
         synchronized(lock) {
             try {
                 if (isPlaying) {
-                     // STOP triggers the "drain" mode in AudioTrack.
-                     // It plays remaining data then pauses.
+                    // Let it drain naturally
                     audioTrack?.stop() 
                     println("🛑 Audio Stream Ended (Draining Buffer)")
                 }
-                isPlaying = false // Logic assumes stopped, let hardware drain
-                bufferedBytes = 0
+                isPlaying = false
+                // Do NOT reset totalBytesWritten here as we want it to finish playing what was written
             } catch (e: Exception) {
                 println("⚠️ Audio Drain Error: ${e.message}")
             }

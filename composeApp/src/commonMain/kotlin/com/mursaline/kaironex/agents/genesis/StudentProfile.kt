@@ -72,74 +72,101 @@ data class StudentProfile(
     val primaryStudyMaterial: String? = null,
     val stressResponse: String? = null
 ) {
-    fun getMissingFields(stage: GenesisStage): List<String> {
+    fun getMissingFields(): List<String> {
         val missing = mutableListOf<String>()
-        
-        when (stage) {
-            GenesisStage.IDENTITY -> {
-                // Introduction Phase - No data required yet
-            }
-            GenesisStage.ACADEMIC -> {
-                if (university.isBlank()) missing.add("university")
-                else if (major.isNullOrBlank()) missing.add("major")
-                else if (totalSemesters.isNullOrBlank()) missing.add("totalSemesters")
-                else if (semester.isNullOrBlank()) missing.add("semester")
-                else if (currentCgpa.isNullOrBlank()) missing.add("currentCgpa")
-                else if (isInternationalStudent == null) missing.add("isInternationalStudent")
-                else if (isInternationalStudent == true) {
-                    if (homeCountry.isNullOrBlank()) missing.add("homeCountry")
-                    else if (currentCountry.isNullOrBlank()) missing.add("currentCountry")
-                    else if (visaStatus.isNullOrBlank()) missing.add("visaStatus")
-                    else if (workRestrictions.isNullOrBlank()) missing.add("workRestrictions")
-                }
-            }
-            GenesisStage.GOALS -> {
-                // Job Life
-                // Job Life
-                if (hasJob == null) missing.add("hasJob")
-                else if (hasJob) {
-                    if (jobDescription.isNullOrBlank()) missing.add("jobDescription")
-                    else if (jobSchedule.isNullOrBlank()) missing.add("jobSchedule")
-                    else if (jobWorkDays.isNullOrBlank()) missing.add("jobWorkDays")
-                } 
-                else if (!hasJob) {
-                    if (wantsJobHelp == null) missing.add("wantsJobHelp")
-                }
 
-                // Commute (Detailed Logistics)
-                if (missing.isEmpty()) {
-                    if (!commuteMap.containsKey("HomeToUni")) missing.add("commuteMap_HomeToUni")
-                    else if (!commuteMap.containsKey("UniToHome")) missing.add("commuteMap_UniToHome")
-                    
-                    else if (hasJob == true) {
-                        if (!commuteMap.containsKey("UniToJob")) missing.add("commuteMap_UniToJob")
-                        else if (!commuteMap.containsKey("JobToHome")) missing.add("commuteMap_JobToHome")
-                    }
-                }
-                
-                // Priorities
-                if (missing.isEmpty()) {
-                    if (mainPriority.isNullOrBlank()) missing.add("mainPriority")
-                    else if (secondaryPriority.isNullOrBlank()) missing.add("secondaryPriority")
-                }
-            }
-            GenesisStage.RHYTHM -> {
-                if (energyPreference == null) missing.add("energyPreference")
-                else if (dailyFocusCapacity == null) missing.add("dailyFocusCapacity")
-                // Check if they have entered ANY schedule
-                else if (classSchedule.isEmpty()) missing.add("classSchedule_overview")
-            }
-            GenesisStage.CONSTRAINTS -> {
-                if (nonNegotiables.isEmpty() && protectedTime.isNullOrBlank()) missing.add("nonNegotiables") 
-                else if (learningStyle == null) missing.add("learningStyle")
-            }
-            GenesisStage.CONFIRMATION -> {
-               if (failureCause == null) missing.add("failureCause")
-            }
-            GenesisStage.COMPLETE -> {}
-        }
+        // 1. ACADEMIC SECTION
+        if (university.isBlank()) missing.add("university")
+        if (major.isNullOrBlank()) missing.add("major")
+        if (semester.isNullOrBlank()) missing.add("semester")
+        if (totalSemesters.isNullOrBlank()) missing.add("totalSemesters")
+        if (currentCgpa.isNullOrBlank()) missing.add("currentCgpa")
         
-        // Return only the FIRST missing field to ensure "One by One" behavior
-        return if (missing.isNotEmpty()) listOf(missing.first()) else emptyList()
+        // International Status Check
+        if (isInternationalStudent == null) missing.add("isInternationalStudent")
+        else if (isInternationalStudent) {
+             if (homeCountry.isNullOrBlank()) missing.add("homeCountry")
+             if (currentCountry.isNullOrBlank()) missing.add("currentCountry")
+             if (visaStatus.isNullOrBlank()) missing.add("visaStatus")
+             if (workRestrictions.isNullOrBlank()) missing.add("workRestrictions")
+        }
+
+        // BLOCKER: If Academic details are missing, stop here.
+        if (missing.isNotEmpty()) return missing
+
+        // 2. JOB LIFE SECTION
+        if (hasJob == null) missing.add("hasJob")
+        else if (hasJob) {
+             if (jobDescription.isNullOrBlank()) missing.add("jobDescription")
+             if (jobSchedule.isNullOrBlank()) missing.add("jobSchedule")
+             if (jobWorkDays.isNullOrBlank()) missing.add("jobWorkDays")
+             // Move commute logic here for employed people as it's critical for job context
+             if (jobCommuteTime.isNullOrBlank()) missing.add("jobCommuteTime") 
+        } 
+        else {
+             // If Unemployed
+             if (wantsJobHelp == null) missing.add("wantsJobHelp")
+        }
+
+        // BLOCKER: If Job details are missing, stop here.
+        if (missing.isNotEmpty()) return missing
+
+        // 3. LOGISTICS & COMMUTE (General)
+        // Only ask general commute if logic suggests it (e.g. from Home to Uni)
+        // For simplicity, we assume we need at least one commute leg defined if they go to uni
+        // But for "Missing Fields", let's keep it simple:
+        if (commuteDuration.isNullOrBlank()) missing.add("commuteDuration") // General "How long to uni?"
+
+        if (missing.isNotEmpty()) return missing
+
+        // 4. STRATEGY & GOALS
+        if (mainPriority.isNullOrBlank()) missing.add("mainPriority")
+        if (energyPreference.isNullOrBlank()) missing.add("energyPreference")
+        if (dailyFocusCapacity == null) missing.add("dailyFocusCapacity")
+        
+        if (missing.isNotEmpty()) return missing
+
+        // 5. CONSTRAINTS
+        if (learningStyle.isNullOrBlank()) missing.add("learningStyle")
+        if (stressResponse.isNullOrBlank()) missing.add("stressResponse")
+        if (failureCause.isNullOrBlank()) missing.add("failureCause")
+
+        return missing
+    }
+
+    // ✂️ CONTEXT PRUNING: Returns ONLY the data needed for the current phase
+    fun getRelevantContext(missing: List<String>): Map<String, String?> {
+        if (missing.isEmpty()) return emptyMap()
+
+        val activePhase = when {
+            missing.any { it in listOf("university", "major", "semester", "currentCgpa", "isInternationalStudent") } -> "ACADEMIC"
+            missing.any { it in listOf("hasJob", "jobDescription", "jobSchedule", "wantsJobHelp", "jobCommuteTime") } -> "JOB"
+            missing.any { it.startsWith("commute") } -> "COMMUTE"
+            missing.any { it in listOf("mainPriority", "energyPreference", "nonNegotiables") } -> "STRATEGY"
+            else -> "GENERAL"
+        }
+
+        return when (activePhase) {
+            "ACADEMIC" -> mapOf(
+                "university" to university,
+                // Only send relevant previous answers in this phase
+                "major" to major
+            )
+            "JOB" -> mapOf(
+                "university" to university, // Keep Uni context just in case
+                "hasJob" to (hasJob?.toString())
+            )
+            "COMMUTE" -> mapOf(
+                "university" to university,
+                "job_location" to (if (hasJob == true) "Yes" else "No"),
+                "homeCountry" to homeCountry // Maybe relevant for housing context?
+            )
+            "STRATEGY" -> mapOf(
+                 // Strategy needs holistic view, so we send a summary
+                 "cgpa" to currentCgpa,
+                 "job" to (if (hasJob == true) "Yes" else "No")
+            )
+            else -> emptyMap()
+        }
     }
 }
