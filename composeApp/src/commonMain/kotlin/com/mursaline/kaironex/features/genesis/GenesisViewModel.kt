@@ -97,7 +97,6 @@ class GenesisViewModel : ViewModel(), KoinComponent {
             agentName = wakeWord.ifEmpty { "Kaironex" },
             user = userName,
             stage = agent.stage,
-            missing = agent.profile.getMissingFields(),
             rationale = "Let's get you set up to optimize your student life.",
             hasJob = agent.profile.hasJob
         )
@@ -291,27 +290,17 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                             // 5. Save to Local Persistence
                             agent.updateProfile(profileUpdate)
                             
-                            launch(kotlinx.coroutines.Dispatchers.IO) {
-                                profileStorage.saveProfile(agent.profile)
-                            }
-
-                            // 🔄 RE-CALCULATE MISSING FIELDS (State-Driven Prompting)
-                            val nextMissing = agent.profile.getMissingFields()
+                            // 🔄 RE-CALCULATE VIA FLOW ENGINE (Deterministic State Machine)
+                            val nextStep = GenesisFlow.getNextStep(agent.profile)
                             
-                            // 📤 Send Response with Next Steps
-                            // ✂️ CONTEXT PRUNING: Send only what is needed
-                            val prunedContext = agent.profile.getRelevantContext(nextMissing)
+                            println("🤖 Flow Engine: User answered '${pArgs.keys}', Next Step: ${nextStep.fieldId}")
                             
                             reasoningEngine.sendToolResponse(
                                 toolName = toolCall.name,
                                 toolId = toolCall.id,
                                 response = mapOf(
                                     "status" to "Profile Updated",
-                                    // "updated_fields" to pArgs.keys.joinToString(", "), // REMOVED to save tokens
-                                    "pruned_context" to prunedContext.toString(), 
-                                    "next_missing_fields" to nextMissing.joinToString(", "),
-                                    "current_stage" to agent.stage.name,
-                                    "system_instruction" to "Say 'Got it', then ASK: ${nextMissing.firstOrNull() ?: "nothing, done"}. NO HEADERS."
+                                    "system_instruction" to "CRITICAL: Acknowledge briefly (Got it), then ASK: '${nextStep.instruction}'. DO NOT ask anything else."
                                 )
                             )
                             
