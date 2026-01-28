@@ -354,7 +354,7 @@ fun ImmersiveAssistantPanel(
     // Connect when panel opens, disconnect when closes
     LaunchedEffect(Unit) {
         if (apiKey.isNotEmpty() && apiKey != "PLACEHOLDER") {
-            reasoningEngine.connect(apiKey)
+            // reasoningEngine.connect(apiKey) // CONNECT IS HANDLED BY GENESIS VIEWMODEL NOW
         }
     }
     
