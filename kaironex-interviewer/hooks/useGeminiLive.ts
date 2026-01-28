@@ -59,40 +59,55 @@ export const useGeminiLive = ({ onProfileUpdate, onInterviewComplete }: UseGemin
     }
   };
 
-  const connect = useCallback(async () => {
-    try {
-      setError(null);
-      const apiKey = process.env.API_KEY;
-      if (!apiKey) {
-        throw new Error("API Key not found in environment.");
+};
+
+// Android Interface Definition
+interface AndroidInterface {
+  onAgentState: (isTalking: boolean, isConnected: boolean) => void;
+  onProfileUpdate: (field: string, value: string) => void;
+  onComplete: () => void;
+}
+
+const connect = useCallback(async () => {
+  try {
+    setError(null);
+    // Try injecting from Android WebView first, then fallback to build-time env
+    const apiKey = (window as any).ANDROID_API_KEY || process.env.API_KEY;
+    if (!apiKey) {
+      throw new Error("API Key not found in environment.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    // Setup Audio Contexts
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
+    outputNodeRef.current = audioContextRef.current.createGain();
+    outputNodeRef.current.connect(audioContextRef.current.destination);
+
+    // Input Audio (Mic)
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        sampleRate: 16000,
+        channelCount: 1,
+        echoCancellation: true,
+        autoGainControl: true,
+        noiseSuppression: true
       }
+    });
+    micStreamRef.current = stream;
 
-      const ai = new GoogleGenAI({ apiKey });
+    // --- Live API Connection ---
+    // Notify Android
+    if ((window as any).Android) {
+      (window as any).Android.onAgentState(false, true); // Connected, Listening
+    }
 
-      // Setup Audio Contexts
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
-      outputNodeRef.current = audioContextRef.current.createGain();
-      outputNodeRef.current.connect(audioContextRef.current.destination);
-
-      // Input Audio (Mic)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          sampleRate: 16000,
-          channelCount: 1,
-          echoCancellation: true,
-          autoGainControl: true,
-          noiseSuppression: true
-        }
-      });
-      micStreamRef.current = stream;
-
-      // --- Live API Connection ---
-      const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
-        config: {
-          responseModalities: [Modality.AUDIO],
-          systemInstruction: `
+    const sessionPromise = ai.live.connect({
+      model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+      config: {
+        responseModalities: [Modality.AUDIO],
+        systemInstruction: `
             You are Kairo, a professional, warm, and efficient AI interviewer for 'Kaironex'.
             Your goal is to calibrate a user's profile by asking specific questions one by one.
             
@@ -125,200 +140,203 @@ export const useGeminiLive = ({ onProfileUpdate, onInterviewComplete }: UseGemin
             - If the user is unclear, ask for clarification before saving.
             - At the end, call 'endInterview'.
           `,
-          tools: [{ functionDeclarations: [saveFieldTool, endInterviewTool] }],
-        },
-        callbacks: {
-          onopen: async () => {
-            console.log("Connected to Kairo");
-            setIsConnected(true);
-            isConnectedRef.current = true;
+        tools: [{ functionDeclarations: [saveFieldTool, endInterviewTool] }],
+      },
+      callbacks: {
+        onopen: async () => {
+          console.log("Connected to Kairo");
+          setIsConnected(true);
+          isConnectedRef.current = true;
 
-            // Setup Mic Streaming
-            if (!audioContextRef.current) return;
+          // Setup Mic Streaming
+          if (!audioContextRef.current) return;
 
-            // We need a separate input context for 16kHz usually, but resampling handles it or we create one.
-            // Simplified for this demo: use the stream directly with ScriptProcessor
-            const micContext = new AudioContextClass({ sampleRate: 16000 });
-            micContextRef.current = micContext;
+          // We need a separate input context for 16kHz usually, but resampling handles it or we create one.
+          // Simplified for this demo: use the stream directly with ScriptProcessor
+          const micContext = new AudioContextClass({ sampleRate: 16000 });
+          micContextRef.current = micContext;
 
-            const source = micContext.createMediaStreamSource(stream);
-            // Buffer size 4096, 1 input, 1 output
-            const processor = micContext.createScriptProcessor(4096, 1, 1);
+          const source = micContext.createMediaStreamSource(stream);
+          // Buffer size 4096, 1 input, 1 output
+          const processor = micContext.createScriptProcessor(4096, 1, 1);
 
-            processor.onaudioprocess = (e) => {
-              if (!isConnectedRef.current) return;
+          processor.onaudioprocess = (e) => {
+            if (!isConnectedRef.current) return;
 
-              const inputData = e.inputBuffer.getChannelData(0);
-              // Convert Float32 to Int16
-              const pcm16 = float32To16BitPCM(inputData);
-              const base64Data = bytesToBase64(new Uint8Array(pcm16.buffer));
+            const inputData = e.inputBuffer.getChannelData(0);
+            // Convert Float32 to Int16
+            const pcm16 = float32To16BitPCM(inputData);
+            const base64Data = bytesToBase64(new Uint8Array(pcm16.buffer));
 
-              sessionPromise.then(session => {
-                if (isConnectedRef.current) {
-                  session.sendRealtimeInput({
-                    media: {
-                      mimeType: 'audio/pcm;rate=16000',
-                      data: base64Data
-                    }
-                  });
-                }
-              });
-            };
-
-            source.connect(processor);
-            processor.connect(micContext.destination);
-
-            inputSourceRef.current = source;
-            processorRef.current = processor;
-
-            // Trigger the intro
-            /* 
             sessionPromise.then(session => {
+              if (isConnectedRef.current) {
                 session.sendRealtimeInput({
-                    media: {
-                        mimeType: 'text/plain',
-                        data: btoa('Start the interview now.')
-                    }
+                  media: {
+                    mimeType: 'audio/pcm;rate=16000',
+                    data: base64Data
+                  }
                 });
-            }); 
-            */
-          },
-          onmessage: async (msg: LiveServerMessage) => {
-            // Handle Tool Calls (Saving Data)
-            if (msg.toolCall) {
-              const functionResponses = [];
-              for (const fc of msg.toolCall.functionCalls) {
-                if (fc.name === 'saveField') {
-                  const { field, value } = fc.args as any;
-                  console.log(`Saving ${field}: ${value}`);
-                  onProfileUpdate(field, value);
-                  functionResponses.push({
-                    id: fc.id,
-                    name: fc.name,
-                    response: { result: "Field saved successfully." }
-                  });
-                } else if (fc.name === 'endInterview') {
-                  onInterviewComplete();
-                  functionResponses.push({
-                    id: fc.id,
-                    name: fc.name,
-                    response: { result: "Interview ended." }
-                  });
-                }
               }
+            });
+          };
 
-              if (functionResponses.length > 0) {
-                sessionPromise.then(session => {
-                  session.sendToolResponse({ functionResponses });
+          source.connect(processor);
+          processor.connect(micContext.destination);
+
+          inputSourceRef.current = source;
+          processorRef.current = processor;
+
+          // Trigger the intro
+          /* 
+          sessionPromise.then(session => {
+              session.sendRealtimeInput({
+                  media: {
+                      mimeType: 'text/plain',
+                      data: btoa('Start the interview now.')
+                  }
+              });
+          }); 
+          */
+        },
+        onmessage: async (msg: LiveServerMessage) => {
+          // Handle Tool Calls (Saving Data)
+          if (msg.toolCall) {
+            const functionResponses = [];
+            for (const fc of msg.toolCall.functionCalls) {
+              if (fc.name === 'saveField') {
+                const { field, value } = fc.args as any;
+                console.log(`Saving ${field}: ${value}`);
+                onProfileUpdate(field, value);
+                functionResponses.push({
+                  id: fc.id,
+                  name: fc.name,
+                  response: { result: "Field saved successfully." }
+                });
+              } else if (fc.name === 'endInterview') {
+                onInterviewComplete();
+                functionResponses.push({
+                  id: fc.id,
+                  name: fc.name,
+                  response: { result: "Interview ended." }
                 });
               }
             }
 
-            // Handle Audio Output from Model
-            const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-            if (audioData) {
-              if (!audioContextRef.current) return;
-              setIsTalking(true);
-
-              const audioBytes = base64ToBytes(audioData);
-              const audioBuffer = await decodeAudioData(audioBytes, audioContextRef.current);
-
-              // Scheduling
-              const currentTime = audioContextRef.current.currentTime;
-              if (nextStartTimeRef.current < currentTime) {
-                nextStartTimeRef.current = currentTime;
-              }
-
-              const source = audioContextRef.current.createBufferSource();
-              source.buffer = audioBuffer;
-              if (outputNodeRef.current) {
-                source.connect(outputNodeRef.current);
-              }
-
-              source.start(nextStartTimeRef.current);
-              nextStartTimeRef.current += audioBuffer.duration;
-
-              sourcesRef.current.add(source);
-              source.onended = () => {
-                sourcesRef.current.delete(source);
-                if (sourcesRef.current.size === 0) {
-                  setIsTalking(false);
-                }
-              };
+            if (functionResponses.length > 0) {
+              sessionPromise.then(session => {
+                session.sendToolResponse({ functionResponses });
+              });
             }
-          },
-          onclose: (event: any) => {
-            console.log("Connection closed", event.code, event.reason);
-            setIsConnected(false);
-            isConnectedRef.current = false;
-            setIsTalking(false);
-          },
-          onerror: (err) => {
-            console.error("Gemini Live Error:", err);
-            setError("Connection error. Please refresh.");
-            setIsConnected(false);
-            isConnectedRef.current = false;
           }
+
+          // Handle Audio Output from Model
+          const audioData = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+          if (audioData) {
+            if (!audioContextRef.current) return;
+            setIsTalking(true);
+            if ((window as any).Android) (window as any).Android.onAgentState(true, true);
+
+            const audioBytes = base64ToBytes(audioData);
+            const audioBuffer = await decodeAudioData(audioBytes, audioContextRef.current);
+
+            // Scheduling
+            const currentTime = audioContextRef.current.currentTime;
+            if (nextStartTimeRef.current < currentTime) {
+              nextStartTimeRef.current = currentTime;
+            }
+
+            const source = audioContextRef.current.createBufferSource();
+            source.buffer = audioBuffer;
+            if (outputNodeRef.current) {
+              source.connect(outputNodeRef.current);
+            }
+
+            source.start(nextStartTimeRef.current);
+            nextStartTimeRef.current += audioBuffer.duration;
+
+            sourcesRef.current.add(source);
+            source.onended = () => {
+              sourcesRef.current.delete(source);
+              if (sourcesRef.current.size === 0) {
+                setIsTalking(false);
+                if ((window as any).Android) (window as any).Android.onAgentState(false, true);
+              }
+            };
+          }
+        },
+        onclose: (event: any) => {
+          console.log("Connection closed", event.code, event.reason);
+          setIsConnected(false);
+          isConnectedRef.current = false;
+          setIsTalking(false);
+          if ((window as any).Android) (window as any).Android.onAgentState(false, false);
+        },
+        onerror: (err) => {
+          console.error("Gemini Live Error:", err);
+          setError("Connection error. Please refresh.");
+          setIsConnected(false);
+          isConnectedRef.current = false;
         }
-      });
-
-      sessionRef.current = sessionPromise;
-      sessionPromise.then(s => {
-        sessionInstanceRef.current = s;
-      });
-
-    } catch (e: any) {
-      console.error(e);
-      setError(e.message || "Failed to initialize audio.");
-    }
-  }, [onProfileUpdate, onInterviewComplete]);
-
-  const disconnect = useCallback(() => {
-    isConnectedRef.current = false;
-
-    if (processorRef.current) {
-      processorRef.current.disconnect();
-      processorRef.current = null;
-    }
-    if (inputSourceRef.current) {
-      inputSourceRef.current.disconnect();
-      inputSourceRef.current = null;
-    }
-    if (micContextRef.current) {
-      if (micContextRef.current.state !== 'closed') {
-        micContextRef.current.close();
       }
-      micContextRef.current = null;
+    });
+
+    sessionRef.current = sessionPromise;
+    sessionPromise.then(s => {
+      sessionInstanceRef.current = s;
+    });
+
+  } catch (e: any) {
+    console.error(e);
+    setError(e.message || "Failed to initialize audio.");
+  }
+}, [onProfileUpdate, onInterviewComplete]);
+
+const disconnect = useCallback(() => {
+  isConnectedRef.current = false;
+
+  if (processorRef.current) {
+    processorRef.current.disconnect();
+    processorRef.current = null;
+  }
+  if (inputSourceRef.current) {
+    inputSourceRef.current.disconnect();
+    inputSourceRef.current = null;
+  }
+  if (micContextRef.current) {
+    if (micContextRef.current.state !== 'closed') {
+      micContextRef.current.close();
     }
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach(track => track.stop());
-      micStreamRef.current = null;
+    micContextRef.current = null;
+  }
+  if (micStreamRef.current) {
+    micStreamRef.current.getTracks().forEach(track => track.stop());
+    micStreamRef.current = null;
+  }
+
+  if (audioContextRef.current) {
+    if (audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close();
     }
+    audioContextRef.current = null;
+  }
 
-    if (audioContextRef.current) {
-      if (audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
-      }
-      audioContextRef.current = null;
-    }
+  // Stop all playing sources
+  sourcesRef.current.forEach(source => source.stop());
+  sourcesRef.current.clear();
 
-    // Stop all playing sources
-    sourcesRef.current.forEach(source => source.stop());
-    sourcesRef.current.clear();
+  // Close session logic
+  // We cannot explicitly close the session object in this version easily if close() is missing on type.
+  // But stopping inputs is enough.
 
-    // Close session logic
-    // We cannot explicitly close the session object in this version easily if close() is missing on type.
-    // But stopping inputs is enough.
+  setIsConnected(false);
+  setIsTalking(false);
+}, []);
 
-    setIsConnected(false);
-    setIsTalking(false);
-  }, []);
+useEffect(() => {
+  return () => {
+    disconnect();
+  };
+}, [disconnect]);
 
-  useEffect(() => {
-    return () => {
-      disconnect();
-    };
-  }, [disconnect]);
-
-  return { connect, disconnect, isConnected, isTalking, error };
+return { connect, disconnect, isConnected, isTalking, error };
 };

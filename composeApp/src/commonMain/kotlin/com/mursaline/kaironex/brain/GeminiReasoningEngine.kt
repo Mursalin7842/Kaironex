@@ -188,7 +188,8 @@ class GeminiReasoningEngine(
                             // 🔎 ROBUST JSON PARSING (Fixes truncated audio / compact JSON issues)
                             try {
                                 val root = jsonParser.parseToJsonElement(messageText).jsonObject
-                                val serverContent = root["serverContent"]?.jsonObject
+                                // FIX: snake_case for raw API
+                                val serverContent = (root["serverContent"] ?: root["server_content"])?.jsonObject
 
                                 // A. HANDLE INTERRUPTION
                                 if (serverContent?.get("interrupted")?.jsonPrimitive?.booleanOrNull == true) {
@@ -202,7 +203,7 @@ class GeminiReasoningEngine(
                                 }
 
                                 // B. HANDLE TOOL CANCELLATION
-                                val toolCancellation = root["toolCallCancellation"]?.jsonObject
+                                val toolCancellation = (root["toolCallCancellation"] ?: root["tool_call_cancellation"])?.jsonObject
                                 if (toolCancellation != null) {
                                     val ids = toolCancellation["ids"]?.jsonArray
                                     activeToolIdsLock.withLock {
@@ -217,16 +218,16 @@ class GeminiReasoningEngine(
 
                                 // C. PROCESSING CONTENT (Audio, Text, Tools)
                                 if (serverContent != null) {
-                                    val modelTurn = serverContent["modelTurn"]?.jsonObject
+                                    val modelTurn = (serverContent["modelTurn"] ?: serverContent["model_turn"])?.jsonObject
                                     val parts = modelTurn?.get("parts")?.jsonArray
 
                                     parts?.forEach { part ->
                                         val pObj = part.jsonObject
                                         
                                         // 1. Audio (inlineData)
-                                        val inlineData = pObj["inlineData"]?.jsonObject
+                                        val inlineData = (pObj["inlineData"] ?: pObj["inline_data"])?.jsonObject
                                         if (inlineData != null) {
-                                            val mimeType = inlineData["mimeType"]?.jsonPrimitive?.content ?: ""
+                                            val mimeType = (inlineData["mimeType"] ?: inlineData["mime_type"])?.jsonPrimitive?.content ?: ""
                                             if (mimeType.startsWith("audio")) {
                                                 val dataBase64 = inlineData["data"]?.jsonPrimitive?.content
                                                 if (dataBase64 != null && !isInterruptedLocally) {
@@ -239,20 +240,22 @@ class GeminiReasoningEngine(
                                         }
 
                                         // 2. Function Calls
-                                        if ("functionCall" in pObj) {
+                                        if ("functionCall" in pObj || "function_call" in pObj) {
                                             onToolCall(pObj.toString()) // Reuse existing parser or pass object
                                         }
                                     }
                                 }
                                 
                                 // D. SECONDARY TOOL SEARCH (Legacy / Root level)
-                                if (messageText.contains("\"functionCall\"") || messageText.contains("\"functionCalls\"")) {
+                                if (messageText.contains("\"functionCall\"") || messageText.contains("\"functionCalls\"") || 
+                                    messageText.contains("\"function_call\"") || messageText.contains("\"function_calls\"")) {
                                     // Keep this as backup or for non-standard structures
                                     onToolCall(messageText)
                                 }
 
                                 // E. HANDLE TURN COMPLETE (After Audio)
-                                if (serverContent?.get("turnComplete")?.jsonPrimitive?.booleanOrNull == true) {
+                                val tc = serverContent?.get("turnComplete") ?: serverContent?.get("turn_complete")
+                                if (tc?.jsonPrimitive?.booleanOrNull == true) {
                                      kotlinx.coroutines.withContext(audioDispatcher) {
                                          audioPlayer.endStream()
                                      }
@@ -298,8 +301,6 @@ class GeminiReasoningEngine(
     }
 
 
-
-
     suspend fun sendContextUpdate(message: String) {
         if (session?.isActive != true) return
         
@@ -307,14 +308,14 @@ class GeminiReasoningEngine(
         // as immediate context.
         val json = """
         {
-          "clientContent": {
+          "client_content": {
             "turns": [
               {
                 "role": "user",
                 "parts": [ { "text": "$message" } ]
               }
             ],
-            "turnComplete": false 
+            "turn_complete": false 
           }
         }
         """.trimIndent()
@@ -378,7 +379,7 @@ class GeminiReasoningEngine(
         val finalInstruction = baseInstruction + syncProtocol
 
         val systemInstructionJson = """
-            "systemInstruction": {
+            "system_instruction": {
               "parts": [
                 { "text": "${finalInstruction.replace("\n", "\\n").replace("\"", "\\\"")}" }
               ]
@@ -395,12 +396,12 @@ class GeminiReasoningEngine(
         {
           "setup": {
             "model": "$modelName",
-            "generationConfig": {
-              "responseModalities": ["AUDIO"],
-              "speechConfig": {
-                "voiceConfig": {
-                  "prebuiltVoiceConfig": {
-                    "voiceName": "Puck"
+            "generation_config": {
+              "response_modalities": ["AUDIO"],
+              "speech_config": {
+                "voice_config": {
+                  "prebuilt_voice_config": {
+                    "voice_name": "Puck"
                   }
                 }
               }
@@ -417,14 +418,14 @@ class GeminiReasoningEngine(
         delay(500) // Small buffer
         val kickstart = """
         {
-            "clientContent": {
+            "client_content": {
                 "turns": [
                     {
                         "role": "user",
                         "parts": [ { "text": ". Start Interview." } ]
                     }
                 ],
-                "turnComplete": true
+                "turn_complete": true
             }
         }
         """.trimIndent()
@@ -437,8 +438,9 @@ class GeminiReasoningEngine(
             val isBusy = activeToolIdsLock.withLock { isProcessingTool }
             if (isBusy) return 
 
+            // FIX: Use snake_case keys (realtime_input, media_chunks, mime_type) and include rate
             val json = """
-            {"realtimeInput": {"media_chunks": [{"mime_type": "audio/pcm", "data": "${pcmData.encodeBase64()}"}]}}
+            {"realtime_input": {"media_chunks": [{"mime_type": "audio/pcm;rate=16000", "data": "${pcmData.encodeBase64()}"}]}}
             """.trimIndent()
             session?.send(Frame.Text(json))
         }
@@ -450,11 +452,12 @@ class GeminiReasoningEngine(
             suspend fun findFunctionCalls(el: kotlinx.serialization.json.JsonElement) {
                 when (el) {
                     is kotlinx.serialization.json.JsonObject -> {
-                        if ("functionCall" in el) {
-                            val fc = el["functionCall"]?.jsonObject
+                        // FIX: Check for snake_case keys
+                        if ("functionCall" in el || "function_call" in el) {
+                            val fc = (el["functionCall"] ?: el["function_call"])?.jsonObject
                             handleFunc(fc)
-                        } else if ("functionCalls" in el) {
-                            val calls = el["functionCalls"]?.jsonArray
+                        } else if ("functionCalls" in el || "function_calls" in el) {
+                            val calls = (el["functionCalls"] ?: el["function_calls"])?.jsonArray
                             if (calls != null) {
                                 for (call in calls) handleFunc(call.jsonObject)
                             }
@@ -472,11 +475,12 @@ class GeminiReasoningEngine(
             
             // 🔎 DEBUG: Log Text Responses if Audio Failed
             val serverContent = try {
-                 jsonParser.parseToJsonElement(jsonString).jsonObject["serverContent"]?.jsonObject
+                 val root = jsonParser.parseToJsonElement(jsonString).jsonObject
+                 (root["serverContent"] ?: root["server_content"])?.jsonObject
             } catch(e: Exception) { null }
             
             if (serverContent != null) {
-                val modelTurn = serverContent["modelTurn"]?.jsonObject
+                val modelTurn = (serverContent["modelTurn"] ?: serverContent["model_turn"])?.jsonObject
                 val parts = modelTurn?.get("parts")?.jsonArray
                 parts?.forEach { part ->
                     val text = part.jsonObject["text"]?.jsonPrimitive?.contentOrNull
