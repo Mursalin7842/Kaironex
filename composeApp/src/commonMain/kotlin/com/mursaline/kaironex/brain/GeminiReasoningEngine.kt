@@ -53,6 +53,9 @@ class GeminiReasoningEngine(
 
     private val _audioRms = MutableStateFlow(0f)
     val audioRms: StateFlow<Float> = _audioRms
+    
+    private val _isAgentSpeaking = MutableStateFlow(false)
+    val isAgentSpeaking: StateFlow<Boolean> = _isAgentSpeaking
 
     private var session: DefaultClientWebSocketSession? = null
     
@@ -68,6 +71,14 @@ class GeminiReasoningEngine(
             try {
                 _connectionState.value = ConnectionState.Connecting
                 println("🚀 Connecting to Gemini Live...")
+                
+                // Monitor Speaking State
+                val speakingJob = launch {
+                    while (isActive) {
+                        _isAgentSpeaking.value = audioPlayer.isPlaying()
+                        delay(200) // Poll every 200ms
+                    }
+                }
                 
                 // Using the specific model from React implementation
                 // model: 'gemini-2.5-flash-native-audio-preview-12-2025'
@@ -133,6 +144,7 @@ class GeminiReasoningEngine(
                     } finally {
                         micJob.cancel()
                         receiveJob.cancel()
+                        speakingJob.cancel()
                     }
                 }
             } catch (e: Exception) {
@@ -164,13 +176,16 @@ class GeminiReasoningEngine(
             // Format for RealtimeInput
             val msg = buildJsonObject {
                putJsonObject("realtime_input") {
-                   putJsonObject("media_chunks") {
-                       put("mime_type", "audio/pcm") // Defaults to 16kHz Little Endian PCM
-                       put("data", Base64.encode(audioData))
+                   putJsonArray("media_chunks") {
+                       add(buildJsonObject {
+                            put("mime_type", "audio/pcm;rate=16000") // Required rate param
+                            put("data", Base64.encode(audioData))
+                       })
                    }
                }
             }
-                    send(Frame.Text(msg.toString()))
+            // println("🎤 Sending Audio Chunk: ${audioData.size} bytes")
+            send(Frame.Text(msg.toString()))
         }
     }
 
@@ -178,19 +193,24 @@ class GeminiReasoningEngine(
         for (frame in incoming) {
             if (frame is Frame.Text) {
                 val text = frame.readText()
-               // println("📩 Received: ${text.take(100)}...")
+                 // Log response (Truncated to avoid spamming pure Audio data, but allow Metadata/Tools)
+                 if (!text.contains("server_content") || text.length < 500) {
+                     println("📩 Received: ${text.take(1000)}")
+                 } else {
+                     println("📩 Received Audio Chunk (${text.length} chars)")
+                 }
                 
                 try {
                     val root = json.parseToJsonElement(text).jsonObject
                     
-                    // Handle Server Content (Audio)
-                    val serverContent = root["serverContent"]?.jsonObject
+                    // Handle Server Content (Audio) -> Use snake_case
+                    val serverContent = root["server_content"]?.jsonObject
                     if (serverContent != null) {
-                        val modelTurn = serverContent["modelTurn"]?.jsonObject
+                        val modelTurn = serverContent["model_turn"]?.jsonObject
                         val parts = modelTurn?.get("parts")?.jsonArray
                         
                         parts?.forEach { part ->
-                            val inlineData = part.jsonObject["inlineData"]?.jsonObject
+                            val inlineData = part.jsonObject["inline_data"]?.jsonObject
                             if (inlineData != null) {
                                 val data = inlineData["data"]?.jsonPrimitive?.content
                                 if (data != null) {
@@ -201,16 +221,16 @@ class GeminiReasoningEngine(
                         }
                         
                         // Handle Loop Finished logic if needed
-                        val turnComplete = serverContent["turnComplete"]?.jsonPrimitive?.booleanOrNull
+                        val turnComplete = serverContent["turn_complete"]?.jsonPrimitive?.booleanOrNull
                         if (turnComplete == true) {
                             // Can signal turn end
                         }
                     }
                     
-                    // Handle Tool Calls
-                    val toolCallObj = root["toolCall"]?.jsonObject
+                    // Handle Tool Calls -> Use snake_case
+                    val toolCallObj = root["tool_call"]?.jsonObject
                     if (toolCallObj != null) {
-                         val functionCalls = toolCallObj["functionCalls"]?.jsonArray
+                         val functionCalls = toolCallObj["function_calls"]?.jsonArray
                          functionCalls?.forEach { fc ->
                              val fcObj = fc.jsonObject
                              val name = fcObj["name"]?.jsonPrimitive?.content ?: ""

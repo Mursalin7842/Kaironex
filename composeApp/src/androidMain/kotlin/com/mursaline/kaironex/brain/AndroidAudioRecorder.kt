@@ -69,8 +69,8 @@ class AndroidAudioRecorder(private val context: Context) : AudioRecorder {
                 println("🎤 AndroidAudioRecorder: Started recording at $SAMPLE_RATE Hz")
 
                 launch(Dispatchers.IO) {
-                    // 32ms chunks (1024 bytes at 16kHz) - Standard efficient buffer size
-                    val readSize = 1024 
+                    // 256ms chunks (4096 samples * 2 bytes = 8192 bytes at 16kHz) - Matches React implementation
+                    val readSize = 8192 
                     val buffer = ByteArray(readSize)
                     
                     while (isActive && isRecording) {

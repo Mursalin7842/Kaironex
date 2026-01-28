@@ -6,9 +6,9 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import android.util.Log
 
-// 🔧 TUNING: 1.5 Second Safety Buffer
+// 🔧 TUNING: Low Latency for Real-time Conversation (~80ms)
 // 24000 Hz * 2 bytes = 48000 bytes/sec
-private const val JITTER_THRESHOLD_BYTES = 72000
+private const val JITTER_THRESHOLD_BYTES = 4000
 
 class AndroidAudioPlayer(context: Context) : AudioPlayer {
 

@@ -237,6 +237,18 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                         }
                     }
                 }
+                
+                // Launch Speaking State Listener
+                launch {
+                     reasoningEngine.isAgentSpeaking.collect { speaking ->
+                         withContext(kotlinx.coroutines.Dispatchers.Main) {
+                             uiState = uiState.copy(
+                                 isAgentSpeaking = speaking,
+                                 isUserListening = !speaking // If agent not speaking, we listen
+                             )
+                         }
+                     }
+                }
 
                 // Connect with the new STRICT prompt
                 val apiKey = PlatformSecrets.apiKey
