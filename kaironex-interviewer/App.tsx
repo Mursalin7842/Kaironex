@@ -30,6 +30,22 @@ const App: React.FC = () => {
     setStatus("Stopped");
   };
 
+  // Expose control to Android
+  React.useEffect(() => {
+    console.log("🚀 React App Mounted. Waiting for commands...");
+    (window as any).startInterview = () => {
+      console.log("🚀 window.startInterview() called from Android!");
+      handleStart();
+    };
+    (window as any).stopInterview = handleStop;
+
+    // Auto-start check if configured or simply expose
+    if ((window as any).ANDROID_AUTO_START) {
+      console.log("🚀 Auto-start flag detected immediately.");
+      handleStart();
+    }
+  }, [handleStart, handleStop]);
+
   const handleDownload = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(profile, null, 2));
     const anchor = document.createElement('a');
@@ -40,91 +56,64 @@ const App: React.FC = () => {
     anchor.remove();
   };
 
+  // --- UI RENDER ---
   return (
-    <div className="min-h-screen bg-gray-50 p-8 font-sans">
-      <div className="max-w-2xl mx-auto bg-white shadow-sm border border-gray-200 rounded-lg p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Kaironex Profile Interviewer</h1>
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-b from-[#0F0F1A] to-[#1A1A2E] text-white overflow-hidden relative font-sans">
 
-        <div className="flex flex-col gap-4 mb-8">
-          <div className="flex items-center justify-between bg-gray-100 p-4 rounded text-sm">
-            <div>
-              <span className="font-semibold text-gray-600">Status: </span>
-              <span className={`font-medium ${isConnected ? 'text-green-600' : 'text-gray-800'}`}>{status}</span>
-            </div>
-            <div>
-              <span className="font-semibold text-gray-600">Agent: </span>
-              <span className={`font-medium ${isTalking ? 'text-blue-600 animate-pulse' : 'text-gray-500'}`}>
-                {isTalking ? "Speaking..." : "Listening"}
-              </span>
-            </div>
-          </div>
+      {/* Background Ambient Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-900/20 rounded-full blur-[100px] pointer-events-none" />
 
-          {error && (
-            <div className="bg-red-50 text-red-700 p-4 rounded border border-red-200">
-              Error: {error}
-            </div>
-          )}
+      {/* Main Content */}
+      <div className="z-10 flex flex-col items-center gap-12">
 
-          <div className="flex gap-3 mt-2">
-            {!isConnected ? (
-              <button
-                onClick={handleStart}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded transition-colors"
-              >
-                Start Interview
-              </button>
-            ) : (
-              <button
-                onClick={handleStop}
-                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded transition-colors"
-              >
-                End Session
-              </button>
-            )}
-            
-            <button
-              onClick={handleDownload}
-              disabled={Object.keys(profile).length === 0}
-              className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-6 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Download JSON
-            </button>
+        {/* Status Text (Fade In) */}
+        <div className="text-center space-y-2 opacity-80 h-16">
+          <h2 className="text-2xl font-light tracking-wide text-blue-100">
+            {status === "Connecting..." ? "Connecting to Kairo..." :
+              status === "Interview in Progress" ? (isTalking ? "Kairo is speaking" : "Listening...") :
+                status}
+          </h2>
+        </div>
+
+        {/* THE ORB */}
+        <div className="relative flex items-center justify-center">
+          {/* Outer Rings (Ripple) */}
+          <div className={`absolute w-64 h-64 rounded-full border border-blue-500/30 transition-all duration-1000 ${isTalking ? 'scale-150 opacity-0' : 'scale-100 opacity-20'}`} />
+
+          {/* Glow Halo */}
+          <div className={`absolute w-48 h-48 rounded-full bg-blue-500/20 blur-xl transition-all duration-500 ${isTalking ? 'scale-125 opacity-50' : 'scale-100 opacity-30'}`} />
+
+          {/* Core Orb */}
+          <div
+            className={`w-32 h-32 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 shadow-[0_0_50px_rgba(59,130,246,0.6)] flex items-center justify-center transition-transform duration-300 ease-out`}
+            style={{
+              transform: isTalking ? 'scale(1.2)' : 'scale(1.0)',
+              animation: isTalking ? 'none' : 'breathe 3s infinite ease-in-out'
+            }}
+          >
+            <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-white/10 to-transparent" />
           </div>
         </div>
 
-        <div className="border-t border-gray-100 pt-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Captured Profile Data</h2>
-          
-          {Object.keys(profile).length === 0 ? (
-            <div className="text-center py-10 text-gray-400 bg-gray-50 rounded border border-dashed border-gray-200">
-              No data collected yet. Start the interview to begin.
-            </div>
-          ) : (
-            <div className="bg-gray-50 rounded border border-gray-200 overflow-hidden">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-100 text-gray-600 font-medium border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 w-1/3">Field</th>
-                    <th className="px-4 py-3">Value</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {Object.entries(profile).map(([key, value]) => (
-                    <tr key={key} className="hover:bg-gray-100 transition-colors">
-                      <td className="px-4 py-3 font-medium text-gray-700 capitalize">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </td>
-                      <td className="px-4 py-3 text-gray-900 break-words">
-                        {String(value)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        {/* Sub-status / Captions placeholder */}
+        <div className="text-blue-200/50 text-sm font-medium tracking-widest uppercase mt-8">
+          {isConnected ? "Live Connection Active" : "Initializing..."}
         </div>
       </div>
+
+      {/* Hidden Debug / Manual Start Overlay (Bottom Right) */}
+      <div
+        className="absolute bottom-0 right-0 p-8 w-24 h-24 opacity-0 z-50"
+        onClick={handleStart}
+      />
+
+      {/* Tailwind Global Styles for Animations */}
+      <style>{`
+        @keyframes breathe {
+          0%, 100% { transform: scale(0.95); opacity: 0.9; }
+          50% { transform: scale(1.05); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };

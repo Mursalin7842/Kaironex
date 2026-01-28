@@ -73,6 +73,8 @@ const connect = useCallback(async () => {
     setError(null);
     // Try injecting from Android WebView first, then fallback to build-time env
     const apiKey = (window as any).ANDROID_API_KEY || process.env.API_KEY;
+    console.log(`🔑 API Key Verification: ${apiKey ? "FOUND" : "MISSING"}`);
+
     if (!apiKey) {
       throw new Error("API Key not found in environment.");
     }
@@ -207,6 +209,9 @@ const connect = useCallback(async () => {
                 const { field, value } = fc.args as any;
                 console.log(`Saving ${field}: ${value}`);
                 onProfileUpdate(field, value);
+                if ((window as any).Android) {
+                  (window as any).Android.onProfileUpdate(field, String(value));
+                }
                 functionResponses.push({
                   id: fc.id,
                   name: fc.name,
@@ -214,6 +219,9 @@ const connect = useCallback(async () => {
                 });
               } else if (fc.name === 'endInterview') {
                 onInterviewComplete();
+                if ((window as any).Android) {
+                  (window as any).Android.onComplete();
+                }
                 functionResponses.push({
                   id: fc.id,
                   name: fc.name,

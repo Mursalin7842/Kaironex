@@ -72,8 +72,10 @@ class GenesisViewModel : ViewModel(), KoinComponent {
         viewModelScope.launch {
             try {
                 val apiKey = PlatformSecrets.apiKey
-                // No tools configured locally for now, waiting for backend integration
-                reasoningEngine.connect(apiKey, systemInstruction = initialPrompt, toolsConfig = "{}")
+                // HYBRID AGENT: We do NOT connect the local Kotlin engine here.
+                // The InterviewWebView (React) handles the connection and mic.
+                // reasoningEngine.connect(apiKey, systemInstruction = initialPrompt, toolsConfig = "{}")
+                println("⚠️ Native Engine disabled in favor of Hybrid WebView Agent.")
             } catch (e: Exception) {
                 println("⚠️ Failed to connect to agent: ${e.message}")
             }
@@ -89,5 +91,29 @@ class GenesisViewModel : ViewModel(), KoinComponent {
     override fun onCleared() {
         super.onCleared()
         disconnect()
+    }
+
+    fun manualUpdate(field: String, value: String?) {
+        if (value == null) return
+        val currentProfile = profile
+        val updatedProfile = when (field) {
+            "university" -> currentProfile.copy(university = value)
+            "major" -> currentProfile.copy(major = value)
+            "semester" -> currentProfile.copy(semester = value)
+            "cgpa" -> currentProfile.copy(currentCgpa = value) // Map 'cgpa' to 'currentCgpa'
+            "financialStakes" -> currentProfile.copy(financialStakes = value)
+            "hasJob" -> currentProfile.copy(hasJob = value.toBoolean())
+            "careerAmbition" -> currentProfile.copy(careerAmbition = value)
+            "workHoursPerWeek" -> currentProfile.copy(workHoursPerWeek = value.toDoubleOrNull())
+            "commuteDuration" -> currentProfile.copy(commuteDuration = value)
+            "energyPreference" -> currentProfile.copy(energyPreference = value)
+            "dailyFocusCapacity" -> currentProfile.copy(dailyFocusCapacity = value.toIntOrNull()) // Int?
+            "nonNegotiables" -> currentProfile.copy(nonNegotiables = mapOf("User Input" to value)) // Map
+            "learningStyle" -> currentProfile.copy(learningStyle = value)
+            "stressResponse" -> currentProfile.copy(stressResponse = value)
+            "failureCause" -> currentProfile.copy(failureCause = value)
+            else -> currentProfile
+        }
+        profile = updatedProfile
     }
 }
