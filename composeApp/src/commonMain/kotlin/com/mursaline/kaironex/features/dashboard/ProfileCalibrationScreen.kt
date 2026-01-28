@@ -120,7 +120,7 @@ fun CalibrationForm(
         FormSection("Academic Life") {
             KxTextField(
                 label = "University",
-                value = profile.university,
+                value = profile.university ?: "",
                 onValueChange = { onUpdate(profile.copy(university = it)) }
             )
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -201,7 +201,7 @@ fun CalibrationForm(
             
             // Map Editor for Class Schedule
             KeyValEditor(
-                items = profile.classSchedule,
+                items = profile.classSchedule ?: emptyMap(),
                 keyLabel = "Class (e.g. Chem 101)",
                 valLabel = "Time (e.g. Mon 10-12)",
                 onUpdate = { onUpdate(profile.copy(classSchedule = it)) }
@@ -259,7 +259,7 @@ fun CalibrationForm(
             Text("Travel Times (Minutes)", style = MaterialTheme.typography.labelLarge, color = KaironexColors.SlateGray)
             
              KeyValEditor(
-                items = profile.commuteMap,
+                items = profile.commuteMap ?: emptyMap(),
                 keyLabel = "Route (e.g. Home->Uni)",
                 valLabel = "Time (e.g. 45m)",
                 onUpdate = { onUpdate(profile.copy(commuteMap = it)) }
@@ -270,7 +270,7 @@ fun CalibrationForm(
         FormSection("Real World Constraints") {
             Text("Non-Negotiables (Family, Prayer, etc.)", style = MaterialTheme.typography.labelLarge, color = KaironexColors.SlateGray)
             KeyValEditor(
-                items = profile.nonNegotiables,
+                items = profile.nonNegotiables ?: emptyMap(),
                 keyLabel = "Activity",
                 valLabel = "Time/Note",
                 // FIX: Pass new map properly
@@ -281,7 +281,7 @@ fun CalibrationForm(
             
             Text("Other Commitments (Gym, Dates, etc.)", style = MaterialTheme.typography.labelLarge, color = KaironexColors.SlateGray)
             KeyValEditor(
-                items = profile.customCommitments,
+                items = profile.customCommitments ?: emptyMap(),
                 keyLabel = "Commitment",
                 valLabel = "Details",
                 onUpdate = { onUpdate(profile.copy(customCommitments = it)) }

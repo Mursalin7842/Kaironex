@@ -13,7 +13,7 @@ object GenesisFlow {
     fun getNextStep(profile: StudentProfile): InterviewStep {
         
         // --- 1. ACADEMIC BASE (The Foundation) ---
-        if (profile.university.isBlank()) 
+        if (profile.university?.isBlank() == true || profile.university == null) 
             return ask("university", "First, which university are you currently attending?")
         
         if (profile.major.isNullOrBlank()) 
@@ -55,11 +55,7 @@ object GenesisFlow {
             if (profile.jobSchedule.isNullOrBlank()) 
                 return ask("jobSchedule", "What are your usual work timings? (for example 9am to 5pm)")
 
-             if (profile.jobWorkDays.isNullOrBlank()) 
-                return ask("jobWorkDays", "And which days of the week do you work?")
-            
-            if (profile.jobCommuteTime.isNullOrBlank()) 
-                return ask("jobCommuteTime", "How long does it take to get from Uni to your Job?")
+
         } else {
             // Unemployed Logic
             if (profile.wantsJobHelp == null) 

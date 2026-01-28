@@ -20,7 +20,9 @@ val appModule = module {
                     ignoreUnknownKeys = true
                 })
             }
-            install(io.ktor.client.plugins.websocket.WebSockets)
+            install(io.ktor.client.plugins.websocket.WebSockets) {
+                pingInterval = 20_000
+            }
         }
     }
 

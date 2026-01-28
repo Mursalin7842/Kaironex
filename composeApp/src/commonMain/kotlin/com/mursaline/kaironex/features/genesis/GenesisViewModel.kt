@@ -15,7 +15,7 @@ import com.mursaline.kaironex.brain.GeminiReasoningEngine
 import com.mursaline.kaironex.brain.GeminiReasoningEngine.FunctionCallPart
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import com.mursaline.kaironex.agents.genesis.GenesisPrompts
+
 import com.mursaline.kaironex.PlatformSecrets
 
 import kotlinx.serialization.json.*
@@ -86,23 +86,48 @@ class GenesisViewModel : ViewModel(), KoinComponent {
     // --- CORE LOGIC ---
     
     fun startInterview(userName: String, wakeWord: String) {
-        // Prevent duplicate starts if already connected or connecting
         if (reasoningEngine.connectionState.value is com.mursaline.kaironex.brain.GeminiReasoningEngine.ConnectionState.Connected) return
 
-        // 1. Configure Agent
         agent.manualUpdate(userName, wakeWord)
         
-        // 2. Build System Prompt (Dynamic Voice)
-        val initialPrompt = GenesisPrompts.build(
-            agentName = wakeWord.ifEmpty { "Kaironex" },
-            user = userName,
-            stage = agent.stage,
-            rationale = "Let's get you set up to optimize your student life.",
-            hasJob = agent.profile.hasJob
-        )
+        // 1. EXACT PROMPT FROM REACT CODE (Ported to Kotlin String)
+        // This prompt is stricter and controls the flow better than the previous one.
+        val systemPrompt = """
+            You are Kairo, a professional, warm, and efficient AI interviewer for 'Kaironex'.
+            Your goal is to calibrate a user's profile by asking specific questions one by one.
+            
+            **PROTOCOL:**
+            1. Introduce yourself briefly ("Hello, I am Kairo. Welcome to Kaironex. I am here to calibrate your profile. Are you ready?").
+            2. Wait for user confirmation.
+            3. Ask the questions in this EXACT order:
+               - University Name?
+               - Major/Field of study?
+               - Current Semester (e.g., Fall 2024, 5th Semester)?
+               - Current CGPA?
+               - Are you an International Student? (Yes/No)
+               - Do you currently have a job? (Yes/No)
+               - Do you want help finding a job? (Yes/No)
+               - Describe your ideal job?
+               - What is your commute duration?
+               - Do you prefer High or Low Energy environments?
+               - What is your daily focus capacity (in hours)?
+               - What are your non-negotiables?
+               - What is your learning style?
+               - How do you respond to stress?
+               - What is a common cause of failure for you?
+            
+            **RULES:**
+            - ASK ONE QUESTION AT A TIME.
+            - When the user answers, validate the answer. 
+            - IMMEDIATELY call the 'saveField' tool with the corresponding field name (university, major, etc.) and the value.
+            - WAIT for the tool execution to complete.
+            - THEN acknowledge briefly and ask the next question.
+            - If the user is unclear, ask for clarification before saving.
+            - At the end, call 'endInterview'.
+        """.trimIndent()
 
-        // 3. Define Tools for Data Extraction
-        // 3. Define Tools EXACTLY as per TS Implementation
+        // 2. CLEANER TOOL CONFIGURATION
+        // Ensure this JSON structure is valid.
         val toolsConfig = """
             "tools": [
                 {
@@ -144,7 +169,6 @@ class GenesisViewModel : ViewModel(), KoinComponent {
             ]
         """.trimIndent()
         
-        // 4. Connect Voice Engine & Listen for Tools
         viewModelScope.launch {
             try {
                 // Launch Tool Listener
@@ -214,8 +238,9 @@ class GenesisViewModel : ViewModel(), KoinComponent {
                     }
                 }
 
+                // Connect with the new STRICT prompt
                 val apiKey = PlatformSecrets.apiKey
-                reasoningEngine.connect(apiKey, systemInstruction = initialPrompt, toolsConfig = toolsConfig)
+                reasoningEngine.connect(apiKey, systemInstruction = systemPrompt, toolsConfig = toolsConfig)
             } catch (e: Exception) {
                 println("⚠️ Failed to start interview: ${e.message}")
             }
