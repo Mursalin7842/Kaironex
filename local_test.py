@@ -104,16 +104,16 @@ if __name__ == "__main__":
     # Uncomment the scenario you want to test:
     
     # A. Test the Cron Job
-    # test_cron_trigger()
+    test_cron_trigger()
 
     # B. Test the Study Brain
-     test_study_log_trigger()
+     #test_study_log_trigger()
     
     # C. Test Vitality (Sleep Check)
     #test_vitality_trigger()
     
     # D. Test Campaign (New Goal)
-    # test_campaign_trigger()
+     #test_campaign_trigger()
     
     # E. Test Radius (Location: Gym)
-    # test_radius_trigger()
+    #test_radius_trigger()

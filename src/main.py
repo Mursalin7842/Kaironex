@@ -11,18 +11,20 @@ def main(context):
     db_helper = KairoDB()
     
     # 1. GET TRIGGER INFO
-    # Appwrite passes the event name (e.g., "databases...create")
     trigger_event = os.environ.get('APPWRITE_FUNCTION_EVENT', 'cron_schedule')
     
-    # The data that changed (parsed safely)
     # Safe Payload Parsing
     try:
-        if isinstance(context.req.body, str):
+        # Check if body is empty string or None
+        if not context.req.body:
+            payload = {}
+        elif isinstance(context.req.body, str):
             payload = json.loads(context.req.body)
         else:
             payload = context.req.body # It's already a dict
     except Exception as e:
-        context.error(f"Payload Error: {e}")
+        # Don't crash on empty payload (Cron jobs often have empty payloads)
+        context.log(f"Payload Note: {e}")
         payload = {}
 
     context.log(f"🧠 KAIRO AWAKE. Trigger: {trigger_event}")
@@ -36,7 +38,8 @@ def main(context):
     elif 'vitality_state' in trigger_event:
         return run_vitality_agent(db_helper, payload, context)
 
-    elif 'schedule' in trigger_event or 'profile' in trigger_event:
+    # --- FIX: Ensure we don't accidentally catch 'cron_schedule' here ---
+    elif ('schedule' in trigger_event and 'cron' not in trigger_event) or 'profile' in trigger_event:
         return run_campaign_agent(db_helper, payload, context)
 
     elif 'radius_state' in trigger_event:
