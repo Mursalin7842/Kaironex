@@ -15,12 +15,14 @@ def main(context):
     trigger_event = os.environ.get('APPWRITE_FUNCTION_EVENT', 'cron_schedule')
     
     # The data that changed (parsed safely)
+    # Safe Payload Parsing
     try:
-        if context.req.body:
+        if isinstance(context.req.body, str):
             payload = json.loads(context.req.body)
         else:
-            payload = {}
-    except:
+            payload = context.req.body # It's already a dict
+    except Exception as e:
+        context.error(f"Payload Error: {e}")
         payload = {}
 
     context.log(f"🧠 KAIRO AWAKE. Trigger: {trigger_event}")
