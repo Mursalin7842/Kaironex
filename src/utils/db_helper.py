@@ -3,11 +3,8 @@ import json
 import datetime
 from appwrite.client import Client
 from appwrite.services.databases import Databases
-from appwrite.query import Query  # <--- NEW IMPORT
-
-# Config
-DB_ID = os.environ.get('APPWRITE_DATABASE_ID', '697cb20f00110f6d7530')
-MEMORY_COL = 'agent_memory'
+from appwrite.query import Query
+from ..config import *
 
 class KairoDB:
     def __init__(self):
@@ -19,38 +16,96 @@ class KairoDB:
 
     def log_heartbeat(self, user_id, source_details):
         """Updates agent_memory with the source and time."""
+        if not user_id: return
         try:
-            # --- FIX: Use Query.equal instead of raw string ---
             results = self.db.list_documents(
                 database_id=DB_ID, 
-                collection_id=MEMORY_COL, 
+                collection_id=AGENT_MEMORY_COL, 
                 queries=[Query.equal('userId', user_id)] 
             )
             
             data = {
                 'last_active': datetime.datetime.now().isoformat(),
-                'last_trigger_source': source_details[:1000] # Safe crop
+                'last_trigger_source': source_details[:999]
             }
 
             if results['total'] > 0:
                 doc_id = results['documents'][0]['$id']
-                self.db.update_document(DB_ID, MEMORY_COL, doc_id, data)
+                self.db.update_document(DB_ID, AGENT_MEMORY_COL, doc_id, data)
             else:
-                # Create if missing
                 data['userId'] = user_id
                 data['pressure_index'] = 50
-                self.db.create_document(DB_ID, MEMORY_COL, 'unique()', data)
+                self.db.create_document(DB_ID, AGENT_MEMORY_COL, 'unique()', data)
                 
         except Exception as e:
             print(f"Heartbeat Error: {e}")
 
-    def create_intervention(self, user_id, trigger, message, strategy="DIRECT"):
-        """Triggers the Android Voice."""
-        self.db.create_document(DB_ID, 'interventions', 'unique()', {
-            'userId': user_id,
-            'interventionId': 'unique()', # Note: This writes the string "unique()" to the column. If you want a random ID, remove this line or generate one.
-            'trigger_event': trigger,
-            'status': 'PENDING',
-            'ai_message': message,
-            'ai_response_strategy': strategy # Added this back (it was missing in your last upload)
-        })
+    def create_intervention(self, user_id, trigger, message, status="PENDING", strategy="NEUTRAL"):
+        """
+        Writes to 'interventions' table.
+        Strictly follows your schema: interventionId, userId, trigger_event, ai_message, status, ai_response_strategy.
+        """
+        try:
+            self.db.create_document(DB_ID, INTERVENTIONS_COL, 'unique()', {
+                'interventionId': 'unique()', 
+                'userId': user_id,
+                'trigger_event': trigger[:999],
+                'ai_message': message,
+                'status': status,
+                'ai_response_strategy': strategy[:499]
+            })
+            print(f"📢 Intervention Created: {trigger}")
+        except Exception as e:
+            print(f"Intervention Error: {e}")
+
+    def get_user_doc(self, user_id):
+        """Fetches the user row."""
+        try:
+            results = self.db.list_documents(
+                database_id=DB_ID, 
+                collection_id=USERS_COL, 
+                queries=[Query.equal('userId', user_id)] 
+            )
+            if results['total'] > 0:
+                return results['documents'][0]
+            return None
+        except Exception as e:
+            print(f"Get User Error: {e}")
+            return None
+
+    def update_state_cache(self, user_id, specific_state_data):
+        """
+        THE GOD MODE SYNC:
+        Updates 'studentState_json' in 'users' table so Android loads everything in 1 call.
+        """
+        try:
+            # 1. Get current user doc
+            user_doc = self.get_user_doc(user_id)
+            if not user_doc: 
+                print(f"User {user_id} not found for sync.")
+                return
+
+            # 2. Parse existing cache
+            current_cache = {}
+            if user_doc.get('studentState_json'):
+                try:
+                    current_cache = json.loads(user_doc['studentState_json'])
+                except:
+                    current_cache = {}
+
+            # 3. Merge new data
+            # specific_state_data example: {'vitality': {'steps': 5000}}
+            for key, value in specific_state_data.items():
+                current_cache[key] = value
+
+            # 4. Save back to Users table
+            self.db.update_document(
+                DB_ID, 
+                USERS_COL, 
+                user_doc['$id'], 
+                {'studentState_json': json.dumps(current_cache)}
+            )
+            print(f"🔄 State Cache Synced for {user_id}")
+
+        except Exception as e:
+            print(f"State Sync Error: {e}")

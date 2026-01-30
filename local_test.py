@@ -59,10 +59,11 @@ def test_study_log_trigger():
     mock_payload = {
         "userId": "test_user_id_123",
         "duration_seconds": 1800,
-        "focus_score": 35,  # Low score to trigger intervention
+        "focus_score": 35,
+        "topic": "Quantum Physics",
+        "status": "IN_PROGRESS",
         "$id": "log_123"
     }
-    
     
     context = MockContext(payload=mock_payload)
     main(context)
@@ -94,7 +95,8 @@ def test_radius_trigger():
     os.environ['APPWRITE_FUNCTION_EVENT'] = 'radius_state'
     mock_payload = {
         "userId": "test_user_id_123",
-        "location": "gym"
+        "user_location": "gym",
+        "trigger_voice": True
     }
     context = MockContext(payload=mock_payload)
     main(context)

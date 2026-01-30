@@ -1,5 +1,6 @@
 import os
 import google.generativeai as genai
+from ..config import GEMINI_MODEL_NAME
 
 class GeminiClient:
     def __init__(self):
@@ -10,16 +11,18 @@ class GeminiClient:
         
         genai.configure(api_key=api_key)
         
-        # 2. THE TWIN ENGINE STRATEGY
-        # If 'GEMINI_MODEL' is set in .env, use it. Otherwise, default to the safe 1.5 Flash.
-        # Options: 'gemini-1.5-flash' (Dev) or 'gemini-3-flash-preview' (Win)
-        self.model_name = os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
-        
+        # 2. Model Selection
+        self.model_name = GEMINI_MODEL_NAME
         print(f"✨ AI Engine Online: {self.model_name}")
-        self.model = genai.GenerativeModel(self.model_name)
+        
+        try:
+            self.model = genai.GenerativeModel(self.model_name)
+        except Exception as e:
+            print(f"⚠️ Model Init Error: {e}. Falling back to gemini-1.5-flash")
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
 
     def generate_response(self, prompt, system_instruction=None):
-        """Generates a response using the selected engine."""
+        """Generates a text response."""
         try:
             full_prompt = prompt
             if system_instruction:
@@ -28,10 +31,9 @@ class GeminiClient:
             response = self.model.generate_content(full_prompt)
             return response.text
         except Exception as e:
-            # Handle Quota Errors gracefully
             error_msg = str(e)
-            if "429" in error_msg:
-                print(f"❌ Quota Exceeded on {self.model_name}. Switch to gemini-1.5-flash!")
-                return "My creative energy is low right now (Rate Limit)."
             print(f"Gemini Error: {error_msg}")
+            
+            if "429" in error_msg:
+                return "My creative energy is low right now (Rate Limit)."
             return "I'm having trouble connecting to my creative center."

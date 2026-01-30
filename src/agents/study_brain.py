@@ -1,43 +1,72 @@
 import json
-# Import the client we just updated
+import datetime
 from ..utils.gemini_client import GeminiClient
+from ..config import *
 
 def run_study_agent(db_helper, payload, context):
+    """
+    Cognitive Supply Chain & Control.
+    Handles 'Real-World Study Session' & 'Knowledge Gatekeeper'.
+    """
     user_id = payload.get('userId')
-    
-    # 1. Log the Action
-    action_log = f"EVENT:STUDY_LOG | Duration: {payload.get('duration_seconds')}s | Focus: {payload.get('focus_score')}"
-    db_helper.log_heartbeat(user_id, action_log)
-    
+    if not user_id: return context.res.json({"error": "No userId"})
+
     context.log(f"🎓 Study Brain processing for {user_id}")
-
-    # 2. Initialize AI (Gemini 3 Flash)
-    ai = GeminiClient()
-
-    # 3. Logic: Analyze Focus
-    focus_score = payload.get('focus_score', 0)
     
-    if focus_score > 0 and focus_score < 40:
-        # --- NEW: ASK GEMINI TO WRITE THE MESSAGE ---
-        
-        prompt = f"""
-        The student is struggling.
-        Current Focus Score: {focus_score}/100.
-        Context: They have been studying for {payload.get('duration_seconds', 0) // 60} minutes.
-        
-        Task: Write a short, empathetic, but firm 1-sentence voice message suggesting a 5-minute break.
-        """
-        
-        # Generate dynamic response
-        ai_message = ai.generate_response(prompt)
-        
-        # Trigger Voice Intervention with AI text
-        db_helper.create_intervention(
-            user_id,
-            "LOW_FOCUS_DETECTED",
-            ai_message, # <--- Now sending real AI text
-            strategy="NEGOTIATION"
-        )
-        return context.res.json({"status": "intervention_sent", "ai_reply": ai_message})
+    # 1. Parse Data
+    focus_score = payload.get('focus_score', 100)
+    duration = payload.get('duration_seconds', 0)
+    topic = payload.get('topic', 'General Study')
+    status = payload.get('status', 'IN_PROGRESS')
 
-    return context.res.json({"status": "log_analyzed_normal"})
+    db_helper.log_heartbeat(user_id, f"EVENT:STUDY | Focus: {focus_score} | Status: {status}")
+    
+    ai = GeminiClient()
+    response_actions = []
+
+    # --- LOGIC A: FAILURE MOMENT (Drift) ---
+    if status == 'IN_PROGRESS' and focus_score < 40:
+        prompt = f"""
+        Student studying '{topic}' has lost focus (Score: {focus_score}/100).
+        Write a 1-sentence empathetic nudge to help them refocus or take a break.
+        """
+        ai_msg = ai.generate_response(prompt)
+        
+        db_helper.create_intervention(
+            user_id, "FOCUS_DROP", ai_msg, strategy="NEGOTIATION"
+        )
+        response_actions.append("intervention_sent")
+
+    # --- LOGIC B: KNOWLEDGE GATEKEEPER ---
+    quiz_data = None
+    if status == 'REQUEST_UNLOCK':
+        prompt = f"""
+        Generate a multiple choice question about '{topic}' to verify study.
+        Return JSON: {{ "question": "...", "options": ["A", "B", "C"], "correct": "A" }}
+        """
+        raw_quiz = ai.generate_response(prompt)
+        try:
+            # Clean up potential markdown formatting
+            raw_quiz = raw_quiz.replace('```json', '').replace('```', '')
+            quiz_data = json.loads(raw_quiz)
+        except:
+            quiz_data = {"question": "What did you learn?", "options": ["Everything", "Nothing"], "correct": "Everything"}
+        
+        response_actions.append("quiz_generated")
+
+    # --- SYNC: UPDATE CACHE ---
+    state_update = {
+        "study_session": {
+            "is_active": (status == 'IN_PROGRESS'),
+            "current_topic": topic,
+            "current_focus": focus_score,
+            "last_updated": datetime.datetime.now().isoformat()
+        }
+    }
+    db_helper.update_state_cache(user_id, state_update)
+
+    return context.res.json({
+        "status": "study_processed", 
+        "actions": response_actions,
+        "quiz": quiz_data
+    })

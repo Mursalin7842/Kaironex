@@ -1,57 +1,54 @@
 import json
 from ..utils.gemini_client import GeminiClient
+from ..config import *
 
 def run_vitality_agent(db_helper, payload, context):
     """
-    The Bio-Manager.
-    Triggered by: 'vitality_state'
-    Purpose: Monitor health, sleep, and energy levels.
+    Bio-Manager: Monitors health/energy.
     """
     user_id = payload.get('userId')
+    if not user_id: return context.res.json({"error": "No userId"})
+
     context.log(f"🧬 Vitality Brain processing for {user_id}")
+    db_helper.log_heartbeat(user_id, f"EVENT:VITALITY")
     
-    # 1. Log the Event
-    vitality_summary = f"EVENT:VITALITY | Data: {str(payload)[:100]}"
-    db_helper.log_heartbeat(user_id, vitality_summary)
-    
-    # 2. Initialize AI
     ai = GeminiClient()
     
-    # 3. Logic: Sleep & Energy Analysis
+    # Inputs
     sleep_hours = payload.get('sleep_hours')
     steps = payload.get('steps', 0)
     
-    # Scenario A: Low Sleep (Needs Empathy)
+    # Determine Regen Mode
+    regen_mode_active = False
+    ai_advice = "Systems nominal."
+
+    # Logic: Low Sleep
     if sleep_hours is not None and sleep_hours < 5:
-        prompt = f"""
-        User Data: Sleep: {sleep_hours} hours (Very Low). Steps: {steps}.
-        Context: It is morning. The user is likely exhausted.
-        Task: Write a short, warm, empathetic voice message (1 sentence). Suggest a slow start or rescheduling high-focus tasks.
-        """
-        ai_message = ai.generate_response(prompt)
+        regen_mode_active = True
+        prompt = f"User slept {sleep_hours}h. 1 sentence advice for low energy."
+        ai_advice = ai.generate_response(prompt)
         
         db_helper.create_intervention(
-            user_id,
-            "LOW_SLEEP_DETECTED",
-            ai_message,
-            strategy="EMPATHY"
+            user_id, "LOW_SLEEP", ai_advice, strategy="EMPATHY"
         )
-        return context.res.json({"status": "intervention_sent", "ai_reply": ai_message})
+    
+    # Logic: High Activity
+    elif steps > 8000:
+        prompt = f"User walked {steps} steps. 1 sentence hype message."
+        ai_advice = ai.generate_response(prompt)
+        # No voice intervention, just silent log/cache update
+    
+    # --- SYNC: UPDATE CACHE ---
+    # Updates the 'vitality' key in users.studentState_json
+    vitality_update = {
+        "vitality": {
+            "regen_mode": regen_mode_active,
+            "bio_fuel_status": "Calculating...", # Placeholder for food logic
+            "last_sleep": sleep_hours,
+            "steps_today": steps,
+            "daily_advice": ai_advice
+        }
+    }
+    db_helper.update_state_cache(user_id, vitality_update)
 
-    # Scenario B: High Activity (Needs Hype)
-    if steps > 8000:
-        prompt = f"""
-        User Data: Steps: {steps}. The user is active and moving.
-        Task: Write a short, high-energy hype message (1 sentence). Congratulate them on hitting momentum.
-        """
-        ai_message = ai.generate_response(prompt)
-        
-        db_helper.create_intervention(
-            user_id,
-            "HIGH_ACTIVITY_DETECTED",
-            ai_message,
-            strategy="ENERGETIC"
-        )
-        return context.res.json({"status": "intervention_sent", "ai_reply": ai_message})
-
-    return context.res.json({"status": "vitality_logged"})
+    return context.res.json({"status": "vitality_synced", "advice": ai_advice})
