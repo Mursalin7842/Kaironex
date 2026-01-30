@@ -1,7 +1,8 @@
+import os
 import datetime
 from dateutil.parser import parse
 
-DB_ID = 'kaironex_db'
+DB_ID = os.environ.get('APPWRITE_DATABASE_ID', 'kaironex_db')
 MEMORY_COL = 'agent_memory'
 
 def run_supervisor(db_helper, context):

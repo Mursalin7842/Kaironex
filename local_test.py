@@ -52,7 +52,8 @@ def test_cron_trigger():
 def test_study_log_trigger():
     print("\n🧪 TESTING SCENARIO: STUDY LOG EVENT")
     # Simulate a Study Log Event
-    os.environ['APPWRITE_FUNCTION_EVENT'] = 'databases.kaironex_db.collections.study_logs.documents.create'
+    db_id = os.environ.get('APPWRITE_DATABASE_ID', '697cb20f00110f6d7530')
+    os.environ['APPWRITE_FUNCTION_EVENT'] = f'databases.{db_id}.collections.study_logs.documents.create'
     
     # Payload similar to what Appwrite sends
     mock_payload = {

@@ -5,7 +5,7 @@ from appwrite.client import Client
 from appwrite.services.databases import Databases
 
 # Config
-DB_ID = 'kaironex_db'
+DB_ID = os.environ.get('APPWRITE_DATABASE_ID', '697cb20f00110f6d7530')
 MEMORY_COL = 'agent_memory'
 
 class KairoDB:
@@ -45,8 +45,8 @@ class KairoDB:
         """Triggers the Android Voice."""
         self.db.create_document(DB_ID, 'interventions', 'unique()', {
             'userId': user_id,
+            'interventionId': 'unique()',
             'trigger_event': trigger,
-            'ai_message': message,
             'status': 'PENDING',
-            'ai_response_strategy': strategy
+            'ai_message': message
         })
