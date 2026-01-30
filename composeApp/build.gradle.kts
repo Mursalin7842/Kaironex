@@ -97,10 +97,11 @@ kotlin {
             implementation(libs.ktor.okhttp)
             implementation(libs.kcef)
             
-            // Explicitly added KCEF
-            implementation(libs.kcef)
             
-            // Ktor plugins inherited from commonMain via api()
+            // Ktor plugins inherited from commonMain via api() - AND explicit for JVM to be safe
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+
 ////            implementation(libs.sqldelight.sqlite)
 
         }
