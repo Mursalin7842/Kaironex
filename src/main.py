@@ -3,7 +3,9 @@ import json
 from .utils.db_helper import KairoDB
 from .agents.main_brain import run_supervisor
 from .agents.study_brain import run_study_agent
-# Import other agents here as you build them
+from .agents.vitality_brain import run_vitality_agent
+from .agents.campaign_brain import run_campaign_agent
+from .agents.radius_brain import run_radius_agent
 
 def main(context):
     db_helper = KairoDB()
@@ -30,8 +32,13 @@ def main(context):
         return run_study_agent(db_helper, payload, context)
         
     elif 'vitality_state' in trigger_event:
-        # return run_vitality_agent(db_helper, payload, context)
-        pass # Enable when ready
+        return run_vitality_agent(db_helper, payload, context)
+
+    elif 'schedule' in trigger_event or 'profile' in trigger_event:
+        return run_campaign_agent(db_helper, payload, context)
+
+    elif 'radius_state' in trigger_event:
+        return run_radius_agent(db_helper, payload, context)
         
     # --- B. CRON DRIVEN (Safety Net) ---
     else:
