@@ -9,6 +9,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -36,7 +40,8 @@ data class GenesisScreen(
 
         // Set identity immediately from passed parameters
         LaunchedEffect(Unit) {
-            viewModel.startInterview(userName, wakeWord)
+            val effectiveName = addressAs.ifBlank { userName }
+            viewModel.startInterview(effectiveName, wakeWord)
         }
 
         Scaffold(
@@ -48,10 +53,16 @@ data class GenesisScreen(
                     .padding(padding)
                     .background(Color.White)
             ) {
+                var hasNavigated by remember { mutableStateOf(false) }
                 GenesisInterviewScreen(
                     viewModel = viewModel,
+                    userName = addressAs.ifBlank { userName },
+                    agentName = wakeWord.ifBlank { "Kairo" }, // Fallback to Kairo
                     onInterviewComplete = {
-                        navigator.push(com.mursaline.kaironex.features.dashboard.ProfileCalibrationScreen(isOnboarding = true))
+                        if (!hasNavigated) {
+                            hasNavigated = true
+                            navigator.push(com.mursaline.kaironex.features.dashboard.ProfileCalibrationScreen(isOnboarding = true))
+                        }
                     }
                 )
             }

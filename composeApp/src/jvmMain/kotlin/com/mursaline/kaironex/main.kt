@@ -11,23 +11,87 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
 import com.mursaline.kaironex.di.appModule
+import com.mursaline.kaironex.ui.theme.KaironexColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import dev.datlag.kcef.KCEF
 import org.koin.core.context.startKoin
 
 @Suppress("unused")
 fun main() {
-    startKoin {
-        // printLogger() // Optional, logging
-        modules(appModule)
+    println("🚀 Kaironex Desktop Starting...")
+    
+    // Global Exception Handler
+    Thread.setDefaultUncaughtExceptionHandler { t, e ->
+        System.err.println("🔥 Uncaught Exception in thread ${t.name}:")
+        e.printStackTrace()
     }
 
-    application {
-    // 1. GLOBAL STATE
-    // Dummy start state
-    var localPressure by remember { mutableStateOf(PressureMap(0.2f, "Routine", "Waiting...", 3)) }
-    var remotePressure by remember { mutableStateOf<PressureMap?>(null) }
-    var showPopup by remember { mutableStateOf(false) }
+    try {
+        startKoin {
+            // printLogger() // Optional, logging
+            modules(appModule)
+        }
+        println("✅ Koin Started")
+
+        application {
+        // --- KCEF Initialization State (Required for WebView) ---
+        var isWebViewReady by remember { mutableStateOf(false) }
+        
+        // Initialize KCEF (Downloads binaries if needed)
+        // We use a separate CoroutineScope or LaunchedEffect to not block UI thread
+        LaunchedEffect(Unit) {
+            println("🌐 Initializing KCEF...")
+            try {
+                // Default settings
+                KCEF.init(
+                    builder = { 
+                        // Use defaults
+                    },
+                    onError = { e -> 
+                        System.err.println("❌ KCEF Init Error:")
+                        e?.printStackTrace() 
+                    },
+                    onRestartRequired = { 
+                        println("⚠️ KCEF Restart Required")
+                    }
+                )
+                println("✅ KCEF Initialized Successfully")
+                isWebViewReady = true
+            } catch (e: Exception) {
+                System.err.println("🔥 KCEF Init CRASH:")
+                e.printStackTrace()
+                // Force ready to allow app to open even if webview fails
+                isWebViewReady = true 
+            }
+        }
+        
+        // Show Loading Screen for WebView Init
+        if (!isWebViewReady) {
+            Window(
+                onCloseRequest = ::exitApplication,
+                title = "Initializing Kaironex AI...",
+                state = rememberWindowState(width = 400.dp, height = 200.dp, position = WindowPosition(Alignment.Center)),
+                undecorated = true
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = KaironexColors.GeminiBlurple)
+                        Spacer(Modifier.height(16.dp))
+                        Text("Configuring AI Engine...", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+            return@application // Wait until ready
+        }
+
+        // 1. GLOBAL STATE
+        // Dummy start state
+        var localPressure by remember { mutableStateOf(PressureMap(0.2f, "Routine", "Waiting...", 3)) }
+        var remotePressure by remember { mutableStateOf<PressureMap?>(null) }
+        var showPopup by remember { mutableStateOf(false) }
+        
+        // ... rest of the code ...
 
     val scope = rememberCoroutineScope()
 
@@ -166,5 +230,9 @@ fun main() {
             }
         }
     }
+    }
+    } catch (e: Throwable) {
+        System.err.println("🔥 FATAL MAIN CRASH:")
+        e.printStackTrace()
     }
 }

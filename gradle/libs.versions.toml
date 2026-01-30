@@ -24,6 +24,7 @@ koinCompose = "1.1.5"
 voyager = "1.1.0-beta02"
 sqldelight = "2.0.2"
 webview = "1.9.20"
+kcef = "2024.04.20.3"
 
 [libraries]
 firebase-admin = { module = "com.google.firebase:firebase-admin", version.ref = "firebaseAdmin" }
@@ -34,6 +35,9 @@ firebase-database-ktx = { module = "com.google.firebase:firebase-database-ktx", 
 # JNA (Desktop Eye)
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
+
+# KCEF (Desktop Webview Engine)
+kcef = { module = "dev.datlag:kcef", version.ref = "kcef" }
 
 # Testing
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

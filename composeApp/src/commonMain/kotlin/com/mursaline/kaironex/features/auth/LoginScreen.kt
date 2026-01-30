@@ -602,13 +602,17 @@ object LoginScreen : Screen {
 
                         Spacer(modifier = Modifier.height(20.dp))
 
-                        // Judge Access (subtle)
+                        // Judge Access (Shortcut)
                         Text(
                             "🔐 Hackathon Judge Access",
                             color = KaironexColors.Slate500.copy(alpha = 0.6f),
                             style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.clickable { navigator.push(JudgeLoginScreen) }
+                            modifier = Modifier.clickable { 
+                                navigator.push(com.mursaline.kaironex.features.onboarding.SystemSetupScreen(userName = "Mursaline Huqe"))
+                            }
                         )
+
+
 
                         Spacer(modifier = Modifier.height(40.dp))
                     }

@@ -1,7 +1,0 @@
-{
-  "name": "Kaironex Interviewer",
-  "description": "An AI-powered audio interview agent that calibrates user profiles via natural conversation.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
-}

@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.ScreenModel
@@ -36,7 +37,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
-class ProfileCalibrationScreen(val isOnboarding: Boolean = false) : Screen {
+class ProfileCalibrationScreen(
+    val isOnboarding: Boolean = false,
+    val userName: String = "",
+    val addressAs: String = "",
+    val wakeWord: String = ""
+) : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -44,11 +50,25 @@ class ProfileCalibrationScreen(val isOnboarding: Boolean = false) : Screen {
         
         val profile by viewModel.profile.collectAsState()
         val isSaved by viewModel.isSaved.collectAsState()
+        val validationErrors by viewModel.validationErrors.collectAsState()
 
         // Auto-navigate if saved during onboarding
         LaunchedEffect(isSaved) {
             if (isSaved && isOnboarding) {
                  navigator.push(com.mursaline.kaironex.features.onboarding.GoogleDriveLinkScreen())
+            }
+        }
+        
+        // REFRESH DATA ON RETURN FROM INTERVIEW
+        // When we pop back to this screen, navigator.items changes. We force a reload.
+        LaunchedEffect(navigator.items) {
+             viewModel.refreshProfile()
+        }
+        
+        // Initialize name if provided and profile is empty/loading
+        LaunchedEffect(profile) {
+            if (profile != null && profile?.name.isNullOrBlank() && userName.isNotBlank()) {
+                viewModel.updateProfile(profile!!.copy(name = userName))
             }
         }
 
@@ -74,7 +94,7 @@ class ProfileCalibrationScreen(val isOnboarding: Boolean = false) : Screen {
                 ) {
                     Icon(Icons.Filled.Save, "Save")
                     Spacer(Modifier.width(8.dp))
-                    Text(if (isOnboarding) "Confirm & Continue" else if (isSaved) "Saved!" else "Sync & Save")
+                    Text(if (isOnboarding) "Continue" else if (isSaved) "Saved!" else "Sync & Save")
                 }
             }
         ) { padding ->
@@ -85,7 +105,15 @@ class ProfileCalibrationScreen(val isOnboarding: Boolean = false) : Screen {
             } else {
                 CalibrationForm(
                     profile = profile!!,
+                    validationErrors = validationErrors,
                     onUpdate = { viewModel.updateProfile(it) },
+                    onStartAI = {
+                        navigator.push(com.mursaline.kaironex.features.genesis.GenesisScreen(
+                            userName = userName.ifBlank { profile!!.name },
+                            addressAs = addressAs,
+                            wakeWord = wakeWord
+                        ))
+                    },
                     modifier = Modifier.padding(padding)
                 )
             }
@@ -96,7 +124,9 @@ class ProfileCalibrationScreen(val isOnboarding: Boolean = false) : Screen {
 @Composable
 fun CalibrationForm(
     profile: StudentProfile,
+    validationErrors: Set<String>,
     onUpdate: (StudentProfile) -> Unit,
+    onStartAI: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -107,48 +137,103 @@ fun CalibrationForm(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+        // --- AI OPTION (Merged from Choice Screen) ---
+        Card(
+            onClick = onStartAI,
+             colors = CardDefaults.cardColors(containerColor = KaironexColors.Indigo600),
+             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+             shape = RoundedCornerShape(16.dp),
+             modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                 modifier = Modifier.padding(20.dp).fillMaxWidth(),
+                 verticalAlignment = Alignment.CenterVertically
+            ) {
+                 Icon(Icons.Filled.Add, "AI", tint = Color.White, modifier = Modifier.size(32.dp))
+                 Spacer(Modifier.width(16.dp))
+                 Column(modifier = Modifier.weight(1f)) {
+                     Text("Prefer Talking?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                     Text("Use the AI Interview to auto-fill this form.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.8f))
+                 }
+                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Go", tint = Color.White, modifier = Modifier.graphicsLayer { rotationZ = 180f })
+            }
+        }
+        
+        // Show Global Error if any
+        if (validationErrors.isNotEmpty()) {
+            Text(
+                "Please fill in all required fields (*)",
+                color = KaironexColors.AlertRed,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        }
+
         // --- IDENTITY ---
         FormSection("Identity") {
             KxTextField(
-                label = "Name",
+                label = "Full Name (as per Student ID)",
                 value = profile.name,
                 onValueChange = { onUpdate(profile.copy(name = it)) }
             )
         }
         
-        // --- ACADEMIC LIFE & ROUTINE ---
+        // --- ACADEMIC LIFE ---
         FormSection("Academic Life") {
             KxTextField(
-                label = "University",
+                label = "University / College Name",
                 value = profile.university ?: "",
-                onValueChange = { onUpdate(profile.copy(university = it)) }
+                onValueChange = { onUpdate(profile.copy(university = it)) },
+                required = true,
+                isError = validationErrors.contains("university")
+            )
+            KxTextField(
+                label = "Major / Field of Study",
+                value = profile.major ?: "",
+                onValueChange = { onUpdate(profile.copy(major = it)) },
+                required = true,
+                isError = validationErrors.contains("major")
             )
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                KxTextField(
-                    label = "Major",
-                    value = profile.major ?: "",
-                    onValueChange = { onUpdate(profile.copy(major = it)) },
-                    modifier = Modifier.weight(1f)
-                )
                  KxTextField(
-                    label = "CGPA (Current)",
+                    label = "Current CGPA (e.g. 3.2)",
                     value = profile.currentCgpa ?: "",
                     onValueChange = { onUpdate(profile.copy(currentCgpa = it)) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    required = true,
+                    isError = validationErrors.contains("currentCgpa")
+                )
+                 KxTextField(
+                    label = "Target Goal CGPA (e.g. 3.8)",
+                    value = profile.targetCgpa ?: "",
+                    onValueChange = { onUpdate(profile.copy(targetCgpa = it)) },
+                    modifier = Modifier.weight(1f),
+                    required = true,
+                    isError = validationErrors.contains("targetCgpa")
                 )
             }
+            KxTextField(
+                label = "Why this Goal? (e.g. Scholarship requirement)",
+                value = profile.desiredCgpaReason ?: "",
+                onValueChange = { onUpdate(profile.copy(desiredCgpaReason = it)) }
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                  KxTextField(
-                    label = "Current Semester",
+                    label = "Current Semester (e.g. 4th)",
                     value = profile.semester ?: "",
                     onValueChange = { onUpdate(profile.copy(semester = it)) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    required = true,
+                    isError = validationErrors.contains("semester")
                 )
                  KxTextField(
-                    label = "Total Semesters",
+                    label = "Total Semesters (e.g. 8)",
                     value = profile.totalSemesters ?: "",
                     onValueChange = { onUpdate(profile.copy(totalSemesters = it)) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    required = true,
+                    isError = validationErrors.contains("totalSemesters")
                 )
             }
             
@@ -166,67 +251,25 @@ fun CalibrationForm(
             }
             
             if (profile.isInternationalStudent == true) {
-                 KxTextField(
-                    label = "Home Country",
+                KxTextField(
+                    label = "Home Country (e.g. Germany)",
                     value = profile.homeCountry ?: "",
                     onValueChange = { onUpdate(profile.copy(homeCountry = it)) }
                 )
                 KxTextField(
-                    label = "Current Country",
+                    label = "Current Residence (e.g. UK, USA)",
                     value = profile.currentCountry ?: "",
                     onValueChange = { onUpdate(profile.copy(currentCountry = it)) }
                 )
 
                  Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     KxTextField(
-                        label = "Visa Status",
+                        label = "Visa Status (e.g. F1, Student)",
                         value = profile.visaStatus ?: "",
                         onValueChange = { onUpdate(profile.copy(visaStatus = it)) },
                          modifier = Modifier.weight(1f)
                     )
-                    KxTextField(
-                        label = "Work Restrictions",
-                        value = profile.workRestrictions ?: "",
-                        onValueChange = { onUpdate(profile.copy(workRestrictions = it)) },
-                         modifier = Modifier.weight(1f)
-                    )
                 }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            HorizontalDivider(color = KaironexColors.BorderGray)
-            Spacer(Modifier.height(8.dp))
-
-            Text("Class Schedule & Routine", style = MaterialTheme.typography.labelLarge, color = KaironexColors.SlateGray)
-            
-            // Map Editor for Class Schedule
-            KeyValEditor(
-                items = profile.classSchedule ?: emptyMap(),
-                keyLabel = "Class (e.g. Chem 101)",
-                valLabel = "Time (e.g. Mon 10-12)",
-                onUpdate = { onUpdate(profile.copy(classSchedule = it)) }
-            )
-            
-            Spacer(Modifier.height(8.dp))
-            
-            // Routine Upload Placeholder
-            OutlinedCard(
-                 onClick = { },
-                 border = BorderStroke(1.dp, KaironexColors.GeminiBlurple),
-                 colors = CardDefaults.outlinedCardColors(containerColor = KaironexColors.CanvasWhite)
-            ) {
-                 Row(
-                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                     verticalAlignment = Alignment.CenterVertically,
-                     horizontalArrangement = Arrangement.Center
-                 ) {
-                     Icon(Icons.Filled.UploadFile, null, tint = KaironexColors.GeminiBlurple)
-                     Spacer(Modifier.width(8.dp))
-                     Text("Upload Routine (PDF/Image)", color = KaironexColors.GeminiBlurple)
-                 }
-            }
-            if (profile.routineFile != null) {
-                Text("Uploaded: ${profile.routineFile}", style = MaterialTheme.typography.bodySmall, color = KaironexColors.SuccessGreen)
             }
         }
         
@@ -242,120 +285,77 @@ fun CalibrationForm(
             
             if (profile.hasJob == true) {
                 KxTextField(
-                    label = "Job Description",
+                    label = "Job Role & Company",
                     value = profile.jobDescription ?: "",
-                    onValueChange = { onUpdate(profile.copy(jobDescription = it)) }
+                    onValueChange = { onUpdate(profile.copy(jobDescription = it)) },
+                    required = true,
+                    isError = validationErrors.contains("jobDescription")
                 )
                 KxTextField(
-                    label = "Job Schedule (e.g. 2pm-7pm)",
+                    label = "Work Schedule (e.g. Mon/Wed 2-6pm)",
                     value = profile.jobSchedule ?: "",
-                    onValueChange = { onUpdate(profile.copy(jobSchedule = it)) }
+                    onValueChange = { onUpdate(profile.copy(jobSchedule = it)) },
+                    required = true,
+                    isError = validationErrors.contains("jobSchedule")
                 )
             }
         }
 
-        // --- COMMUTE & LOGISTICS ---
-        FormSection("Commute & Logistics") {
-            Text("Travel Times (Minutes)", style = MaterialTheme.typography.labelLarge, color = KaironexColors.SlateGray)
-            
-             KeyValEditor(
-                items = profile.commuteMap ?: emptyMap(),
-                keyLabel = "Route (e.g. Home->Uni)",
-                valLabel = "Time (e.g. 45m)",
-                onUpdate = { onUpdate(profile.copy(commuteMap = it)) }
+        // --- REAL WORLD LOGISTICS ---
+        FormSection("Logistics & Constraints") {
+             KxTextField(
+                label = "Commute Info (e.g. 45m bus to campus)",
+                value = profile.commuteTime ?: "",
+                onValueChange = { onUpdate(profile.copy(commuteTime = it)) }
             )
-        }
-
-        // --- REAL WORLD COMMITMENTS ---
-        FormSection("Real World Constraints") {
-            Text("Non-Negotiables (Family, Prayer, etc.)", style = MaterialTheme.typography.labelLarge, color = KaironexColors.SlateGray)
-            KeyValEditor(
-                items = profile.nonNegotiables ?: emptyMap(),
-                keyLabel = "Activity",
-                valLabel = "Time/Note",
-                // FIX: Pass new map properly
-                onUpdate = { onUpdate(profile.copy(nonNegotiables = it)) } 
-            )
-            
+             
             Spacer(Modifier.height(16.dp))
-            
-            Text("Other Commitments (Gym, Dates, etc.)", style = MaterialTheme.typography.labelLarge, color = KaironexColors.SlateGray)
-            KeyValEditor(
-                items = profile.customCommitments ?: emptyMap(),
-                keyLabel = "Commitment",
-                valLabel = "Details",
-                onUpdate = { onUpdate(profile.copy(customCommitments = it)) }
+
+            KxTextField(
+                label = "Non-Negotiables (e.g. Prayer, Gym, Family)",
+                value = profile.nonNegotiables ?: "",
+                onValueChange = { onUpdate(profile.copy(nonNegotiables = it)) },
+                modifier = Modifier.height(100.dp) // Little taller for details
             )
         }
         
         // --- STUDY STRATEGY ---
         FormSection("Study Strategy") {
-             Text("How do you learn best?", style = MaterialTheme.typography.labelMedium)
-             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = profile.learningStyle == "VIDEO",
-                    onClick = { onUpdate(profile.copy(learningStyle = "VIDEO")) },
-                    label = { Text("Video 🎥") }
-                )
-                FilterChip(
-                    selected = profile.learningStyle == "READING",
-                    onClick = { onUpdate(profile.copy(learningStyle = "READING")) },
-                    label = { Text("Reading 📖") }
-                )
-             }
+             KxTextField(
+                 label = "Best Way You Learn (e.g. Video, Reading)",
+                 value = profile.learningStyle ?: "",
+                 onValueChange = { onUpdate(profile.copy(learningStyle = it)) },
+                 required = true,
+                 isError = validationErrors.contains("learningStyle")
+             )
              
-             Spacer(Modifier.height(8.dp))
-             Text("What distracts you most?", style = MaterialTheme.typography.labelMedium)
-             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = profile.failureCause == "DISTRACTION",
-                    onClick = { onUpdate(profile.copy(failureCause = "DISTRACTION")) },
-                    label = { Text("Socials/Distraction 📱") }
-                )
-                FilterChip(
-                    selected = profile.failureCause == "FATIGUE",
-                    onClick = { onUpdate(profile.copy(failureCause = "FATIGUE")) },
-                    label = { Text("Fatigue 😴") }
-                )
-                 FilterChip(
-                    selected = profile.failureCause == "CONFUSION",
-                    onClick = { onUpdate(profile.copy(failureCause = "CONFUSION")) },
-                    label = { Text("Confusion ❓") }
-                )
-             }
-        }
+             KxTextField(
+                 label = "Productivity Killer (e.g. Social Media, Fatigue)",
+                 value = profile.productivityKiller ?: "",
+                 onValueChange = { onUpdate(profile.copy(productivityKiller = it)) },
+                 required = true,
+                 isError = validationErrors.contains("productivityKiller")
+             )
 
-        // --- GOALS & ENERGY ---
-        FormSection("Goals & Energy") {
-             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                KxTextField(
-                    label = "Main Priority",
-                    value = profile.mainPriority ?: "",
-                    onValueChange = { onUpdate(profile.copy(mainPriority = it)) },
-                    modifier = Modifier.weight(1f)
-                )
-                KxTextField(
-                    label = "Secondary Goal",
-                    value = profile.secondaryPriority ?: "",
-                    onValueChange = { onUpdate(profile.copy(secondaryPriority = it)) },
-                    modifier = Modifier.weight(1f)
-                )
-             }
-             
-            Spacer(Modifier.height(8.dp))
-            HorizontalDivider(color = KaironexColors.BorderGray)
-            Spacer(Modifier.height(8.dp))
-            
-            Text("Deep Work Capacity: ${profile.dailyFocusCapacity ?: 4} Hours", style = MaterialTheme.typography.labelLarge)
-            Slider(
-                value = (profile.dailyFocusCapacity ?: 4).toFloat(),
-                onValueChange = { onUpdate(profile.copy(dailyFocusCapacity = it.toInt())) },
-                valueRange = 1f..12f,
-                steps = 11,
-                colors = SliderDefaults.colors(thumbColor = KaironexColors.GeminiBlurple, activeTrackColor = KaironexColors.GeminiBlurple)
+            KxTextField(
+                label = "Preferred Resources (e.g. Youtube, Textbooks)",
+                value = profile.preferredResources ?: "",
+                onValueChange = { onUpdate(profile.copy(preferredResources = it)) },
+                required = true,
+                isError = validationErrors.contains("preferredResources")
             )
             
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
+            
+            KxTextField(
+                label = "Daily Focus Capacity (e.g. 4 hours)",
+                value = profile.dailyFocusCapacity ?: "",
+                onValueChange = { onUpdate(profile.copy(dailyFocusCapacity = it)) },
+                required = true,
+                isError = validationErrors.contains("dailyFocusCapacity")
+            )
+            
+            Spacer(Modifier.height(16.dp))
             Text("Energy Preference", style = MaterialTheme.typography.labelMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
@@ -400,77 +400,7 @@ fun FormSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
-@Composable
-fun KeyValEditor(
-    items: Map<String, String>,
-    keyLabel: String,
-    valLabel: String,
-    onUpdate: (Map<String, String>) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // List existing
-        items.forEach { (key, value) ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(KaironexColors.CloudGray, RoundedCornerShape(8.dp))
-                    .padding(8.dp)
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(key, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                    Text(value, style = MaterialTheme.typography.bodySmall, color = KaironexColors.SlateGray)
-                }
-                IconButton(onClick = { 
-                    val newMap = items.toMutableMap()
-                    newMap.remove(key)
-                    onUpdate(newMap)
-                }) {
-                    Icon(Icons.Filled.Close, "Remove", tint = KaironexColors.AlertRed)
-                }
-            }
-        }
-        
-        // Add New
-        var newKey by remember { mutableStateOf("") }
-        var newVal by remember { mutableStateOf("") }
-        
-        Row(
-            verticalAlignment = Alignment.CenterVertically, 
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = newKey,
-                onValueChange = { newKey = it },
-                label = { Text(keyLabel) },
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
-            OutlinedTextField(
-                value = newVal,
-                onValueChange = { newVal = it },
-                label = { Text(valLabel) },
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
-            
-            // Bug Fix: Using dedicated handler and logging if needed for debugging
-            FilledIconButton(
-                onClick = {
-                    if (newKey.isNotBlank() && newVal.isNotBlank()) {
-                         // Use immutable map addition to guarantee a new instance
-                        onUpdate(items + (newKey.trim() to newVal.trim()))
-                        newKey = ""
-                        newVal = ""
-                    }
-                },
-                modifier = Modifier.padding(top = 6.dp)
-            ) {
-                Icon(Icons.Filled.Add, "Add")
-            }
-        }
-    }
-}
+
 
 @Composable
 fun KxTextField(
@@ -478,17 +408,31 @@ fun KxTextField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    required: Boolean = false,
+    isError: Boolean = false
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label) },
+        label = { 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(label)
+                if (required) {
+                    Text(" *", color = Color(0xFFFF0000), fontWeight = FontWeight.Bold) // Bright Red and Bold
+                }
+            }
+        },
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
+        isError = isError,
+        singleLine = false,
+        minLines = if (value.length > 50) 3 else 1,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = KaironexColors.GeminiBlurple,
-            focusedLabelColor = KaironexColors.GeminiBlurple
+            focusedLabelColor = KaironexColors.GeminiBlurple,
+            errorBorderColor = KaironexColors.AlertRed,
+            errorLabelColor = KaironexColors.AlertRed
         )
     )
 }
@@ -503,11 +447,14 @@ class ProfileCalibrationViewModel(
     private val _isSaved = kotlinx.coroutines.flow.MutableStateFlow(false)
     val isSaved = _isSaved.asStateFlow()
 
+    private val _validationErrors = kotlinx.coroutines.flow.MutableStateFlow<Set<String>>(emptySet())
+    val validationErrors = _validationErrors.asStateFlow()
+
     init {
-        loadProfile()
+        refreshProfile()
     }
 
-    private fun loadProfile() {
+    fun refreshProfile() {
         screenModelScope.launch {
             _profile.value = profileStorage.loadProfile() ?: StudentProfile()
         }
@@ -516,13 +463,44 @@ class ProfileCalibrationViewModel(
     fun updateProfile(newProfile: StudentProfile) {
         _profile.value = newProfile
         _isSaved.value = false
+        _validationErrors.value = emptySet() // Clear errors on edit
+    }
+
+    private fun validate(): Boolean {
+        val p = _profile.value ?: return false
+        val errors = mutableSetOf<String>()
+
+        // ACADEMIC LIFE - REQUIRED
+        if (p.university.isNullOrBlank()) errors.add("university")
+        if (p.major.isNullOrBlank()) errors.add("major")
+        if (p.currentCgpa.isNullOrBlank()) errors.add("currentCgpa")
+        if (p.targetCgpa.isNullOrBlank()) errors.add("targetCgpa")
+        if (p.semester.isNullOrBlank()) errors.add("semester")
+        if (p.totalSemesters.isNullOrBlank()) errors.add("totalSemesters")
+        
+        // JOB - REQUIRED ONLY IF CHECKED
+        if (p.hasJob == true) {
+            if (p.jobDescription.isNullOrBlank()) errors.add("jobDescription")
+            if (p.jobSchedule.isNullOrBlank()) errors.add("jobSchedule")
+        }
+
+        // STUDY STRATEGY - REQUIRED
+        if (p.learningStyle.isNullOrBlank()) errors.add("learningStyle")
+        if (p.productivityKiller.isNullOrBlank()) errors.add("productivityKiller")
+        if (p.preferredResources.isNullOrBlank()) errors.add("preferredResources")
+        if (p.dailyFocusCapacity.isNullOrBlank()) errors.add("dailyFocusCapacity")
+
+        _validationErrors.value = errors
+        return errors.isEmpty()
     }
 
     fun saveProfile() {
         screenModelScope.launch {
-            _profile.value?.let { 
-                profileStorage.saveProfile(it) 
-                _isSaved.value = true
+            if (validate()) {
+                _profile.value?.let { 
+                    profileStorage.saveProfile(it) 
+                    _isSaved.value = true
+                }
             }
         }
     }

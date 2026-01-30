@@ -57,11 +57,11 @@ kotlin {
             implementation(libs.firebase.common)
 
             // Ktor (The Brain)
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.cio)
-            implementation(libs.ktor.websockets)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.serialization.kotlinx.json)
+            api(libs.ktor.client.core)
+            api(libs.ktor.client.cio)
+            api(libs.ktor.websockets)
+            api(libs.ktor.client.content.negotiation)
+            api(libs.ktor.serialization.kotlinx.json)
             
             // Koin (DI)
             implementation(libs.koin.core)
@@ -95,6 +95,12 @@ kotlin {
             implementation(libs.jna.platform)
             implementation(libs.firebase.admin)
             implementation(libs.ktor.okhttp)
+            implementation(libs.kcef)
+            
+            // Explicitly added KCEF
+            implementation(libs.kcef)
+            
+            // Ktor plugins inherited from commonMain via api()
 ////            implementation(libs.sqldelight.sqlite)
 
         }
@@ -149,7 +155,12 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "com.mursaline.kaironex.MainKt"
-        jvmArgs += listOf("-DGEMINI_API_KEY=$geminiKey")
+        jvmArgs += listOf(
+            "-DGEMINI_API_KEY=$geminiKey",
+            "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
+            "--add-opens=java.desktop/java.awt=ALL-UNNAMED",
+            "--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED"
+        )
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)

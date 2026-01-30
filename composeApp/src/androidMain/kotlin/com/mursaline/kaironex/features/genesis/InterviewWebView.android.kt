@@ -14,6 +14,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 actual fun InterviewWebView(
     modifier: Modifier,
     apiKey: String,
+    userName: String,
+    agentName: String,
     onInterviewComplete: () -> Unit,
     onAgentStateChange: (Boolean, Boolean) -> Unit,
     onProfileUpdate: (String, String) -> Unit
@@ -33,8 +35,6 @@ actual fun InterviewWebView(
 
                 webChromeClient = object : WebChromeClient() {
                     override fun onPermissionRequest(request: PermissionRequest) {
-                        // Grant all permissions (audio) specifically for the local agent
-                        // In production, check request.resources includes AUDIO_CAPTURE
                         request.grant(request.resources)
                     }
                 }
@@ -44,15 +44,7 @@ actual fun InterviewWebView(
                         super.onPageFinished(view, url)
                         val triggerScript = """
                             window.ANDROID_API_KEY = '$apiKey';
-                            window.ANDROID_AUTO_START = true;
-                            if (window.startInterview) {
-                                window.startInterview();
-                            } else {
-                                // Retry after short delay in case React hasn't mounted
-                                setTimeout(function() {
-                                    if(window.startInterview) window.startInterview();
-                                }, 1000);
-                            }
+                            // New React app doesn't use window.startInterview global anymore, it auto-starts via React lifecycle + Orbit click
                         """.trimIndent()
                         evaluateJavascript(triggerScript, null)
                     }
@@ -75,10 +67,18 @@ actual fun InterviewWebView(
                     }
                 }, "Android")
 
-                // Load the local asset
-                // The React app was built with base: './' so asset loading works relative to this index.html
-                loadUrl("file:///android_asset/interviewer/index.html")
+                // Load with URL Params
+                val encodedUser = android.net.Uri.encode(userName)
+                val encodedAgent = android.net.Uri.encode(agentName)
+                loadUrl("file:///android_asset/interviewer/index.html?userName=${encodedUser}&agentName=${encodedAgent}")
             }
+        },
+        onRelease = { webView ->
+            // CRITICAL: Stop the React App / Gemini Session when navigating away
+            webView.loadUrl("about:blank")
+            webView.onPause()
+            webView.removeAllViews()
+            webView.destroy()
         }
     )
 }

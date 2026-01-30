@@ -10,7 +10,7 @@ import com.mursaline.kaironex.brain.AudioPlayer
 actual val platformModule = module {
     single<AudioRecorder> { 
         object : AudioRecorder {
-            override fun startRecording(): Flow<ByteArray> = emptyFlow()
+            override fun startRecording(onVolumeDetected: () -> Unit): Flow<ByteArray> = emptyFlow()
             override fun stopRecording() {}
         }
     }
@@ -18,6 +18,8 @@ actual val platformModule = module {
         object : AudioPlayer {
             override fun play(pcmData: ByteArray) {}
             override fun stop() {}
+            override fun endStream() {}
+            override fun isPlaying(): Boolean = false
         }
     }
     

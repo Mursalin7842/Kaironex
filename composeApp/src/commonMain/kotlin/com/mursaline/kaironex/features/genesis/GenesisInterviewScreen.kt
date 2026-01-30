@@ -33,6 +33,8 @@ import com.mursaline.kaironex.brain.GeminiReasoningEngine
 @Composable
 fun GenesisInterviewScreen(
     viewModel: GenesisViewModel,
+    userName: String,
+    agentName: String,
     onInterviewComplete: () -> Unit
 ) {
     // HYBRID ARCHITECTURE PIVOT:
@@ -43,10 +45,12 @@ fun GenesisInterviewScreen(
     InterviewWebView(
         modifier = Modifier.fillMaxSize(),
         apiKey = PlatformSecrets.apiKey,
+        userName = userName,
+        agentName = agentName,
         onInterviewComplete = onInterviewComplete,
         onAgentStateChange = { _, _ -> /* Visual state handled in React now */ },
         onProfileUpdate = { field, value ->
-            viewModel.manualUpdate(field, value)
+            viewModel.updateFromAgent(field, value)
         }
     )
 }

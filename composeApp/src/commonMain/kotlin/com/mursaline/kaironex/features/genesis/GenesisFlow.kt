@@ -39,8 +39,6 @@ object GenesisFlow {
                 return ask("currentCountry", "And which country are you studying in right now?")
             if (profile.visaStatus.isNullOrBlank()) 
                 return ask("visaStatus", "What is your visa status? (for example F1, Student Route)")
-            if (profile.workRestrictions.isNullOrBlank()) 
-                return ask("workRestrictions", "Do you have any strict work hour limits I should know about?")
         }
 
         // --- 3. JOB & CAREER (Complex Branch) ---
@@ -54,24 +52,14 @@ object GenesisFlow {
             
             if (profile.jobSchedule.isNullOrBlank()) 
                 return ask("jobSchedule", "What are your usual work timings? (for example 9am to 5pm)")
-
-
-        } else {
-            // Unemployed Logic
-            if (profile.wantsJobHelp == null) 
-                return ask("wantsJobHelp", "I see. Would you like Kaironex to help you find a suitable job?")
-        }
-
+        } 
+        
         // --- 4. COMMUTE (If not captured in Job) ---
         // Note: Logic above captures Uni-Job, here we want general Uni commute
-        if (profile.commuteDuration.isNullOrBlank()) 
-            return ask("commuteDuration", "Roughly how long is your daily commute to university?")
+        if (profile.commuteTime.isNullOrBlank()) 
+            return ask("commuteTime", "Roughly how long is your daily commute to university?")
 
         // --- 5. STRATEGY & GOALS ---
-        val priorityPrompt = if (profile.hasJob == true) "Improving Job Performance" else "Getting a Job"
-        if (profile.mainPriority.isNullOrBlank()) 
-            return ask("mainPriority", "Moving on. What is your #1 priority right now: $priorityPrompt or Maximizing CGPA?")
-        
         // Removed targetCgpa/financialStakes for brevity as per user "Minimise Load" request,
         // but adding Energy/Biology as they are key features
         
@@ -86,8 +74,8 @@ object GenesisFlow {
         if (profile.learningStyle.isNullOrBlank()) 
             return ask("learningStyle", "Do you learn better by Watching Videos or Reading Documentation?")
 
-        if (profile.failureCause.isNullOrBlank()) 
-            return ask("failureCause", "Last one: What usually stops you from studying? Is it Phone Distraction, Fatigue, or Confusion?")
+        if (profile.productivityKiller.isNullOrBlank()) 
+            return ask("productivityKiller", "Last one: What usually stops you from studying? Is it Phone Distraction, Fatigue, or Confusion?")
 
         // --- COMPLETE ---
         return InterviewStep(

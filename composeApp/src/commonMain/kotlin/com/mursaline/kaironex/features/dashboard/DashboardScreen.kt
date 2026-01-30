@@ -189,19 +189,7 @@ object DashboardScreen : Screen {
                     )
                     Spacer(Modifier.height(if (isMobile) 6.dp else 12.dp))
 
-                    // Judge View (Profile Overview)
-                    val profile = com.mursaline.kaironex.agents.genesis.StudentProfile() // Default for now
 
-                    KxCard(
-                        variant = KxCardVariant.Flat,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(if (isMobile) 100.dp else 160.dp),
-                        onClick = { navigator.push(com.mursaline.kaironex.features.dashboard.JudgeDashboardScreen(profile)) },
-                        backgroundColor = KaironexColors.CanvasWhite
-                    ) {
-                        PressureMap(modifier = Modifier.fillMaxSize(), isMobile = isMobile)
-                    }
 
                     // Extra bottom spacing for navbar
                     Spacer(Modifier.height(if (isMobile) 120.dp else 48.dp))

@@ -93,27 +93,53 @@ class GenesisViewModel : ViewModel(), KoinComponent {
         disconnect()
     }
 
-    fun manualUpdate(field: String, value: String?) {
+    fun updateFromAgent(field: String, value: String?) {
         if (value == null) return
         val currentProfile = profile
         val updatedProfile = when (field) {
+            // Academic
             "university" -> currentProfile.copy(university = value)
-            "major" -> currentProfile.copy(major = value)
-            "semester" -> currentProfile.copy(semester = value)
-            "cgpa" -> currentProfile.copy(currentCgpa = value) // Map 'cgpa' to 'currentCgpa'
-            "financialStakes" -> currentProfile.copy(financialStakes = value)
+            "degreeMajor" -> currentProfile.copy(major = value)
+            "totalSemesters" -> currentProfile.copy(totalSemesters = value)
+            "currentSemester" -> currentProfile.copy(semester = value)
+            "currentCGPA" -> currentProfile.copy(currentCgpa = value)
+            "desiredCGPA" -> currentProfile.copy(targetCgpa = value)
+            "desiredCGPAReason" -> currentProfile.copy(desiredCgpaReason = value)
+
+            // International
+            "isInternational" -> currentProfile.copy(isInternationalStudent = value.toBoolean())
+            "hostCountry" -> currentProfile.copy(currentCountry = value)
+            "homeCountry" -> currentProfile.copy(homeCountry = value)
+            "visaStatus" -> currentProfile.copy(visaStatus = value)
+
+            // Work
             "hasJob" -> currentProfile.copy(hasJob = value.toBoolean())
-            "careerAmbition" -> currentProfile.copy(careerAmbition = value)
-            "workHoursPerWeek" -> currentProfile.copy(workHoursPerWeek = value.toDoubleOrNull())
-            "commuteDuration" -> currentProfile.copy(commuteDuration = value)
-            "energyPreference" -> currentProfile.copy(energyPreference = value)
-            "dailyFocusCapacity" -> currentProfile.copy(dailyFocusCapacity = value.toIntOrNull()) // Int?
-            "nonNegotiables" -> currentProfile.copy(nonNegotiables = mapOf("User Input" to value)) // Map
+            "jobPosition" -> currentProfile.copy(jobDescription = value)
+            "jobSchedule" -> currentProfile.copy(jobSchedule = value)
+
+            // Rhythm & Logistics
+            "commuteTime" -> currentProfile.copy(commuteTime = value)
+            "nonNegotiables" -> currentProfile.copy(nonNegotiables = value)
+            
+            // Psych / Strategy
             "learningStyle" -> currentProfile.copy(learningStyle = value)
-            "stressResponse" -> currentProfile.copy(stressResponse = value)
-            "failureCause" -> currentProfile.copy(failureCause = value)
-            else -> currentProfile
+            "preferredResources" -> currentProfile.copy(preferredResources = value)
+            "productivityKiller" -> currentProfile.copy(productivityKiller = value)
+            "focusCapacity" -> currentProfile.copy(dailyFocusCapacity = value)
+            "chronotype" -> currentProfile.copy(energyPreference = value)
+            
+            else -> {
+                println("⚠️ Unknown field from Agent: $field = $value")
+                currentProfile
+            }
         }
-        profile = updatedProfile
+        
+        if (updatedProfile != currentProfile) {
+            profile = updatedProfile
+            // Auto-persist on every update to ensure data is there when navigating
+            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                profileStorage.saveProfile(updatedProfile)
+            }
+        }
     }
 }

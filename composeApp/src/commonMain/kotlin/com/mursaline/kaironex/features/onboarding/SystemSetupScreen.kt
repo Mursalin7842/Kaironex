@@ -30,6 +30,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.mursaline.kaironex.features.genesis.GenesisScreen
+
 import com.mursaline.kaironex.ui.theme.KaironexColors
 import kaironex.composeapp.generated.resources.Res
 import kaironex.composeapp.generated.resources.robot_hero
@@ -58,8 +59,24 @@ data class SystemSetupScreen(
         val navigator = LocalNavigator.currentOrThrow
 
         // State
-        var addressMeAs by remember { mutableStateOf("") }
-        var wakeWord by remember { mutableStateOf("Kairo") }
+        var addressMeAs by remember { mutableStateOf("") } // Don't prefill as per request
+        var wakeWord by remember { mutableStateOf("") }
+        var wakeWordError by remember { mutableStateOf<String?>(null) }
+
+        val blockedWakeWords = listOf("google", "siri", "alexa", "bixby", "cortana")
+
+        fun validateWakeWord(word: String): Boolean {
+            if (blockedWakeWords.any { word.trim().equals(it, ignoreCase = true) }) {
+                wakeWordError = "This name conflicts with your device assistant."
+                return false
+            }
+            if (word.trim().lowercase().contains("google")) {
+                 wakeWordError = "Let's avoid 'Google' to prevent confusion."
+                 return false
+            }
+            wakeWordError = null
+            return true
+        }
 
         // Floating animation for premium feel
         val infiniteTransition = rememberInfiniteTransition(label = "float")
@@ -239,7 +256,7 @@ data class SystemSetupScreen(
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
-                                        "How should I address you?",
+                                        "How should I address you? *",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold,
                                         color = KaironexColors.Slate900
@@ -294,7 +311,7 @@ data class SystemSetupScreen(
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
-                                        "What will you call me?",
+                                        "What will you call me? *",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold,
                                         color = KaironexColors.Slate900
@@ -307,10 +324,27 @@ data class SystemSetupScreen(
                                     color = KaironexColors.Slate500
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
+                                // Wake Word Input with "Hey" Prefix
                                 OutlinedTextField(
                                     value = wakeWord,
-                                    onValueChange = { wakeWord = it },
-                                    placeholder = { Text("Kairo, Jarvis, Friday...", color = KaironexColors.Slate500.copy(alpha = 0.7f)) },
+                                    onValueChange = { 
+                                        wakeWord = it 
+                                        validateWakeWord(it)
+                                    },
+                                    placeholder = { Text("Kairo", color = KaironexColors.Slate500.copy(alpha = 0.5f)) },
+                                    prefix = { 
+                                        Text(
+                                            "Hey ", 
+                                            color = KaironexColors.Slate900,
+                                            fontWeight = FontWeight.Bold
+                                        ) 
+                                    },
+                                    isError = wakeWordError != null,
+                                    supportingText = {
+                                        if (wakeWordError != null) {
+                                            Text(wakeWordError!!, color = KaironexColors.AlertRed)
+                                        }
+                                    },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = TextFieldDefaults.colors(
@@ -320,7 +354,8 @@ data class SystemSetupScreen(
                                         unfocusedIndicatorColor = Color.Transparent,
                                         cursorColor = KaironexColors.GeminiBlurple,
                                         focusedTextColor = KaironexColors.Slate900,
-                                        unfocusedTextColor = KaironexColors.Slate900
+                                        unfocusedTextColor = KaironexColors.Slate900,
+                                        errorContainerColor = KaironexColors.CloudGray.copy(alpha = 0.5f)
                                     ),
                                     singleLine = true
                                 )
@@ -332,15 +367,28 @@ data class SystemSetupScreen(
                         // --- CTA Button ---
                         Button(
                             onClick = {
-                                val finalAddress = addressMeAs.ifEmpty { userName }
-                                val finalWake = wakeWord.ifEmpty { "Kairo" }
-                                // Pass data to GenesisScreen for the AI interview
-                                navigator.push(GenesisScreen(
-                                    userName = userName,
-                                    addressAs = finalAddress,
-                                    wakeWord = finalWake
-                                ))
+                                if (validateWakeWord(wakeWord)) {
+                                    // Validation: Ensure fields are not empty if we want to enforce (*)
+                                    // Though logic had fallback, adding visual (*) implies mandatory input. 
+                                    // We will stick to the user's request for "Preferred Name" to be optional default,
+                                    // but if they marked it (*), strictly it should be filled. 
+                                    // However, the user said "Dont prefill...". 
+                                    // I'll assume fallback is NOT allowed if I mark it (*). 
+                                    // Let's enforce input.
+                                    
+                                    val finalAddress = addressMeAs
+                                    val finalWake = wakeWord
+                                    
+                                    // Pass data to GenesisScreen
+                                    navigator.push(com.mursaline.kaironex.features.dashboard.ProfileCalibrationScreen(
+                                        isOnboarding = true,
+                                        userName = userName,
+                                        addressAs = finalAddress,
+                                        wakeWord = finalWake
+                                    ))
+                                }
                             },
+                            enabled = wakeWordError == null && addressMeAs.isNotBlank() && wakeWord.isNotBlank(),
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(

@@ -7,6 +7,8 @@ import androidx.compose.ui.Modifier
 expect fun InterviewWebView(
     modifier: Modifier = Modifier,
     apiKey: String,
+    userName: String,
+    agentName: String,
     onInterviewComplete: () -> Unit,
     onAgentStateChange: (Boolean, Boolean) -> Unit,
     onProfileUpdate: (String, String) -> Unit
