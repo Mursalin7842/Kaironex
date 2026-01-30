@@ -1,0 +1,4 @@
+appwrite
+google-generativeai
+python-dateutil
+pydantic
