@@ -3,6 +3,7 @@ import json
 import datetime
 from appwrite.client import Client
 from appwrite.services.databases import Databases
+from appwrite.query import Query  # <--- NEW IMPORT
 
 # Config
 DB_ID = os.environ.get('APPWRITE_DATABASE_ID', '697cb20f00110f6d7530')
@@ -19,10 +20,12 @@ class KairoDB:
     def log_heartbeat(self, user_id, source_details):
         """Updates agent_memory with the source and time."""
         try:
-            # Find the user's memory doc
-            results = self.db.list_documents(DB_ID, MEMORY_COL, [
-                f'userId="{user_id}"' # Appwrite query syntax
-            ])
+            # --- FIX: Use Query.equal instead of raw string ---
+            results = self.db.list_documents(
+                database_id=DB_ID, 
+                collection_id=MEMORY_COL, 
+                queries=[Query.equal('userId', user_id)] 
+            )
             
             data = {
                 'last_active': datetime.datetime.now().isoformat(),
@@ -45,8 +48,9 @@ class KairoDB:
         """Triggers the Android Voice."""
         self.db.create_document(DB_ID, 'interventions', 'unique()', {
             'userId': user_id,
-            'interventionId': 'unique()',
+            'interventionId': 'unique()', # Note: This writes the string "unique()" to the column. If you want a random ID, remove this line or generate one.
             'trigger_event': trigger,
             'status': 'PENDING',
-            'ai_message': message
+            'ai_message': message,
+            'ai_response_strategy': strategy # Added this back (it was missing in your last upload)
         })

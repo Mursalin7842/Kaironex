@@ -107,10 +107,10 @@ if __name__ == "__main__":
     # test_cron_trigger()
 
     # B. Test the Study Brain
-    # test_study_log_trigger()
+     test_study_log_trigger()
     
     # C. Test Vitality (Sleep Check)
-    test_vitality_trigger()
+    #test_vitality_trigger()
     
     # D. Test Campaign (New Goal)
     # test_campaign_trigger()
