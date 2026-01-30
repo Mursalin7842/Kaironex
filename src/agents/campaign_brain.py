@@ -1,3 +1,6 @@
+import json
+from ..utils.gemini_client import GeminiClient
+
 def run_campaign_agent(db_helper, payload, context):
     """
     The Career Coach.
@@ -11,17 +14,30 @@ def run_campaign_agent(db_helper, payload, context):
     campaign_summary = f"EVENT:CAMPAIGN | Type: {payload.get('type', 'unknown')}"
     db_helper.log_heartbeat(user_id, campaign_summary)
     
-    # 2. Logic (Placeholder)
-    # Example: If a new big goal is added, offer a breakdown
+    # 2. Initialize AI
+    ai = GeminiClient()
+    
+    # 3. Logic: Analyze Goal/Schedule Updates
     event_type = payload.get('type')
+    
     if event_type == 'new_goal':
         goal_title = payload.get('goal_title', 'Unknown Goal')
+        
+        # Ask Gemini to be a Strategist
+        prompt = f"""
+        User Context: The user just set a new high-level goal: '{goal_title}'.
+        Role: You are an elite career strategist and productivity coach.
+        Task: Write a 1-sentence, punchy, motivating response. Validate the goal and propose an immediate first step (e.g., breaking it down or scheduling a deep work block).
+        """
+        
+        ai_message = ai.generate_response(prompt)
+        
         db_helper.create_intervention(
             user_id,
             "NEW_GOAL_SET",
-            f"That's a great goal: '{goal_title}'. Do you want me to draft a weekly plan for it?",
+            ai_message,
             strategy="PROACTIVE"
         )
-        return context.res.json({"status": "goal_acknowledged"})
+        return context.res.json({"status": "goal_acknowledged", "ai_reply": ai_message})
 
     return context.res.json({"status": "campaign_processed"})

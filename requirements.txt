@@ -1,5 +1,5 @@
 appwrite
-google-generativeai
+google-generativeai==0.8.3
 python-dateutil
 pydantic
 python-dotenv
