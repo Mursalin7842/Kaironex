@@ -14,7 +14,7 @@ import com.mursaline.kaironex.di.appModule
 import com.mursaline.kaironex.ui.theme.KaironexColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import dev.datlag.kcef.KCEF
+// import dev.datlag.kcef.KCEF
 import org.koin.core.context.startKoin
 
 @Suppress("unused")
@@ -35,6 +35,7 @@ fun main() {
         println("✅ Koin Started")
 
         application {
+/*
         // --- KCEF Initialization State (Required for WebView) ---
         var isWebViewReady by remember { mutableStateOf(false) }
         
@@ -84,6 +85,8 @@ fun main() {
             }
             return@application // Wait until ready
         }
+*/
+        var isWebViewReady = true // Force true to skip KCEF waiting
 
         // 1. GLOBAL STATE
         // Dummy start state

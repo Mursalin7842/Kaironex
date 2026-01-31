@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    kotlin("plugin.serialization") version "2.0.0"
+    kotlin("plugin.serialization") version "2.1.0"
 }
 
 val localProperties = Properties()
@@ -57,11 +57,11 @@ kotlin {
             implementation(libs.firebase.common)
 
             // Ktor (The Brain)
-            api(libs.ktor.client.core)
-            api(libs.ktor.client.cio)
-            api(libs.ktor.websockets)
-            api(libs.ktor.client.content.negotiation)
-            api(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.cio)
+            implementation(libs.ktor.websockets)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
             
             // Koin (DI)
             implementation(libs.koin.core)
@@ -73,8 +73,8 @@ kotlin {
             implementation(libs.voyager.transitions)
             implementation(libs.voyager.koin)
 
-            // WebView
-            implementation(libs.compose.webview)
+//            // WebView
+//            implementation(libs.compose.webview)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -95,12 +95,11 @@ kotlin {
             implementation(libs.jna.platform)
             implementation(libs.firebase.admin)
             implementation(libs.ktor.okhttp)
-            implementation(libs.kcef)
+//            implementation(libs.kcef)
             
-            
-            // Ktor plugins inherited from commonMain via api() - AND explicit for JVM to be safe
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.serialization.kotlinx.json)
+            // Explicitly added Ktor plugins for JVM runtime (Using direct JVM artifacts to fix NoClassDefFoundError)
+            implementation("io.ktor:ktor-client-content-negotiation-jvm:2.3.12")
+            implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:2.3.12")
 
 ////            implementation(libs.sqldelight.sqlite)
 
