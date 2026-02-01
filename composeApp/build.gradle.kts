@@ -95,11 +95,18 @@ kotlin {
             implementation(libs.jna.platform)
             implementation(libs.firebase.admin)
             implementation(libs.ktor.okhttp)
-//            implementation(libs.kcef)
-            
-            // Explicitly added Ktor plugins for JVM runtime (Using direct JVM artifacts to fix NoClassDefFoundError)
-            implementation("io.ktor:ktor-client-content-negotiation-jvm:2.3.12")
-            implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:2.3.12")
+
+            // Ktor dependencies for JVM (explicit to fix NoClassDefFoundError)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.cio)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+
+            // SLF4J implementation (fixes SLF4J warning)
+            implementation("org.slf4j:slf4j-simple:2.0.9")
+
+            // KCEF for WebView
+            implementation(libs.kcef)
 
 ////            implementation(libs.sqldelight.sqlite)
 

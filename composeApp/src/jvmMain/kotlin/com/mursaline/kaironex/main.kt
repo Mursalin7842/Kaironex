@@ -14,7 +14,9 @@ import com.mursaline.kaironex.di.appModule
 import com.mursaline.kaironex.ui.theme.KaironexColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-// import dev.datlag.kcef.KCEF
+import dev.datlag.kcef.KCEF
+import kotlinx.coroutines.runBlocking
+import java.io.File
 import org.koin.core.context.startKoin
 
 @Suppress("unused")
@@ -34,59 +36,74 @@ fun main() {
         }
         println("✅ Koin Started")
 
-        application {
-/*
-        // --- KCEF Initialization State (Required for WebView) ---
-        var isWebViewReady by remember { mutableStateOf(false) }
-        
-        // Initialize KCEF (Downloads binaries if needed)
-        // We use a separate CoroutineScope or LaunchedEffect to not block UI thread
-        LaunchedEffect(Unit) {
-            println("🌐 Initializing KCEF...")
-            try {
-                // Default settings
+        // Initialize KCEF before application starts (blocking initialization)
+        println("🌐 Initializing KCEF...")
+        try {
+            // Use absolute path based on current working directory
+            val workDir = File(System.getProperty("user.dir"))
+            val kcefInstallDir = if (workDir.name == "composeApp") {
+                File(workDir, "jcef-bundle")
+            } else {
+                File(workDir, "composeApp/jcef-bundle")
+            }
+println("📁 KCEF Install Dir: ${kcefInstallDir.absolutePath}")
+
+            // Clear old permission cache BEFORE initializing CEF
+            // This ensures fresh permission state
+            val prefsFile = File(kcefInstallDir, "cache/Default/Preferences")
+            if (prefsFile.exists()) {
+                try {
+                    println("🧹 Clearing old CEF permission cache...")
+                    prefsFile.delete()
+                } catch (e: Exception) {
+                    println("⚠️ Could not clear permission cache: ${e.message}")
+                }
+            }
+
+            runBlocking {
                 KCEF.init(
-                    builder = { 
-                        // Use defaults
+                    builder = {
+                        installDir(kcefInstallDir)
+                        progress {
+                            onDownloading { progress ->
+                                println("⬇️ KCEF Downloading: ${(progress * 100).toInt()}%")
+                            }
+                            onInitialized {
+                                println("✅ KCEF Initialized Successfully")
+                            }
+                        }
+                        settings {
+                            cachePath = File(kcefInstallDir, "cache").absolutePath
+                            // Enable remote debugging - access via http://localhost:9222
+                            remoteDebuggingPort = 9222
+                        }
+
+                        // Add command line args for media stream permissions
+                        addArgs(
+                            "--enable-media-stream",
+                            "--use-fake-ui-for-media-stream",
+                            "--autoplay-policy=no-user-gesture-required",
+                            "--disable-features=WebRtcHideLocalIpsWithMdns"
+                        )
                     },
-                    onError = { e -> 
+                    onError = { e: Throwable? ->
                         System.err.println("❌ KCEF Init Error:")
-                        e?.printStackTrace() 
+                        e?.printStackTrace()
                     },
-                    onRestartRequired = { 
+                    onRestartRequired = {
                         println("⚠️ KCEF Restart Required")
                     }
                 )
-                println("✅ KCEF Initialized Successfully")
-                isWebViewReady = true
-            } catch (e: Exception) {
-                System.err.println("🔥 KCEF Init CRASH:")
-                e.printStackTrace()
-                // Force ready to allow app to open even if webview fails
-                isWebViewReady = true 
             }
+            println("✅ KCEF Init Completed")
+        } catch (e: Exception) {
+            System.err.println("🔥 KCEF Init CRASH (non-fatal, continuing without WebView):")
+            e.printStackTrace()
         }
-        
-        // Show Loading Screen for WebView Init
-        if (!isWebViewReady) {
-            Window(
-                onCloseRequest = ::exitApplication,
-                title = "Initializing Kaironex AI...",
-                state = rememberWindowState(width = 400.dp, height = 200.dp, position = WindowPosition(Alignment.Center)),
-                undecorated = true
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = KaironexColors.GeminiBlurple)
-                        Spacer(Modifier.height(16.dp))
-                        Text("Configuring AI Engine...", style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-            return@application // Wait until ready
-        }
-*/
-        var isWebViewReady = true // Force true to skip KCEF waiting
+
+        application {
+        // WebView is ready (KCEF initialized before application block)
+        val isWebViewReady = true
 
         // 1. GLOBAL STATE
         // Dummy start state

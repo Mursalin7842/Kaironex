@@ -69,24 +69,32 @@ export const useGeminiLive = ({ onProfileUpdate, onInterviewComplete }: UseGemin
   const connect = useCallback(async (userName: string, agentName: string, existingProfile: UserProfile) => {
     try {
       setError(null);
-      // Try injecting from Android WebView first, then fallback to build-time env
-      const apiKey = (window as any).ANDROID_API_KEY || process.env.API_KEY;
-      console.log(`🔑 API Key Verification: ${apiKey ? "FOUND" : "MISSING"}`);
+      console.log("🚀 Starting connection...");
+
+      // Try injecting from Android WebView first, then URL param, then fallback to build-time env
+      const urlParams = new URLSearchParams(window.location.search);
+      const apiKey = (window as any).ANDROID_API_KEY || urlParams.get('apiKey') || process.env.API_KEY;
+      console.log(`🔑 API Key Verification: ${apiKey ? "FOUND (length: " + apiKey.length + ")" : "MISSING"}`);
 
       if (!apiKey) {
         throw new Error("API Key not found in environment.");
       }
 
+      console.log("📡 Initializing Gemini AI client...");
       nextStartTimeRef.current = 0;
       const ai = new GoogleGenAI({ apiKey });
+      console.log("✅ Gemini AI client created");
 
       // Setup Audio Contexts
+      console.log("🔊 Setting up audio contexts...");
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
       outputNodeRef.current = audioContextRef.current.createGain();
       outputNodeRef.current.connect(audioContextRef.current.destination);
+      console.log("✅ Audio output context ready");
 
       // Input Audio (Mic)
+      console.log("🎤 Requesting microphone access...");
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
@@ -96,6 +104,7 @@ export const useGeminiLive = ({ onProfileUpdate, onInterviewComplete }: UseGemin
           noiseSuppression: true
         }
       });
+      console.log("✅ Microphone access granted");
       micStreamRef.current = stream;
 
       // --- Live API Connection ---
@@ -378,8 +387,24 @@ export const useGeminiLive = ({ onProfileUpdate, onInterviewComplete }: UseGemin
       });
 
     } catch (e: any) {
-      console.error(e);
-      setError(e.message || "Failed to initialize audio.");
+      console.error("❌ Connection Error:", e);
+      console.error("Error Name:", e.name);
+      console.error("Error Message:", e.message);
+      console.error("Error Stack:", e.stack);
+
+      // More descriptive error messages
+      let errorMsg = e.message || "Failed to initialize.";
+      if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
+        errorMsg = "Microphone permission denied. Please allow microphone access.";
+      } else if (e.name === "NotFoundError" || e.name === "DevicesNotFoundError") {
+        errorMsg = "No microphone found. Please connect a microphone.";
+      } else if (e.name === "NotReadableError" || e.name === "TrackStartError") {
+        errorMsg = "Microphone is in use by another app.";
+      } else if (e.message?.includes("API Key")) {
+        errorMsg = "API Key error: " + e.message;
+      }
+
+      setError(errorMsg);
     }
   }, [onProfileUpdate, onInterviewComplete]);
 

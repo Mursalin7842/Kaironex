@@ -21,7 +21,7 @@ val appModule = module {
                 })
             }
             install(io.ktor.client.plugins.websocket.WebSockets) {
-                pingInterval = 20_000
+                pingIntervalMillis = 20_000
             }
         }
     }

@@ -13,12 +13,20 @@ object LocalFileServer {
     var port: Int = 0
         private set
 
+    // Fixed port for consistency with CEF security origin flags
+    private const val FIXED_PORT = 18080
+
     fun start(assetRootDir: File) {
         if (server != null) return
 
         try {
-            // Bind to random port (0)
-            server = HttpServer.create(InetSocketAddress("localhost", 0), 0)
+            // Try fixed port first, fall back to random if busy
+            server = try {
+                HttpServer.create(InetSocketAddress("localhost", FIXED_PORT), 0)
+            } catch (e: Exception) {
+                println("⚠️ Port $FIXED_PORT busy, using random port")
+                HttpServer.create(InetSocketAddress("localhost", 0), 0)
+            }
             server?.createContext("/", AssetHandler(assetRootDir))
             server?.executor = null
             server?.start()
@@ -62,9 +70,11 @@ object LocalFileServer {
                     }
                     
                     exchange.responseHeaders.add("Content-Type", mimeType)
-                    // Enable CORS just in case
+                    // Enable CORS
                     exchange.responseHeaders.add("Access-Control-Allow-Origin", "*")
-                    
+                    // Add Permissions-Policy header to allow microphone
+                    exchange.responseHeaders.add("Permissions-Policy", "microphone=*")
+
                     exchange.sendResponseHeaders(200, file.length())
                     
                     val os: OutputStream = exchange.responseBody
@@ -88,7 +98,8 @@ object LocalFileServer {
             os.write(response.toByteArray())
             os.close()
         }
-         private fun send403(exchange: HttpExchange) {
+
+        private fun send403(exchange: HttpExchange) {
             val response = "403 Forbidden"
             exchange.sendResponseHeaders(403, response.length.toLong())
             val os = exchange.responseBody
