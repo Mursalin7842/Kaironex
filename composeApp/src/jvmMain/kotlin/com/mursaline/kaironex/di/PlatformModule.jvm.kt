@@ -1,11 +1,16 @@
 package com.mursaline.kaironex.di
 
 import com.mursaline.kaironex.brain.AudioRecorder
+import com.mursaline.kaironex.brain.AudioPlayer
+import com.mursaline.kaironex.core.audio.WakeWordDetector
+import com.mursaline.kaironex.core.audio.WakeWordService
+import com.mursaline.kaironex.core.audio.createWakeWordDetector
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import org.koin.dsl.module
-
-import com.mursaline.kaironex.brain.AudioPlayer
 
 actual val platformModule = module {
     single<AudioRecorder> { 
@@ -23,6 +28,15 @@ actual val platformModule = module {
         }
     }
     
+    // Wake Word Detection (JVM stub)
+    single<WakeWordDetector> { createWakeWordDetector() }
+    single {
+        WakeWordService(
+            detector = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        )
+    }
+
     // Persistence
     single<com.mursaline.kaironex.core.storage.ProfileStorage> { 
         com.mursaline.kaironex.core.storage.JvmProfileStorage() 

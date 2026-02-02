@@ -9,6 +9,10 @@ data class StudentProfile(
     val university: String? = null,
     val major: String? = null, // degreeMajor
     
+    // Agent Configuration (from Genesis/Onboarding)
+    val wakeWord: String = "kaironex",
+    val agentNickname: String = "Kairo",
+
     // Academic
     val totalSemesters: String? = null,
     val semester: String? = null, // currentSemester

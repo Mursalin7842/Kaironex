@@ -2,27 +2,31 @@ import os
 import json
 import datetime
 from appwrite.client import Client
-from appwrite.services.databases import Databases
+from appwrite.services.tables_db import TablesDB
+
 from appwrite.query import Query
 from ..config import *
 
 class KairoDB:
     def __init__(self):
         self.client = Client()
-        self.client.set_endpoint(os.environ.get('APPWRITE_ENDPOINT', 'https://cloud.appwrite.io/v1'))
-        self.client.set_project(os.environ['APPWRITE_FUNCTION_PROJECT_ID'])
-        self.client.set_key(os.environ['APPWRITE_API_KEY'])
-        self.db = Databases(self.client)
+        self.client.set_endpoint(APPWRITE_ENDPOINT)
+        self.client.set_project(APPWRITE_PROJECT_ID)
+        self.client.set_key(APPWRITE_API_KEY)
+        self.db = TablesDB(self.client)
+
+
 
     def log_heartbeat(self, user_id, source_details):
         """Updates agent_memory with the source and time."""
         if not user_id: return
         try:
-            results = self.db.list_documents(
-                database_id=DB_ID, 
-                collection_id=AGENT_MEMORY_COL, 
+            results = self.db.list_rows(
+                database_id=APPWRITE_DATABASE_ID, 
+                table_id=AGENT_MEMORY_COL, 
                 queries=[Query.equal('userId', user_id)] 
             )
+
             
             data = {
                 'last_active': datetime.datetime.now().isoformat(),
@@ -30,12 +34,14 @@ class KairoDB:
             }
 
             if results['total'] > 0:
-                doc_id = results['documents'][0]['$id']
-                self.db.update_document(DB_ID, AGENT_MEMORY_COL, doc_id, data)
+                doc_id = results['rows'][0]['$id']
+
+                self.db.update_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, doc_id, data)
             else:
                 data['userId'] = user_id
                 data['pressure_index'] = 50
-                self.db.create_document(DB_ID, AGENT_MEMORY_COL, 'unique()', data)
+                self.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, 'unique()', data)
+
                 
         except Exception as e:
             print(f"Heartbeat Error: {e}")
@@ -46,7 +52,7 @@ class KairoDB:
         Strictly follows your schema: interventionId, userId, trigger_event, ai_message, status, ai_response_strategy.
         """
         try:
-            self.db.create_document(DB_ID, INTERVENTIONS_COL, 'unique()', {
+            self.db.create_row(APPWRITE_DATABASE_ID, INTERVENTIONS_COL, 'unique()', {
                 'interventionId': 'unique()', 
                 'userId': user_id,
                 'trigger_event': trigger[:999],
@@ -54,6 +60,7 @@ class KairoDB:
                 'status': status,
                 'ai_response_strategy': strategy[:499]
             })
+
             print(f"📢 Intervention Created: {trigger}")
         except Exception as e:
             print(f"Intervention Error: {e}")
@@ -61,13 +68,15 @@ class KairoDB:
     def get_user_doc(self, user_id):
         """Fetches the user row."""
         try:
-            results = self.db.list_documents(
-                database_id=DB_ID, 
-                collection_id=USERS_COL, 
+            results = self.db.list_rows(
+                database_id=APPWRITE_DATABASE_ID, 
+                table_id=USERS_COL, 
                 queries=[Query.equal('userId', user_id)] 
             )
+
             if results['total'] > 0:
-                return results['documents'][0]
+                return results['rows'][0]
+
             return None
         except Exception as e:
             print(f"Get User Error: {e}")
@@ -99,12 +108,13 @@ class KairoDB:
                 current_cache[key] = value
 
             # 4. Save back to Users table
-            self.db.update_document(
-                DB_ID, 
+            self.db.update_row(
+                APPWRITE_DATABASE_ID, 
                 USERS_COL, 
                 user_doc['$id'], 
                 {'studentState_json': json.dumps(current_cache)}
             )
+
             print(f"🔄 State Cache Synced for {user_id}")
 
         except Exception as e:

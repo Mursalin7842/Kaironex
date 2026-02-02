@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.emptyFlow
 
 // Voyager & Feature Imports
 import cafe.adriel.voyager.navigator.Navigator
+import cafe.adriel.voyager.navigator.CurrentScreen
 import com.mursaline.kaironex.features.splash.SplashScreen
 import com.mursaline.kaironex.features.auth.LoginScreen
 import com.mursaline.kaironex.features.dashboard.DashboardScreen
@@ -32,7 +33,8 @@ fun App(
     sensorStream: Flow<String?> = emptyFlow(),
     isAccessibilityEnabled: Boolean = true,
     onOpenSettings: () -> Unit = {},
-    onLockTriggered: (Boolean) -> Unit = {}
+    onLockTriggered: (Boolean) -> Unit = {},
+    isVoiceTrigger: Boolean = false
 ) {
     MaterialTheme(
         colorScheme = lightColorScheme(
@@ -44,7 +46,16 @@ fun App(
         )
     ) {
         // Entry Point: Splash Screen -> Login
-        Navigator(SplashScreen)
+        val sessionManager = org.koin.compose.koinInject<com.mursaline.kaironex.core.KaironexSessionManager>()
+        
+        Navigator(SplashScreen) { navigator ->
+            LaunchedEffect(isVoiceTrigger) {
+                if (isVoiceTrigger) {
+                    sessionManager.handleVoiceTrigger()
+                }
+            }
+            CurrentScreen()
+        }
     }
 }
 

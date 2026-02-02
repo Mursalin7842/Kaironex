@@ -39,6 +39,9 @@ import com.mursaline.kaironex.features.dashboard.DashboardScreen
 import com.mursaline.kaironex.features.profile.ProfileScreen
 import com.mursaline.kaironex.features.study.StudySessionsScreen
 import com.mursaline.kaironex.features.agents.LifeSupportAgentsScreen
+import com.mursaline.kaironex.features.agents.AgentDashboardScreen
+import com.mursaline.kaironex.features.voice.VoiceCallScreen
+import com.mursaline.kaironex.features.voice.VoiceCallScreenParams
 import com.mursaline.kaironex.ui.components.KxOrb
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -52,6 +55,10 @@ import org.koin.compose.koinInject
  * - Orb (AI): Immersive full-screen AI assistant
  * - Profile: Dedicated settings/account page
  *
+ * Features:
+ * - Wake word detection ("Hey Kairo")
+ * - Real-time brain sync
+ *
  * NO hamburger menu. The Dashboard IS the router.
  */
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
@@ -64,8 +71,57 @@ object MainShellScreen : Screen {
     override fun Content() {
         var isOrbExpanded by remember { mutableStateOf(false) }
 
+        // Get wake word service and brain client from DI
+        val wakeWordService: com.mursaline.kaironex.core.audio.WakeWordService = org.koin.compose.koinInject()
+        val brainClient: com.mursaline.kaironex.brain.BrainApiClient = org.koin.compose.koinInject()
+
+        // Session manager for wake word and data sync
+        val sessionManager = com.mursaline.kaironex.core.rememberKaironexSession(
+            wakeWordService = wakeWordService,
+            brainClient = brainClient
+        )
+
         Navigator(DashboardScreen) { navigator ->
             val currentRoute = navigator.lastItem
+
+            // Track last detection for potential UI feedback
+            var lastDetection by remember { mutableStateOf<com.mursaline.kaironex.core.audio.WakeWordDetection?>(null) }
+
+            // Initialize session and start wake word detection
+            LaunchedEffect(Unit) {
+                // TODO: Get actual userId from auth
+                val userId = "demo_user_001"
+
+                // Get wake word from stored profile (or use default)
+                val profileStorage = org.koin.core.context.GlobalContext.get().get<com.mursaline.kaironex.core.storage.ProfileStorage>()
+                val profile = profileStorage.loadProfile()
+                val wakeWord = profile?.wakeWord ?: "kaironex"
+                val agentName = profile?.agentNickname ?: "Kairo"
+
+                // Initialize session
+                sessionManager.initialize(userId, wakeWord, agentName)
+
+                // Start wake word detection
+                sessionManager.startWakeWordDetection { detection ->
+                    lastDetection = detection
+                    // Navigate to voice call with the detected command
+                    navigator.push(
+                        VoiceCallScreen(
+                            VoiceCallScreenParams(
+                                initialCommand = detection.followUpCommand,
+                                agentName = agentName
+                            )
+                        )
+                    )
+                }
+            }
+
+            // Cleanup on dispose
+            DisposableEffect(Unit) {
+                onDispose {
+                    sessionManager.cleanup()
+                }
+            }
 
             // Determine active tab for UI highlighting
             val selectedTab = when (currentRoute) {
@@ -76,6 +132,7 @@ object MainShellScreen : Screen {
                 else -> "Home" // Default to Home for detail screens
             }
 
+            @Suppress("UnusedBoxWithConstraintsScope")
             BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
                 val isMobile = maxWidth < 800.dp
 
@@ -137,7 +194,15 @@ object MainShellScreen : Screen {
 
                     ImmersiveAssistantPanel(
                         onDismiss = { isOrbExpanded = false },
-                        isMobile = isMobile
+                        isMobile = isMobile,
+                        onStartVoiceCall = {
+                            isOrbExpanded = false
+                            navigator.push(VoiceCallScreen(VoiceCallScreenParams()))
+                        },
+                        onOpenAgentDashboard = {
+                            isOrbExpanded = false
+                            navigator.push(AgentDashboardScreen)
+                        }
                     )
                 }
             }
@@ -345,7 +410,9 @@ fun FiveItemNavRail(
 @Composable
 fun ImmersiveAssistantPanel(
     onDismiss: () -> Unit,
-    isMobile: Boolean
+    isMobile: Boolean,
+    onStartVoiceCall: () -> Unit = {},
+    onOpenAgentDashboard: () -> Unit = {}
 ) {
     // Inject the Voice Engine (Gemini 2.5)
     val reasoningEngine: com.mursaline.kaironex.brain.GeminiReasoningEngine = org.koin.compose.koinInject()
@@ -567,8 +634,8 @@ fun ImmersiveAssistantPanel(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                AssistantQuickAction("🎤", "Voice") { }
-                AssistantQuickAction("📷", "Camera") { }
+                AssistantQuickAction("🎤", "Voice") { onStartVoiceCall() }
+                AssistantQuickAction("🧠", "Brain") { onOpenAgentDashboard() }
                 AssistantQuickAction("🖥️", "Screen") { }
             }
 

@@ -116,6 +116,13 @@ object LifeSupportAgentsScreen : Screen {
                     )
                 }
 
+                // Brain Dashboard (Judge Mode)
+                item {
+                    BrainDashboardCard(
+                        onClick = { navigator.push(AgentDashboardScreen) }
+                    )
+                }
+
                 item {
                     Spacer(Modifier.height(100.dp))
                 }
@@ -561,3 +568,62 @@ private fun AgentMetric(emoji: String, value: String, label: String) {
         )
     }
 }
+
+@Composable
+private fun BrainDashboardCard(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = KaironexColors.Slate900
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Brain icon
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                KaironexColors.GeminiBlurple,
+                                KaironexColors.Indigo900
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("🧠", style = MaterialTheme.typography.headlineSmall)
+            }
+
+            Spacer(Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Agent Dashboard",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    "Real-time brain monitoring • Judge Mode",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = KaironexColors.Slate400
+                )
+            }
+
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = "Open",
+                tint = KaironexColors.Slate400
+            )
+        }
+    }
+}
+

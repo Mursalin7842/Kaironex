@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import com.mursaline.kaironex.ui.theme.KaironexColors
 import com.mursaline.kaironex.ui.components.KxCard
 import com.mursaline.kaironex.ui.components.KxCardVariant
@@ -150,6 +152,16 @@ object DashboardScreen : Screen {
 
                     Spacer(Modifier.height(if (isMobile) 12.dp else 16.dp))
 
+                    // Voice Trigger Handling
+                    val sessionManager = org.koin.compose.koinInject<com.mursaline.kaironex.core.KaironexSessionManager>()
+                    val voiceTrigger by sessionManager.voiceTriggerRequest.collectAsState()
+                    
+                    LaunchedEffect(voiceTrigger) {
+                        if (voiceTrigger) {
+                            navigator.push(com.mursaline.kaironex.features.voice.VoiceCallScreen())
+                        }
+                    }
+
                     // ===== SECTION 5: PRESSURE & RISK =====
                     PressureRiskCard(
                         stats = homeStats.pressure,
@@ -239,15 +251,32 @@ object DashboardScreen : Screen {
                 }
             }
 
-            // Avatar/Profile indicator
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = KaironexColors.GeminiBlurple,
-                modifier = Modifier.size(if (isMobile) 36.dp else 44.dp),
-                shadowElevation = 2.dp
+            // Wake word indicator + Avatar/Profile indicator
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("S", color = Color.White, fontWeight = FontWeight.Bold)
+                // Wake word listening indicator
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = KaironexColors.SuccessGreen.copy(alpha = 0.15f),
+                    modifier = Modifier.size(if (isMobile) 36.dp else 44.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("🎙️", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+
+                // Avatar/Profile indicator
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = KaironexColors.GeminiBlurple,
+                    modifier = Modifier.size(if (isMobile) 36.dp else 44.dp),
+                    shadowElevation = 2.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("S", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

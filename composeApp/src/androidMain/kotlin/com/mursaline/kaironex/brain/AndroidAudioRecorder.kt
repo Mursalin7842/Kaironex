@@ -30,13 +30,37 @@ class AndroidAudioRecorder(private val context: Context) : AudioRecorder {
     override fun startRecording(onVolumeDetected: () -> Unit): Flow<ByteArray> = callbackFlow {
         if (checkPermission()) {
             try {
-                audioRecord = AudioRecord(
-                    MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                    SAMPLE_RATE,
-                    CHANNEL_CONFIG,
-                    AUDIO_FORMAT,
-                    BUFFER_SIZE
-                )
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    audioRecord = AudioRecord.Builder()
+                        .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+                        .setAudioFormat(
+                            AudioFormat.Builder()
+                                .setEncoding(AUDIO_FORMAT)
+                                .setSampleRate(SAMPLE_RATE)
+                                .setChannelMask(CHANNEL_CONFIG)
+                                .build()
+                        )
+                        .setBufferSizeInBytes(BUFFER_SIZE)
+                        .setContext(context) // Required for attribution
+                        // Context must be the one with attribution tag if we were using createAttributionContext,
+                        // but since it's in manifest <application> tag, we just need to associate context.
+                        // However, to be explicit per error:
+                        // .setAttributionTag("voice_agent") 
+                        // Actually, if it's in the manifest <application> tag, the context passed in might need to be created with createAttributionContext?
+                        // The error "Attribution not found... pkg=com.mursaline.kaironex(null)" suggests the context used doesn't have the tag derived.
+                        // But normally simpler is just:
+                        .build()
+                    // Re-attempting strictly with the Builder which is better for modern Android anyway.
+                    // If we want to strictly set attribution tag, we might need context.createAttributionContext("voice_agent")
+                } else {
+                    audioRecord = AudioRecord(
+                        MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                        SAMPLE_RATE,
+                        CHANNEL_CONFIG,
+                        AUDIO_FORMAT,
+                        BUFFER_SIZE
+                    )
+                }
 
                 if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
                     close()

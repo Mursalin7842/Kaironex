@@ -13,9 +13,11 @@ def run_supervisor(db_helper, context):
     # 1. Fetch active users (via Agent Memory)
     # Limit 100 for safety
     try:
-        memories = db_helper.db.list_documents(
-            DB_ID, AGENT_MEMORY_COL, queries=[Query.limit(100)]
+        memories = db_helper.db.list_rows(
+            database_id=APPWRITE_DATABASE_ID, table_id=AGENT_MEMORY_COL, queries=[Query.limit(100)]
         )
+
+
     except Exception as e:
         return context.res.json({"error": str(e)})
 
@@ -23,7 +25,8 @@ def run_supervisor(db_helper, context):
     interventions_triggered = 0
     now = datetime.datetime.now(datetime.timezone.utc)
 
-    for mem in memories['documents']:
+    for mem in memories['rows']:
+
         user_id = mem['userId']
         last_active_str = mem.get('last_active')
         

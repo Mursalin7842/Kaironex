@@ -1,5 +1,6 @@
 import os
-import google.generativeai as genai
+from google import genai
+
 from ..config import GEMINI_MODEL_NAME
 
 class GeminiClient:
@@ -9,17 +10,18 @@ class GeminiClient:
         if not api_key:
             print("⚠️ Warning: GEMINI_API_KEY not found.")
         
-        genai.configure(api_key=api_key)
-        
-        # 2. Model Selection
-        self.model_name = GEMINI_MODEL_NAME
-        print(f"✨ AI Engine Online: {self.model_name}")
+        self.client = genai.Client(api_key=api_key, http_options={'api_version': 'v1beta'})
+
+
         
         try:
-            self.model = genai.GenerativeModel(self.model_name)
+            self.model_name = GEMINI_MODEL_NAME
+            # Verify if model exists or just set it
+            pass
         except Exception as e:
-            print(f"⚠️ Model Init Error: {e}. Falling back to gemini-1.5-flash")
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            print(f"⚠️ Model Setup Error: {e}")
+            self.model_name = 'gemini-1.5-flash'
+
 
     def generate_response(self, prompt, system_instruction=None):
         """Generates a text response."""
@@ -28,8 +30,12 @@ class GeminiClient:
             if system_instruction:
                 full_prompt = f"System Instruction: {system_instruction}\n\nUser: {prompt}"
                 
-            response = self.model.generate_content(full_prompt)
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=full_prompt
+            )
             return response.text
+
         except Exception as e:
             error_msg = str(e)
             print(f"Gemini Error: {error_msg}")

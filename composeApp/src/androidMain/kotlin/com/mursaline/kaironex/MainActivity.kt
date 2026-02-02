@@ -67,7 +67,8 @@ class MainActivity : ComponentActivity() {
                         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                         startActivity(intent)
                     },
-                    onLockTriggered = { /* Android handles this via Service Intent, do nothing here */ }
+                    onLockTriggered = { /* Android handles this via Service Intent, do nothing here */ },
+                    isVoiceTrigger = intent.getBooleanExtra("EXTRA_VOICE_TRIGGER", false)
                 )
             }
         }

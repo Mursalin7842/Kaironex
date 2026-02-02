@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.mursaline.kaironex.voice.KaironexVoiceInteractionSessionService"
+    android:recognitionService="com.mursaline.kaironex.voice.KaironexRecognitionService"
+    android:settingsActivity="com.mursaline.kaironex.MainActivity"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="true"
+    android:supportsLocalInteraction="true" />
