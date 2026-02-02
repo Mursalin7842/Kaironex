@@ -24,6 +24,7 @@ from google import genai
 from google.genai import types
 
 from ..config import GEMINI_API_KEY, GEMINI_3_FLASH
+from ..utils.rate_limited_client import rate_limited_generate, check_quota
 
 
 class ResearchType(str, Enum):
@@ -185,27 +186,60 @@ class DeepResearchEngine:
             if progress_callback:
                 await progress_callback(query.query_id, ResearchStatus.BROWSING, "Searching the web...")
             
-            # Execute research with Gemini 3 Flash + Google Search grounding
-            # Using HIGH thinking level for deep analysis
-            config = types.GenerateContentConfig(
-                temperature=0.3,  # Lower temp for factual research
-                max_output_tokens=16384,
-                thinking_config=types.ThinkingConfig(
-                    thinking_level=types.ThinkingLevel.HIGH,  # Maximum reasoning for research
-                    include_thoughts=True
-                ),
-                # Enable grounding with Google Search - CRITICAL for research!
-                tools=[
-                    types.Tool(google_search=types.GoogleSearch())
-                ]
-            )
+            # Try with Google Search grounding first, fallback to non-grounded if quota exceeded
+            use_grounding = True
+            response = None
             
-            response = await asyncio.to_thread(
-                self.client.models.generate_content,
-                model=self.RESEARCH_MODEL,
-                contents=research_prompt,
-                config=config
-            )
+            for attempt in range(2):  # Try grounded, then non-grounded
+                try:
+                    # Configure based on whether we're using grounding
+                    if use_grounding:
+                        config = types.GenerateContentConfig(
+                            temperature=0.3,  # Lower temp for factual research
+                            max_output_tokens=16384,
+                            thinking_config=types.ThinkingConfig(
+                                thinking_level=types.ThinkingLevel.HIGH,  # Maximum reasoning for research
+                                include_thoughts=True
+                            ),
+                            # Enable grounding with Google Search - CRITICAL for research!
+                            tools=[
+                                types.Tool(google_search=types.GoogleSearch())
+                            ]
+                        )
+                    else:
+                        # Fallback: No grounding, but still use deep thinking
+                        config = types.GenerateContentConfig(
+                            temperature=0.3,
+                            max_output_tokens=16384,
+                            thinking_config=types.ThinkingConfig(
+                                thinking_level=types.ThinkingLevel.HIGH,
+                                include_thoughts=True
+                            )
+                        )
+                        if progress_callback:
+                            await progress_callback(query.query_id, ResearchStatus.ANALYZING, "Using knowledge-based research (grounding quota exceeded)...")
+                    
+                    # Use rate-limited generate to respect API quotas (5 RPM, 20 RPD)
+                    response = await rate_limited_generate(
+                        self.client,
+                        model=self.RESEARCH_MODEL,
+                        contents=research_prompt,
+                        config=config
+                    )
+                    break  # Success, exit retry loop
+                    
+                except Exception as e:
+                    error_str = str(e).lower()
+                    # If grounded search quota exceeded, retry without grounding
+                    if use_grounding and ('429' in str(e) or 'quota' in error_str or 'resource_exhausted' in error_str):
+                        print(f"⚠️ Google Search grounding quota exceeded, retrying without grounding...")
+                        use_grounding = False
+                        continue
+                    else:
+                        raise  # Re-raise other errors
+            
+            if response is None:
+                raise Exception("Failed to get response after retries")
             
             if progress_callback:
                 await progress_callback(query.query_id, ResearchStatus.ANALYZING, "Analyzing findings...")

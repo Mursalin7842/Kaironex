@@ -33,6 +33,7 @@ from ..config import (
     THINKING_LEVEL_DEEP,
     THINKING_LEVEL_BALANCED
 )
+from ..utils.rate_limited_client import rate_limited_generate, check_quota
 
 
 class ReasoningMode(Enum):
@@ -275,8 +276,9 @@ class BicameralEngine:
             )
         )
         
-        response = await asyncio.to_thread(
-            self.client.models.generate_content,
+        # Use rate-limited generate to respect API quotas
+        response = await rate_limited_generate(
+            self.client,
             model=self.MODEL,
             contents=full_prompt,
             config=config
@@ -320,8 +322,9 @@ Think deeply before responding.
             )
         )
         
-        response = await asyncio.to_thread(
-            self.client.models.generate_content,
+        # Use rate-limited generate to respect API quotas
+        response = await rate_limited_generate(
+            self.client,
             model=self.DEEP_MODEL,
             contents=reasoning_prompt,
             config=config
@@ -505,7 +508,7 @@ Think step by step. If you need information, call the appropriate tool.
             max_output_tokens=request.max_thinking_tokens,
             tools=agent_tools,
             thinking_config=types.ThinkingConfig(
-                thinking_budget=8192,
+                thinking_level=types.ThinkingLevel.HIGH,
                 include_thoughts=True
             )
         )
@@ -516,8 +519,9 @@ Think step by step. If you need information, call the appropriate tool.
         
         for turn in range(max_tool_calls):
             try:
-                response = await asyncio.to_thread(
-                    self.client.models.generate_content,
+                # Use rate-limited generate to respect API quotas
+                response = await rate_limited_generate(
+                    self.client,
                     model=self.DEEP_MODEL,
                     contents=conversation_history,
                     config=config

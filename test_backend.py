@@ -128,7 +128,8 @@ async def test_tool_declarations():
         # Count functions
         total_functions = 0
         for tool in ALL_KAIRONEX_TOOLS:
-            total_functions += len(tool.function_declarations)
+            funcs = tool.function_declarations or []
+            total_functions += len(funcs)
         
         print_result(total_functions > 10, f"Total functions: {total_functions}")
         
