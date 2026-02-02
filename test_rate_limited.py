@@ -60,12 +60,12 @@ async def test_config():
     
     from src.config import (
         GEMINI_API_KEY, APPWRITE_DATABASE_ID,
-        GEMINI_DEEP_MODEL, GEMINI_REFLEX_MODEL
+        GEMINI_3_FLASH
     )
     
     print(f"  ✅ GEMINI_API_KEY: {'configured' if GEMINI_API_KEY else 'missing'}")
     print(f"  ✅ Database ID: {APPWRITE_DATABASE_ID}")
-    print(f"  ✅ Model: {GEMINI_DEEP_MODEL}")
+    print(f"  ✅ Model: {GEMINI_3_FLASH}")
     return True
 
 

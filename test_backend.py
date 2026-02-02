@@ -49,15 +49,14 @@ async def test_config():
     try:
         from src.config import (
             GEMINI_API_KEY, APPWRITE_DATABASE_ID,
-            GEMINI_DEEP_MODEL, GEMINI_REFLEX_MODEL,
+            GEMINI_3_FLASH,
             MARATHON_SESSIONS_COL, THOUGHT_SIGNATURES_COL,
             STUDENT_PROFILES_COL, LIFE_EVENTS_COL
         )
         
         print_result(bool(GEMINI_API_KEY), f"GEMINI_API_KEY configured")
         print_result(bool(APPWRITE_DATABASE_ID), f"Database ID: {APPWRITE_DATABASE_ID}")
-        print_result(bool(GEMINI_DEEP_MODEL), f"Deep Model: {GEMINI_DEEP_MODEL}")
-        print_result(bool(GEMINI_REFLEX_MODEL), f"Reflex Model: {GEMINI_REFLEX_MODEL}")
+        print_result(bool(GEMINI_3_FLASH), f"Model: {GEMINI_3_FLASH}")
         print_result(bool(STUDENT_PROFILES_COL), f"New tables configured: {STUDENT_PROFILES_COL}")
         
         return bool(GEMINI_API_KEY)

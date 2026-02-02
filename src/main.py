@@ -1,53 +1,257 @@
+"""
+🧠 KAIRONEX DEEP BRAIN
+======================
+Appwrite Functions Entry Point
+
+Architecture:
+- This is the DEEP BRAIN - complex reasoning, planning, marathon tasks
+- REFLEX is handled by the mobile app (not here)
+- Communicates with app via Appwrite Database (no WebSocket needed)
+
+Triggers:
+- Database events (study_logs, vitality_state, etc.)
+- CRON schedule (supervisor checks)
+- HTTP requests (marathon tasks)
+"""
+
 import os
 import json
+from typing import Dict, Any, Optional
+
 from .utils.db_helper import KairoDB
 from .agents.main_brain import run_supervisor
 from .agents.study_brain import run_study_agent
 from .agents.vitality_brain import run_vitality_agent
 from .agents.campaign_brain import run_campaign_agent
 from .agents.radius_brain import run_radius_agent
+from .config import validate_config
+
 
 def main(context):
-    db_helper = KairoDB()
+    """
+    Main entry point for Appwrite Functions.
     
-    # 1. GET TRIGGER INFO
-    trigger_event = os.environ.get('APPWRITE_FUNCTION_EVENT', 'cron_schedule')
+    Routes requests to appropriate agent based on trigger event.
+    """
     
-    # Safe Payload Parsing
+    # Validate configuration
+    is_valid, errors = validate_config()
+    if not is_valid:
+        context.error(f"❌ Configuration errors: {errors}")
+        return context.res.json({
+            "status": "error",
+            "message": "Configuration invalid",
+            "errors": errors
+        }, 500)
+    
+    # Initialize database helper
     try:
-        if not context.req.body:
-            payload = {}
-        elif isinstance(context.req.body, str):
-            payload = json.loads(context.req.body)
-        else:
-            payload = context.req.body
+        db = KairoDB()
     except Exception as e:
-        context.log(f"Payload Note: {e}")
-        payload = {}
-
-    context.log(f"🧠 KAIRO AWAKE. Trigger: {trigger_event}")
-
-    # 2. ROUTING LOGIC
+        context.error(f"❌ Database connection failed: {e}")
+        return context.res.json({
+            "status": "error",
+            "message": f"Database connection failed: {str(e)}"
+        }, 500)
     
-    # --- A. EVENT DRIVEN ---
+    # Parse trigger event
+    trigger_event = os.environ.get('APPWRITE_FUNCTION_EVENT', '')
+    request_path = context.req.path if hasattr(context.req, 'path') else ''
+    request_method = context.req.method if hasattr(context.req, 'method') else 'POST'
+    
+    # Parse payload safely
+    payload = _parse_payload(context)
+    
+    context.log(f"🧠 DEEP BRAIN ACTIVE | Trigger: {trigger_event} | Path: {request_path}")
+    
+    # ==========================================================================
+    # ROUTING LOGIC
+    # ==========================================================================
+    
+    # --- HTTP API ROUTES (for app to call directly) ---
+    if request_path:
+        return _handle_http_request(db, context, request_path, request_method, payload)
+    
+    # --- DATABASE EVENT TRIGGERS ---
     if 'study_logs' in trigger_event:
-        return run_study_agent(db_helper, payload, context)
-        
-    elif 'vitality_state' in trigger_event:
-        return run_vitality_agent(db_helper, payload, context)
+        context.log("📚 Routing to Study Agent")
+        return run_study_agent(db, payload, context)
+    
+    if 'vitality_state' in trigger_event:
+        context.log("⚡ Routing to Vitality Agent")
+        return run_vitality_agent(db, payload, context)
+    
+    if 'radius_state' in trigger_event:
+        context.log("🌍 Routing to Radius Agent")
+        return run_radius_agent(db, payload, context)
+    
+    if any(x in trigger_event for x in ['schedule', 'campaign', 'profile']):
+        if 'cron' not in trigger_event:
+            context.log("⚔️ Routing to Campaign Agent")
+            return run_campaign_agent(db, payload, context)
+    
+    # --- CRON SCHEDULE (Supervisor Safety Net) ---
+    if 'cron' in trigger_event or not trigger_event:
+        context.log("🛡️ Running Supervisor Check")
+        return run_supervisor(db, context)
+    
+    # --- FALLBACK ---
+    context.log(f"⚠️ Unhandled trigger: {trigger_event}")
+    return context.res.json({
+        "status": "no_action",
+        "trigger": trigger_event
+    })
 
-    elif 'radius_state' in trigger_event:
-        return run_radius_agent(db_helper, payload, context)
 
-    # Catches 'schedule' updates OR 'campaign' triggers
-    # Ensures CRON jobs don't accidentally trigger this agent
-    elif ('schedule' in trigger_event and 'cron' not in trigger_event) or \
-         'profile' in trigger_event or 'campaign' in trigger_event:
-        return run_campaign_agent(db_helper, payload, context)
-        
-    # --- B. CRON DRIVEN (Safety Net) ---
+def _parse_payload(context) -> Dict[str, Any]:
+    """Safely parse request payload."""
+    try:
+        body = context.req.body
+        if not body:
+            return {}
+        if isinstance(body, str):
+            return json.loads(body)
+        if isinstance(body, dict):
+            return body
+        return {}
+    except json.JSONDecodeError as e:
+        context.log(f"⚠️ Payload parse error: {e}")
+        return {}
+    except Exception as e:
+        context.log(f"⚠️ Payload error: {e}")
+        return {}
+
+
+def _handle_http_request(db: KairoDB, context, path: str, method: str, payload: Dict) -> Any:
+    """Handle direct HTTP API requests from the app."""
+    
+    # Marathon endpoints
+    if path.startswith('/marathon'):
+        return _handle_marathon_request(db, context, path, method, payload)
+    
+    # Brain trigger endpoint (for Reflex to escalate to Deep)
+    if path == '/brain/deep' and method == 'POST':
+        return _handle_deep_request(db, context, payload)
+    
+    # State sync endpoint
+    if path == '/state' and method == 'GET':
+        return _handle_state_request(db, context, payload)
+    
+    # Health check
+    if path == '/health':
+        return context.res.json({
+            "status": "DEEP_BRAIN_ONLINE",
+            "version": "2.0.0"
+        })
+    
+    return context.res.json({"error": "Unknown endpoint"}, 404)
+
+
+def _handle_deep_request(db: KairoDB, context, payload: Dict) -> Any:
+    """
+    Handle escalation from Reflex Agent to Deep Brain.
+    
+    The app's Reflex Agent calls this when:
+    - Task is too complex for quick response
+    - User explicitly requests deep thinking
+    - Pressure index requires careful planning
+    """
+    user_id = payload.get('userId')
+    if not user_id:
+        return context.res.json({"error": "userId required"}, 400)
+    
+    prompt = payload.get('prompt', '')
+    agent = payload.get('agent', 'campaign')
+    
+    context.log(f"🧠 Deep request from Reflex | User: {user_id} | Agent: {agent}")
+    
+    # Route to appropriate agent
+    agent_payload = {
+        'userId': user_id,
+        'type': 'deep_request',
+        'prompt': prompt,
+        **payload.get('data', {})
+    }
+    
+    if agent == 'study':
+        return run_study_agent(db, agent_payload, context)
+    elif agent == 'vitality':
+        return run_vitality_agent(db, agent_payload, context)
+    elif agent == 'radius':
+        return run_radius_agent(db, agent_payload, context)
     else:
-        # Default fallback for 'cron_schedule' or unknown triggers
-        return run_supervisor(db_helper, context)
+        return run_campaign_agent(db, agent_payload, context)
 
-    return context.res.json({"status": "no_action_needed"})
+
+def _handle_marathon_request(db: KairoDB, context, path: str, method: str, payload: Dict) -> Any:
+    """Handle marathon session management."""
+    from .core.deep_brain import DeepBrain
+    
+    brain = DeepBrain(db)
+    
+    # POST /marathon/create - Create new marathon
+    if path == '/marathon/create' and method == 'POST':
+        user_id = payload.get('userId')
+        if not user_id:
+            return context.res.json({"error": "userId required"}, 400)
+        
+        session = brain.create_marathon(
+            user_id=user_id,
+            agent_type=payload.get('agent', 'campaign'),
+            title=payload.get('title', 'New Goal'),
+            description=payload.get('description', ''),
+            success_criteria=payload.get('success_criteria', []),
+            deadline=payload.get('deadline'),
+            priority=payload.get('priority', 5)
+        )
+        
+        return context.res.json({
+            "status": "marathon_created",
+            "session_id": session['session_id'],
+            "steps": session.get('steps', 0)
+        })
+    
+    # GET /marathon/{session_id} - Get marathon status
+    if path.startswith('/marathon/') and method == 'GET':
+        session_id = path.split('/')[-1]
+        session = brain.get_marathon(session_id)
+        
+        if not session:
+            return context.res.json({"error": "Marathon not found"}, 404)
+        
+        return context.res.json(session)
+    
+    # POST /marathon/{session_id}/step - Execute next step
+    if path.endswith('/step') and method == 'POST':
+        session_id = path.split('/')[-2]
+        result = brain.execute_marathon_step(session_id)
+        
+        return context.res.json(result)
+    
+    return context.res.json({"error": "Unknown marathon endpoint"}, 404)
+
+
+def _handle_state_request(db: KairoDB, context, payload: Dict) -> Any:
+    """Get user state for app sync."""
+    user_id = payload.get('userId') or context.req.query.get('userId')
+    
+    if not user_id:
+        return context.res.json({"error": "userId required"}, 400)
+    
+    user_doc = db.get_user_doc(user_id)
+    if not user_doc:
+        return context.res.json({"error": "User not found"}, 404)
+    
+    # Parse the cached state
+    state_json = user_doc.get('studentState_json', '{}')
+    try:
+        state = json.loads(state_json)
+    except:
+        state = {}
+    
+    return context.res.json({
+        "userId": user_id,
+        "state": state,
+        "profile": user_doc.get('studentprofile_json'),
+        "last_updated": user_doc.get('$updatedAt')
+    })
