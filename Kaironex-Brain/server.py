@@ -35,7 +35,6 @@ from src.utils.db_helper import KairoDB
 # Import agents
 from src.agents.campaign_agent import CampaignAgent
 from src.agents.vitality_agent import VitalityAgent
-from src.agents.radius_agent import RadiusAgent
 
 
 # =============================================================================
@@ -121,9 +120,6 @@ class KaironexBrain:
             self._engine, self._thoughts, self._db, self._events
         )
         self.agents['vitality'] = VitalityAgent(
-            self._engine, self._thoughts, self._db, self._events
-        )
-        self.agents['radius'] = RadiusAgent(
             self._engine, self._thoughts, self._db, self._events
         )
         print("✅ Agents initialized")
@@ -300,11 +296,6 @@ async def universal_trigger(request: TriggerRequest, background_tasks: Backgroun
         "activity_log": "vitality",
         "energy_check": "vitality",
         "regen_request": "vitality",
-        "location_update": "radius",
-        "local_scan": "radius",
-        "slang_query": "radius",
-        "housing_search": "radius",
-        "visa_check": "radius",
     }
     
     agent_type = agent_map.get(request.type, "campaign")
@@ -342,23 +333,6 @@ async def trigger_vitality(request: TriggerRequest):
     if not agent:
         raise HTTPException(status_code=500, detail="Vitality agent not initialized")
     
-    payload = {
-        "userId": request.userId,
-        "type": request.type,
-        **request.data
-    }
-
-    result = await agent.run(request.userId, payload, request.type)
-    return result.to_dict()
-
-
-@app.post("/api/v1/brain/radius")
-async def trigger_radius(request: TriggerRequest):
-    """Trigger the Radius Agent."""
-    agent = brain.agents.get('radius')
-    if not agent:
-        raise HTTPException(status_code=500, detail="Radius agent not initialized")
-
     payload = {
         "userId": request.userId,
         "type": request.type,
