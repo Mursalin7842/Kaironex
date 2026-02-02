@@ -18,25 +18,53 @@ APPWRITE_DATABASE_ID = os.environ.get('APPWRITE_DATABASE_ID', '697cb20f00110f6d7
 # =============================================================================
 # AI CONFIGURATION - BICAMERAL ENGINE
 # =============================================================================
+# 
+# KAIRONEX uses exactly TWO Gemini models:
+#
+# 1. gemini-3-flash-preview (TEXT/REASONING)
+#    - All text-based reasoning, function calling, tool use
+#    - Uses thinking_level: MINIMAL (fast) or HIGH (deep reasoning)
+#    - Supports Google Search grounding for research
+#
+# 2. gemini-2.5-flash-native-audio-preview-12-2025 (AUDIO/LIVE)
+#    - Real-time voice interactions via WebSocket
+#    - Uses ai.live.connect() API (NOT generate_content)
+#    - See kaironex-interviewer for implementation example
+#
+# =============================================================================
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
-# Reflex Model (Fast, pattern-matching)
+# Primary Model: Gemini 3 Flash (with thinking_level support)
+# This is the main model for all reasoning, function calling, and thinking
+GEMINI_3_FLASH = 'gemini-3-flash-preview'
+
+# Audio/Live Model: For real-time voice interactions via WebSocket
+# Uses ai.live.connect() - NOT regular generate_content
+GEMINI_AUDIO_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025'
+
+# Reflex Model (Fast, pattern-matching) - Uses Gemini 3 Flash with minimal thinking
 GEMINI_REFLEX_MODEL = os.environ.get(
     'GEMINI_REFLEX_MODEL', 
-    'gemini-2.5-flash-preview-05-20'
+    GEMINI_3_FLASH
 )
 
-# Deep Thinking Model (Slow, thoughtful reasoning)
+# Deep Thinking Model (Slow, thoughtful reasoning) - Uses Gemini 3 Flash with high thinking
 GEMINI_DEEP_MODEL = os.environ.get(
     'GEMINI_DEEP_MODEL',
-    'gemini-2.0-flash-thinking-exp-1219'
+    GEMINI_3_FLASH
 )
 
-# Legacy compatibility
+# Legacy compatibility - reads from .env GEMINI_MODEL
 GEMINI_MODEL_NAME = os.environ.get(
     'GEMINI_MODEL', 
-    GEMINI_REFLEX_MODEL
+    GEMINI_3_FLASH
 )
+
+# Thinking Levels for Gemini 3 (replaces thinking_budget)
+# Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+THINKING_LEVEL_REFLEX = 'MINIMAL'  # Fast, low latency
+THINKING_LEVEL_DEEP = 'HIGH'       # Full reasoning
+THINKING_LEVEL_BALANCED = 'MEDIUM' # Balanced
 
 # =============================================================================
 # REASONING CONFIGURATION
@@ -70,9 +98,21 @@ RADIUS_STATE_COL = 'radius_state'
 # Resource Library
 RESOURCES_COL = 'resources'
 
-# New Collections for v2.0
+# New Collections for v2.0 - Core AI
 MARATHON_SESSIONS_COL = 'marathon_sessions'
 THOUGHT_SIGNATURES_COL = 'thought_signatures'
+
+# New Collections for v2.0 - Student Adaptation
+STUDENT_PROFILES_COL = 'student_profiles'
+LIFE_EVENTS_COL = 'life_events'
+SCHEDULE_CHANGES_COL = 'schedule_changes'
+
+# New Collections for v2.0 - Survival Systems
+FINANCIAL_STATE_COL = 'financial_state'
+INTERNATIONAL_INFO_COL = 'international_info'
+
+# New Collections for v2.0 - Learning
+CONCEPT_MASTERY_COL = 'concept_mastery'
 
 # =============================================================================
 # SERVER CONFIGURATION
