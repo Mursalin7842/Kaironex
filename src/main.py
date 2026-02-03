@@ -69,44 +69,18 @@ def main(context):
     # ROUTING LOGIC
     # ==========================================================================
     
-    # --- MANUAL TEST FROM CONSOLE (root path with payload) ---
-    if request_path in ['/', ''] and payload:
-        event_type = payload.get('type', payload.get('trigger', ''))
-        context.log(f"🧪 Console test detected | Event: {event_type}")
-        
-        # Route based on payload type
-        if event_type in ['session_start', 'session_end', 'focus_update', 'quiz_request', 'IN_PROGRESS', 'COMPLETED', 'resource_ingestion']:
-            context.log("📚 Routing to Study Agent (console test)")
-            return run_study_agent(db, payload, context)
-        elif event_type in ['sleep_update', 'meal_logged', 'health_check']:
-            context.log("⚡ Routing to Vitality Agent (console test)")
-            return run_vitality_agent(db, payload, context)
-        elif event_type in ['location_update', 'social_event']:
-            context.log("🌍 Routing to Radius Agent (console test)")
-            return run_radius_agent(db, payload, context)
-        elif event_type == 'cron_schedule':
-            context.log("🛡️ Running Supervisor Check (console test)")
-            return run_supervisor(db, context)
-        else:
-            # Default to supervisor for unknown types
-            context.log(f"🛡️ Unknown event '{event_type}' - Running Supervisor")
-            return run_supervisor(db, context)
-    
-    # --- HTTP API ROUTES (for app to call directly) ---
-    if request_path and request_path != '/':
-        return _handle_http_request(db, context, request_path, request_method, payload)
-    
-    # --- DATABASE EVENT TRIGGERS (Robust Check) ---
+    # ==========================================================================
+    # ROUTING LOGIC
+    # ==========================================================================
     
     collection_id = payload.get('$collectionId', '')
+    
+    # --- DATABASE EVENT TRIGGERS (High Priority) ---
     
     # 1. PROFILE UPDATE (User filled intake form)
     if 'users' in trigger_event or collection_id == 'users':
         user_id = payload.get('userId') or payload.get('$id')
-        
-        # Check if we have files
         resource_count = db.count_user_resources(user_id)
-        
         if resource_count > 0:
             context.log(f"✅ Profile ready + {resource_count} Files detected. Triggering Campaign Agent.")
             return run_campaign_agent(db, payload, context)
@@ -150,10 +124,33 @@ def main(context):
         if 'cron' not in trigger_event:
             context.log("⚔️ Routing to Campaign Agent")
             return run_campaign_agent(db, payload, context)
+
+    # --- HTTP API ROUTES (for app to call directly) ---
+    if request_path and request_path != '/':
+        return _handle_http_request(db, context, request_path, request_method, payload)
+    
+    # --- MANUAL TEST FROM CONSOLE / GENERIC FALLBACK ---
+    if request_path in ['/', ''] and payload:
+        event_type = payload.get('type', payload.get('trigger', ''))
+        context.log(f"🧪 Console test / Generic trigger detected | Event: {event_type}")
+        
+        # Route based on payload type
+        if event_type in ['session_start', 'session_end', 'focus_update', 'quiz_request', 'IN_PROGRESS', 'COMPLETED', 'resource_ingestion']:
+            context.log("📚 Routing to Study Agent (console test)")
+            return run_study_agent(db, payload, context)
+        elif event_type in ['sleep_update', 'meal_logged', 'health_check']:
+            context.log("⚡ Routing to Vitality Agent (console test)")
+            return run_vitality_agent(db, payload, context)
+        elif event_type in ['location_update', 'social_event']:
+            context.log("🌍 Routing to Radius Agent (console test)")
+            return run_radius_agent(db, payload, context)
+        elif event_type == 'cron_schedule':
+            context.log("🛡️ Running Supervisor Check (console test)")
+            return run_supervisor(db, context)
     
     # --- CRON SCHEDULE (Supervisor Safety Net) ---
     if 'cron' in trigger_event or not trigger_event:
-        context.log("🛡️ Running Supervisor Check")
+        context.log(f"🛡️ Safety Net: Unknown event '{trigger_event}' - Running Supervisor")
         return run_supervisor(db, context)
     
     # --- FALLBACK ---
