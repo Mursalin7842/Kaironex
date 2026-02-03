@@ -498,11 +498,11 @@ fun ImmersiveAssistantPanel(
                 )
 
                 // The Voice Orb
-                 com.mursaline.kaironex.ui.components.VoiceOrb(
-                    isListening = isListening,
-                    onClick = { voiceViewModel.toggleSession("user_demo") }, // TODO: Real user ID
-                    modifier = Modifier.size(if (isMobile) 120.dp else 160.dp)
-                )
+                // The Voice Orb (Web Version)
+                 com.mursaline.kaironex.ui.components.WebOrb(
+                    apiKey = com.mursaline.kaironex.PlatformSecrets.apiKey,
+                    modifier = Modifier.size(if (isMobile) 300.dp else 400.dp) // Larger for web view content
+                 )
             }
 
             Spacer(Modifier.height(40.dp))

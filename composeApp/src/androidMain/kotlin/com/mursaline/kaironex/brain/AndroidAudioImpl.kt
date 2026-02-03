@@ -13,54 +13,57 @@ class AndroidAudioRecorder(val context: Context) : AudioRecorder {
 
     override fun startRecording(onData: (ByteArray) -> Unit) {
         if (isRecording) return
-        val sampleRate = 16000 // Standard 16kHz for Speech
+
+        // [FIX] Gemini Live Input MUST be 16kHz (16000), not 24kHz
+        val sampleRate = 16000 
         val channelConfig = AudioFormat.CHANNEL_IN_MONO
         val audioFormat = AudioFormat.ENCODING_PCM_16BIT
-        val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-
-        if (bufferSize == AudioRecord.ERROR || bufferSize == AudioRecord.ERROR_BAD_VALUE) {
-            println("AndroidAudioRecorder: Invalid buffer size")
-            return
-        }
+        
+        val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+        // Use a slightly larger buffer to ensure smooth streaming
+        val bufferSize = maxOf(minBufferSize, 4096)
 
         try {
-             // Check permissions before creating AudioRecord if needed, 
-             // but assuming permission check is done in UI layer or Activity
             recorder = AudioRecord(
-                MediaRecorder.AudioSource.MIC,
+                MediaRecorder.AudioSource.VOICE_RECOGNITION, // [FIX] Better for speech than MIC
                 sampleRate,
                 channelConfig,
                 audioFormat,
                 bufferSize
             )
-            
+
             if (recorder?.state != AudioRecord.STATE_INITIALIZED) {
-                println("AndroidAudioRecorder: AudioRecord initialization failed")
+                println("🔴 Kaironex: AudioRecord failed to initialize")
                 return
             }
 
             recorder?.startRecording()
             isRecording = true
+            println("mic started with 16k rate")
 
             scope.launch {
-                val buffer = ByteArray(1024) // Chunk size
+                val buffer = ByteArray(8192) // Larger chunks (approx 256ms) to match JS reference
                 var packets = 0
                 while (isRecording) {
                     val read = recorder?.read(buffer, 0, buffer.size) ?: 0
                     if (read > 0) {
-                        onData(buffer.copyOfRange(0, read))
+                        // Create a copy of the exact bytes read
+                        val data = buffer.copyOfRange(0, read)
+                        onData(data)
+                        
+                        // Debug log occasional packet
                         packets++
                         if (packets % 50 == 0) {
-                            val nonZero = buffer.any { it != 0.toByte() }
-                            val hasAudio = if (nonZero) "Request has DATA" else "⚠️ SILENCE"
-                            println("🎤 Mic sending audio... ($packets chunks) - $hasAudio")
+                             val nonZero = buffer.any { it != 0.toByte() }
+                             val hasAudio = if (nonZero) "DATA" else "SILENCE"
+                             println("🎤 Mic sending ($packets) - $hasAudio")
                         }
                     }
                 }
             }
         } catch (e: Exception) {
+            println("🔴 Kaironex Rec Error: ${e.message}")
             e.printStackTrace()
-            isRecording = false
         }
     }
 

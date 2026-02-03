@@ -16,7 +16,7 @@ class GeminiLiveAgent(
     private val audioPlayer: AudioPlayer // Interface defined in Phase 4
 ) {
     private var session: DefaultClientWebSocketSession? = null
-    private val modelName = "models/gemini-2.5-flash-native-audio-preview-12-2025" // STRICTLY THIS MODEL
+    private val modelName = "gemini-2.5-flash-native-audio-preview-12-2025" // Removed models/ prefix
     
     // Tools: Let Gemini know it can talk to your Python backend
     private val toolsDefinition = buildJsonObject {
@@ -37,32 +37,61 @@ class GeminiLiveAgent(
     }
 
     suspend fun startSession(userId: String) {
-        val apiKey = com.mursaline.kaironex.PlatformSecrets.apiKey // Ensure your API Key is here
-        val url = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=$apiKey"
+        val apiKey = com.mursaline.kaironex.PlatformSecrets.apiKey
+        // [FIX] Switch to v1beta to match old working implementation
+        val url = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=$apiKey"
 
         try {
             client.wss(url) {
                 session = this
-                println("⚡ Kaironex: Connected to Gemini 2.5 Live")
+                println("⚡ Kaironex: Connected to Gemini 2.5 Live (v1beta)")
 
-                // 1. Handshake with Config
+                // 1. Handshake with Config (camelCase for v1beta)
                 val setupMsg = buildJsonObject {
                     put("setup", buildJsonObject {
-                        put("model", modelName)
+                        put("model", "models/$modelName") // [FIX] Add 'models/' prefix
                         put("tools", buildJsonArray { add(toolsDefinition) })
-                        put("generation_config", buildJsonObject {
-                            put("response_modalities", buildJsonArray { add("AUDIO") })
-                            put("speech_config", buildJsonObject {
-                                put("voice_config", buildJsonObject {
-                                    put("prebuilt_voice_config", buildJsonObject {
-                                        put("voice_name", "Kore") // Options: Aoede, Charon, Fenrir, Kore, Puck
+                        put("generationConfig", buildJsonObject {
+                            put("responseModalities", buildJsonArray { add("AUDIO") })
+                            put("speechConfig", buildJsonObject {
+                                put("voiceConfig", buildJsonObject {
+                                    put("prebuiltVoiceConfig", buildJsonObject {
+                                        put("voiceName", "Kore") 
                                     })
+                                })
+                            })
+                        })
+                        put("systemInstruction", buildJsonObject {
+                            put("parts", buildJsonArray {
+                                add(buildJsonObject {
+                                    put("text", "You are Kaironex. Keep responses concise and conversational. Speak immediately when you have an answer.")
                                 })
                             })
                         })
                     })
                 }
                 send(Frame.Text(setupMsg.toString()))
+                println("⚡ Handshake sent")
+
+                // [FIX] Kickstart: Force the model to start conversation
+                delay(500)
+                val kickstartMsg = buildJsonObject {
+                    put("clientContent", buildJsonObject {
+                        put("turns", buildJsonArray {
+                            add(buildJsonObject {
+                                put("role", "user")
+                                put("parts", buildJsonArray {
+                                    add(buildJsonObject {
+                                        put("text", "Start Interview.")
+                                    })
+                                })
+                            })
+                        })
+                        put("turnComplete", true)
+                    })
+                }
+                send(Frame.Text(kickstartMsg.toString()))
+                println("🚀 Kickstart Trigger Sent")
 
                 // 2. Listen for Events
                 incoming.consumeAsFlow().collect { frame ->
@@ -81,19 +110,35 @@ class GeminiLiveAgent(
     private suspend fun handleServerMessage(jsonString: String, userId: String) {
         val json = Json.parseToJsonElement(jsonString).jsonObject
         
-        // A. Handle Audio (Voice Response)
-        val audioData = json["serverContent"]?.jsonObject
-            ?.get("modelTurn")?.jsonObject
-            ?.get("parts")?.jsonArray?.firstOrNull()
-            ?.jsonObject?.get("inlineData")?.jsonObject
-            ?.get("data")?.jsonPrimitive?.content
-
-        if (audioData != null) {
-            println("🔊 Received audio chunk from Gemini")
-            // Decode Base64 and Play
-            // Note: You need a Base64 decoder. Ktor has one or use a utility.
-            // For simplicity in KMP, pass the base64 string to the platform player
-            audioPlayer.playBase64(audioData) 
+        // Check for "serverContent" (The Answer)
+        val serverContent = json["serverContent"]?.jsonObject
+        if (serverContent != null) {
+            val modelTurn = serverContent["modelTurn"]?.jsonObject
+            val parts = modelTurn?.get("parts")?.jsonArray
+            
+            parts?.forEach { part ->
+                // [Check 1] Is there audio?
+                val inlineData = part.jsonObject["inlineData"]
+                if (inlineData != null) {
+                    val data = inlineData.jsonObject["data"]?.jsonPrimitive?.content
+                    if (data != null) {
+                        println("⚡ Kaironex: Received Audio Chunk (${data.length} chars)") // [DEBUG LOG]
+                        audioPlayer.playBase64(data)
+                    }
+                }
+                
+                // [Check 2] Is there text? (Sometimes it sends text before audio)
+                val text = part.jsonObject["text"]?.jsonPrimitive?.content
+                if (text != null) {
+                    println("⚡ Kaironex: Agent thought: $text")
+                }
+            }
+            
+            // [Check 3] Is the turn complete?
+            val turnComplete = serverContent["turnComplete"]?.jsonPrimitive?.booleanOrNull
+            if (turnComplete == true) {
+                println("⚡ Kaironex: Agent finished speaking turn.")
+            }
         }
 
         // B. Handle Tool Calls (Routing to Appwrite)
@@ -132,9 +177,16 @@ class GeminiLiveAgent(
     }
 
     suspend fun sendUserAudio(pcmData: ByteArray) {
+        if (session == null) {
+            // println("⚠️ Cannot send audio - Session is NULL")
+            return
+        }
+        val count = pcmData.size
+        // println("📤 Sending $count bytes to Gemini...") 
+
         val base64Audio = pcmData.encodeBase64()
         val msg = buildJsonObject {
-            put("realtime_input", buildJsonObject {
+            put("realtimeInput", buildJsonObject {  // [FIX] camelCase for v1beta
                 put("media_chunks", buildJsonArray {
                     add(buildJsonObject {
                         put("mime_type", "audio/pcm;rate=16000")

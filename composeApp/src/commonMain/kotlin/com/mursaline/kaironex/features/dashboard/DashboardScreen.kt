@@ -218,22 +218,7 @@ object DashboardScreen : Screen {
 
             // The Floating Orb at the bottom (Reflex Arc Voice Agent)
             // Inject ViewModel
-            val voiceViewModel = org.koin.compose.koinInject<com.mursaline.kaironex.features.voice.VoiceViewModel>()
-            val isListening by voiceViewModel.isListening.collectAsState()
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 20.dp)
-            ) {
-                com.mursaline.kaironex.ui.components.VoiceOrb(
-                    isListening = isListening,
-                    onClick = {
-                        // Toggle Session
-                        voiceViewModel.toggleSession("user_mursaline")
-                    }
-                )
-            }
+            // [REMOVED] Duplicate Orb from Dashboard content. Access via MainShell Nav Bar.
         }
     }
 
