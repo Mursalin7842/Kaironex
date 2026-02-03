@@ -527,6 +527,13 @@ Keep response helpful and actionable.
             mode=ReasoningMode.DEEP # Deep analysis for new content
         ))
         
+        # VISIBILITY: Store the thought so it appears on Dashboard
+        if response.thought_signature:
+            await self.thoughts.store(response.thought_signature)
+            
+        # VISIBILITY: Update dashboard activity feed immediately
+        self.log_heartbeat(user_id, f"📚 Analyzed {title}: {response.content[:60]}...")
+        
         # Update state cache
         resource_update = {
             "resources": {
@@ -546,7 +553,8 @@ Keep response helpful and actionable.
         return AgentResult(
             success=True,
             response=response.content,
-            actions_taken=["resource_analyzed", "content_extracted"],
+            thought_id=response.thought_signature.thought_id if response.thought_signature else None,
+            actions_taken=["resource_analyzed", "content_extracted", "dashboard_updated"],
             state_updates=resource_update
         )
     
