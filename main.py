@@ -1,8 +1,12 @@
 """
 Appwrite Functions Entry Point
-Wrapper that imports from src/main.py
 """
+import sys
+import os
+
+# Add the function directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from src.main import main
 
 # Appwrite Functions expects a 'main' function at root level
-# This file simply re-exports it from src/main.py
