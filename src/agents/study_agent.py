@@ -89,6 +89,7 @@ Remember: You're optimizing for long-term retention and sustainable study habits
             'quiz_request': self._handle_quiz_request,
             'quiz_answer': self._handle_quiz_answer,
             'pressure_check': self._handle_pressure_check,
+            'resource_ingestion': self._handle_resource_ingestion,
         }
         
         handler = handlers.get(event_type, self._handle_focus_update)
@@ -440,6 +441,82 @@ Be specific and actionable.
             "correct": "A",
             "explanation": "Reflect on your learning!"
         }
+
+    async def _handle_resource_ingestion(
+        self,
+        user_id: str,
+        payload: Dict[str, Any],
+        context: StateContext
+    ) -> AgentResult:
+        """
+        Handle new resource upload (manual or Google Drive).
+        
+        Payload should contain:
+        - title: Resource name
+        - type: pdf/video/link/document/image
+        - url: Storage URL or Drive link (optional)
+        - subject: Related subject (optional)
+        - description: Brief description (optional)
+        """
+        
+        title = payload.get('title', 'Untitled Resource')
+        resource_type = payload.get('resource_type', payload.get('type', 'document'))
+        url = payload.get('url', '')
+        subject = payload.get('subject', 'General')
+        description = payload.get('description', '')
+        source = payload.get('source', 'manual_upload')  # 'manual_upload' or 'google_drive'
+        
+        prompt = f"""
+NEW LEARNING RESOURCE UPLOADED:
+Title: {title}
+Type: {resource_type}
+Subject: {subject}
+Source: {source}
+Description: {description[:500] if description else 'No description provided'}
+
+TASK:
+1. Acknowledge the resource upload
+2. Suggest how this resource might fit into their study plan
+3. If it's a key resource (syllabus, textbook, etc.), offer to analyze it
+4. Provide a brief tip for using this type of resource effectively
+
+Keep response brief and helpful (2-3 sentences).
+"""
+        
+        response = await self.engine.reason(ReasoningRequest(
+            prompt=prompt,
+            user_id=user_id,
+            agent="study",
+            mode=ReasoningMode.REFLEX
+        ))
+        
+        # Update state cache with resource info
+        resource_update = {
+            "resources": {
+                "last_upload": {
+                    "title": title,
+                    "type": resource_type,
+                    "subject": subject,
+                    "source": source,
+                    "timestamp": self._get_timestamp()
+                },
+                "total_resources": (context.user_state.get('resources', {}).get('total_resources', 0) + 1)
+            }
+        }
+        
+        self.update_state_cache(user_id, resource_update)
+        
+        return AgentResult(
+            success=True,
+            response=response.content,
+            actions_taken=["resource_ingested", f"type:{resource_type}", f"source:{source}"],
+            state_updates=resource_update
+        )
+    
+    def _get_timestamp(self) -> str:
+        """Get current timestamp string."""
+        from datetime import datetime
+        return datetime.now().isoformat()
 
 
 # Legacy compatibility wrapper

@@ -85,6 +85,12 @@ def main(context):
         context.log("🌍 Routing to Radius Agent")
         return run_radius_agent(db, payload, context)
     
+    # Resource uploads (manual or Google Drive)
+    if 'resources' in trigger_event:
+        context.log("📄 Resource uploaded - Routing to Study Agent for ingestion")
+        payload['type'] = 'resource_ingestion'
+        return run_study_agent(db, payload, context)
+    
     if any(x in trigger_event for x in ['schedule', 'campaign', 'profile']):
         if 'cron' not in trigger_event:
             context.log("⚔️ Routing to Campaign Agent")

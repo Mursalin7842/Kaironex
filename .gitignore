@@ -5,3 +5,12 @@ __pycache__/
 .venv
 env/
 venv/
+# Cache
+.rate_limit_cache.json
+
+# IDE
+.vscode/
+.idea/
+
+# Local only
+local_*.py
