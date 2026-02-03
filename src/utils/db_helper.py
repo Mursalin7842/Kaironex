@@ -118,7 +118,7 @@ class KairoDB:
         try:
             row_data = {
                 'userId': user_id,
-                'thought_id': thought_data.get('thought_id', ''),
+                'thoughtId': thought_data.get('thought_id', ''),
                 'agent': thought_data.get('agent', ''),
                 'timestamp': thought_data.get('timestamp', datetime.datetime.now().isoformat()),
                 'context_hash': thought_data.get('context_hash', '')[:999],
