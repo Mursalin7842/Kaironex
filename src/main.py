@@ -96,10 +96,12 @@ def main(context):
     if request_path and request_path != '/':
         return _handle_http_request(db, context, request_path, request_method, payload)
     
-    # --- DATABASE EVENT TRIGGERS ---
+    # --- DATABASE EVENT TRIGGERS (Robust Check) ---
+    
+    collection_id = payload.get('$collectionId', '')
     
     # 1. PROFILE UPDATE (User filled intake form)
-    if 'users' in trigger_event and any(x in trigger_event for x in ['create', 'update']):
+    if 'users' in trigger_event or collection_id == 'users':
         user_id = payload.get('userId') or payload.get('$id')
         
         # Check if we have files
@@ -113,9 +115,10 @@ def main(context):
             return context.res.json({"status": "waiting_for_files"})
 
     # 2. RESOURCES UPDATE (User uploaded files)
-    if 'resources' in trigger_event:
-        context.log("📄 Resource uploaded.")
+    if 'resources' in trigger_event or collection_id == 'resources':
+        context.log("📄 Resource uploaded found in payload.")
         user_id = payload.get('userId')
+        title = payload.get('title', 'Unknown')
         
         # Ingest the resource first (Study Brain)
         payload['type'] = 'resource_ingestion'
@@ -131,15 +134,15 @@ def main(context):
             return study_result
 
     # 3. OTHER STATE UPDATES
-    if 'study_logs' in trigger_event:
+    if 'study_logs' in trigger_event or collection_id == 'study_logs':
         context.log("📚 Routing to Study Agent")
         return run_study_agent(db, payload, context)
     
-    if 'vitality_state' in trigger_event:
+    if 'vitality_state' in trigger_event or collection_id == 'vitality_state':
         context.log("⚡ Routing to Vitality Agent")
         return run_vitality_agent(db, payload, context)
     
-    if 'radius_state' in trigger_event:
+    if 'radius_state' in trigger_event or collection_id == 'radius_state':
         context.log("🌍 Routing to Radius Agent")
         return run_radius_agent(db, payload, context)
     
