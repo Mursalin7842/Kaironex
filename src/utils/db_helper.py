@@ -3,6 +3,7 @@ import json
 import datetime
 from appwrite.client import Client
 from appwrite.services.tables_db import TablesDB
+from appwrite.services.storage import Storage
 
 from appwrite.query import Query
 from ..config import *
@@ -14,6 +15,7 @@ class KairoDB:
         self.client.set_project(APPWRITE_PROJECT_ID)
         self.client.set_key(APPWRITE_API_KEY)
         self.db = TablesDB(self.client)
+        self.storage = Storage(self.client)
 
 
 
@@ -132,3 +134,12 @@ class KairoDB:
         except Exception as e:
             print(f"Count Resources Error: {e}")
             return 0
+
+    def get_file_content(self, file_id, bucket_id=None):
+        """Downloads file content as bytes."""
+        try:
+            target_bucket = bucket_id or STORAGE_BUCKET_ID
+            return self.storage.get_file_download(target_bucket, file_id)
+        except Exception as e:
+            print(f"File Download Error: {e}")
+            return None

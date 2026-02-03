@@ -16,6 +16,7 @@ APPWRITE_ENDPOINT = os.environ.get('APPWRITE_ENDPOINT', 'https://nyc.cloud.appwr
 APPWRITE_PROJECT_ID = os.environ.get('APPWRITE_FUNCTION_PROJECT_ID') or os.environ.get('APPWRITE_PROJECT_ID')
 APPWRITE_API_KEY = os.environ.get('APPWRITE_API_KEY')
 APPWRITE_DATABASE_ID = os.environ.get('APPWRITE_DATABASE_ID', '697cb20f00110f6d7530')
+STORAGE_BUCKET_ID = os.environ.get('APPWRITE_STORAGE_BUCKET_ID', 'academic_files')
 
 # =============================================================================
 # AI CONFIGURATION - DEEP BRAIN ONLY

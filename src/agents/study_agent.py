@@ -449,56 +449,82 @@ Be specific and actionable.
         context: StateContext
     ) -> AgentResult:
         """
-        Handle new resource upload (manual or Google Drive).
-        
-        Payload should contain:
-        - title: Resource name
-        - type: pdf/video/link/document/image
-        - url: Storage URL or Drive link (optional)
-        - subject: Related subject (optional)
-        - description: Brief description (optional)
+        Handle new resource upload with REAL content extraction.
         """
-        
+        import io
+        import pypdf
+
         title = payload.get('title', 'Untitled Resource')
         resource_type = payload.get('resource_type', payload.get('type', 'document'))
-        url = payload.get('url', '')
+        file_id = payload.get('fileId')
+        drive_link = payload.get('driveLink', payload.get('url', ''))
         subject = payload.get('subject', 'General')
         description = payload.get('description', '')
-        source = payload.get('source', 'manual_upload')  # 'manual_upload' or 'google_drive'
+        source = 'manual_upload' if file_id else 'google_drive'
         
+        extracted_text = ""
+        
+        # 1. Try to download and read content
+        if file_id:
+            try:
+                print(f"📥 Downloading file {file_id}...")
+                file_bytes = self.db.get_file_content(file_id)
+                
+                if file_bytes:
+                    if 'pdf' in resource_type.lower() or title.lower().endswith('.pdf'):
+                        # PDF Extraction
+                        reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+                        extracted_text = "\n".join([page.extract_text() for page in reader.pages[:10]]) # First 10 pages
+                    else:
+                        # Text/Code Extraction
+                        try:
+                            extracted_text = file_bytes.decode('utf-8')
+                        except:
+                            extracted_text = "[Binary or Non-UTF8 Content]"
+                else:
+                    extracted_text = "[Failed to download file content]"
+            except Exception as e:
+                print(f"❌ Extraction Error: {e}")
+                extracted_text = f"[Error extracting content: {str(e)}]"
+        elif drive_link:
+            extracted_text = f"[Google Drive Link: {drive_link}] (Content not yet accessible)"
+
+        # 2. Analyze with Gemini
         prompt = f"""
 NEW LEARNING RESOURCE UPLOADED:
 Title: {title}
 Type: {resource_type}
 Subject: {subject}
 Source: {source}
-Description: {description[:500] if description else 'No description provided'}
+
+EXTRACTED CONTENT PREVIEW:
+{extracted_text[:3000]}... [truncated]
 
 TASK:
-1. Acknowledge the resource upload
-2. Suggest how this resource might fit into their study plan
-3. If it's a key resource (syllabus, textbook, etc.), offer to analyze it
-4. Provide a brief tip for using this type of resource effectively
+1. Analyze this content summary.
+2. Explain specifically how this helps with {subject}.
+3. Create 3 quiz questions based on this content immediately to test pre-knowledge.
+4. Suggest a study technique best suited for this material.
 
-Keep response brief and helpful (2-3 sentences).
+Keep response helpful and actionable.
 """
         
         response = await self.engine.reason(ReasoningRequest(
             prompt=prompt,
             user_id=user_id,
             agent="study",
-            mode=ReasoningMode.REFLEX
+            mode=ReasoningMode.DEEP # Deep analysis for new content
         ))
         
-        # Update state cache with resource info
+        # Update state cache
         resource_update = {
             "resources": {
                 "last_upload": {
                     "title": title,
                     "type": resource_type,
                     "subject": subject,
-                    "source": source,
-                    "timestamp": self._get_timestamp()
+                    "timestamp": self._get_timestamp(),
+                    "analysis": response.content[:200]
                 },
                 "total_resources": (payload.get('resources', {}).get('total_resources', 0) + 1)
             }
@@ -509,7 +535,7 @@ Keep response brief and helpful (2-3 sentences).
         return AgentResult(
             success=True,
             response=response.content,
-            actions_taken=["resource_ingested", f"type:{resource_type}", f"source:{source}"],
+            actions_taken=["resource_analyzed", "content_extracted"],
             state_updates=resource_update
         )
     
