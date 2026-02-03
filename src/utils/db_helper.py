@@ -119,3 +119,16 @@ class KairoDB:
 
         except Exception as e:
             print(f"State Sync Error: {e}")
+
+    def count_user_resources(self, user_id):
+        """Checks if user has uploaded any academic files."""
+        try:
+            results = self.db.list_rows(
+                database_id=APPWRITE_DATABASE_ID, 
+                table_id=RESOURCES_COL, 
+                queries=[Query.equal('userId', user_id), Query.limit(1)] 
+            )
+            return results['total']
+        except Exception as e:
+            print(f"Count Resources Error: {e}")
+            return 0

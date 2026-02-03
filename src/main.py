@@ -97,6 +97,40 @@ def main(context):
         return _handle_http_request(db, context, request_path, request_method, payload)
     
     # --- DATABASE EVENT TRIGGERS ---
+    
+    # 1. PROFILE UPDATE (User filled intake form)
+    if 'users' in trigger_event and any(x in trigger_event for x in ['create', 'update']):
+        user_id = payload.get('userId') or payload.get('$id')
+        
+        # Check if we have files
+        resource_count = db.count_user_resources(user_id)
+        
+        if resource_count > 0:
+            context.log(f"✅ Profile ready + {resource_count} Files detected. Triggering Campaign Agent.")
+            return run_campaign_agent(db, payload, context)
+        else:
+            context.log("⏳ Profile updated, but waiting for academic files (Google Drive/Uploads) before Deep Brain trigger.")
+            return context.res.json({"status": "waiting_for_files"})
+
+    # 2. RESOURCES UPDATE (User uploaded files)
+    if 'resources' in trigger_event:
+        context.log("📄 Resource uploaded.")
+        user_id = payload.get('userId')
+        
+        # Ingest the resource first (Study Brain)
+        payload['type'] = 'resource_ingestion'
+        study_result = run_study_agent(db, payload, context)
+        
+        # NOW check if this completes the "Profile + Files" combo
+        user_doc = db.get_user_doc(user_id)
+        if user_doc and user_doc.get('studentprofile_json'):
+            context.log("✅ Files received + Profile ready. Triggering Campaign Agent for Full Initialization.")
+            return run_campaign_agent(db, payload, context)
+        else:
+            context.log("⏳ Files received, but waiting for Student Profile.")
+            return study_result
+
+    # 3. OTHER STATE UPDATES
     if 'study_logs' in trigger_event:
         context.log("📚 Routing to Study Agent")
         return run_study_agent(db, payload, context)
@@ -109,13 +143,7 @@ def main(context):
         context.log("🌍 Routing to Radius Agent")
         return run_radius_agent(db, payload, context)
     
-    # Resource uploads (manual or Google Drive)
-    if 'resources' in trigger_event:
-        context.log("📄 Resource uploaded - Routing to Study Agent for ingestion")
-        payload['type'] = 'resource_ingestion'
-        return run_study_agent(db, payload, context)
-    
-    if any(x in trigger_event for x in ['schedule', 'campaign', 'profile']):
+    if any(x in trigger_event for x in ['schedule', 'campaign']):
         if 'cron' not in trigger_event:
             context.log("⚔️ Routing to Campaign Agent")
             return run_campaign_agent(db, payload, context)

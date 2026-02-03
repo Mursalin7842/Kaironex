@@ -6,14 +6,18 @@
       "$id": "kaironex-brain",
       "name": "Kaironex Brain",
       "runtime": "python-3.11",
-      "execute": ["any"],
+      "execute": [
+        "any"
+      ],
       "events": [
         "databases.697cb20f00110f6d7530.collections.study_logs.documents.*.create",
         "databases.697cb20f00110f6d7530.collections.vitality_state.documents.*.update",
         "databases.697cb20f00110f6d7530.collections.radius_state.documents.*.update",
         "databases.697cb20f00110f6d7530.collections.schedule.documents.*.create",
         "databases.697cb20f00110f6d7530.collections.schedule.documents.*.update",
-        "databases.697cb20f00110f6d7530.collections.resources.documents.*.create"
+        "databases.697cb20f00110f6d7530.collections.resources.documents.*.create",
+        "databases.697cb20f00110f6d7530.collections.users.documents.*.create",
+        "databases.697cb20f00110f6d7530.collections.users.documents.*.update"
       ],
       "schedule": "*/15 * * * *",
       "timeout": 300,
