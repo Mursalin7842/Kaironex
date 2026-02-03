@@ -455,9 +455,20 @@ Be specific and actionable.
         import pypdf
 
         title = payload.get('title', 'Untitled Resource')
-        resource_type = payload.get('resource_type', payload.get('type', 'document'))
-        file_id = payload.get('fileId')
+        
+        # Smart Field Resolution for mismatched schema
+        file_id = payload.get('fileId') or payload.get('resourceId')
+        if file_id and file_id.startswith('link_'):
+            file_id = None # It's a link ID, not a file ID
+            
         drive_link = payload.get('driveLink', payload.get('url', ''))
+        
+        # Infer type if missing
+        resource_type = payload.get('resource_type', payload.get('type'))
+        if not resource_type:
+            if title.lower().endswith('.pdf'): resource_type = 'pdf'
+            else: resource_type = 'document'
+
         subject = payload.get('subject', 'General')
         description = payload.get('description', '')
         source = 'manual_upload' if file_id else 'google_drive'
