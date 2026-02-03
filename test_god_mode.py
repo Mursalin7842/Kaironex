@@ -13,8 +13,8 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from utils.db_helper import AppwriteDBHelper
-from config import *
+from src.utils.db_helper import KairoDB
+from src.config import *
 
 def test_god_mode():
     print("\n" + "="*60)
@@ -23,7 +23,7 @@ def test_god_mode():
     
     # Initialize DB helper
     try:
-        db = AppwriteDBHelper()
+        db = KairoDB()
         print("✅ Database helper initialized")
     except Exception as e:
         print(f"❌ Failed to initialize DB: {e}")
@@ -102,24 +102,25 @@ def test_god_mode():
         session_id = f"marathon_{uuid.uuid4().hex[:8]}"
         session_data = {
             "session_id": session_id,
+            "user_id": test_user_id,
             "agent_type": "study",
-            "goal_json": json.dumps({
+            "goal": {
                 "title": "Master Machine Learning",
                 "duration_days": 30
-            }),
+            },
             "status": "in_progress",
-            "steps_json": json.dumps([
+            "steps": [
                 {"step": 1, "title": "Linear Regression", "status": "complete"},
                 {"step": 2, "title": "Neural Networks", "status": "in_progress"}
-            ]),
+            ],
             "progress": 45,
-            "thought_chain": json.dumps([
+            "thought_chain": [
                 "thought_001", "thought_002", "thought_003"
-            ]),
+            ],
             "estimated_completion": (datetime.datetime.now() + datetime.timedelta(days=30)).isoformat()
         }
         
-        db.create_marathon_session(test_user_id, session_data)
+        db.create_marathon_session(session_data)
         print(f"✅ marathon_session created")
         print(f"   - Session ID: {session_id}")
         print(f"   - Goal: Master Machine Learning")
@@ -135,23 +136,24 @@ def test_god_mode():
     try:
         episode_data = {
             "episode_id": f"episode_{uuid.uuid4().hex[:12]}",
+            "user_id": test_user_id,
             "agent": "campaign",
-            "trigger_event": "user_disengagement",
-            "state_before_json": json.dumps({
+            "trigger": "user_disengagement",
+            "state_before": {
                 "engagement_score": 0.3,
                 "last_interaction": "3 days ago"
-            }),
+            },
             "action_taken": "sent_motivation_email",
             "outcome": "user_returned",
             "reward": 0.8,
-            "state_after_json": json.dumps({
+            "state_after": {
                 "engagement_score": 0.7,
                 "last_interaction": "now"
-            }),
+            },
             "thought_chain_summary": "Identified disengagement → Sent intervention → User responded positively"
         }
         
-        db.create_policy_episode(test_user_id, episode_data)
+        db.create_policy_episode(episode_data)
         print(f"✅ policy_episode created")
         print(f"   - Agent: campaign")
         print(f"   - Trigger: user_disengagement")

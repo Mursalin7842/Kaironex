@@ -487,8 +487,11 @@ Be specific and actionable.
                 if file_bytes:
                     if 'pdf' in resource_type.lower() or title.lower().endswith('.pdf'):
                         # PDF Extraction
-                        reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-                        extracted_text = "\n".join([page.extract_text() for page in reader.pages[:10]]) # First 10 pages
+                        if pypdf is not None:
+                            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+                            extracted_text = "\n".join([page.extract_text() for page in reader.pages[:10]]) # First 10 pages
+                        else:
+                            extracted_text = "[pypdf not installed - cannot extract PDF]"
                     else:
                         # Text/Code Extraction
                         try:

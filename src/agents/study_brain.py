@@ -201,7 +201,7 @@ Keep response to 2-3 sentences max. Be encouraging.
 
     # --- SYNC: UPDATE CACHE ---
     context.log("🔄 Updating state cache...")
-    state_update = {
+    state_update: dict = {
         "study_session": {
             "is_active": (status == 'IN_PROGRESS'),
             "current_topic": topic,
