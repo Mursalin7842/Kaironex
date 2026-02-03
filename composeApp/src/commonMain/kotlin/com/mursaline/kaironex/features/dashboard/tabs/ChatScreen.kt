@@ -31,8 +31,7 @@ import com.mursaline.kaironex.ui.components.KxCard
 import com.mursaline.kaironex.ui.components.KxCardVariant
 import com.mursaline.kaironex.ui.components.KxIconButton
 import com.mursaline.kaironex.ui.components.KxIconButtonVariant
-import com.mursaline.kaironex.ui.components.KxOrb
-import com.mursaline.kaironex.ui.components.KxOrb
+
 
 import com.mursaline.kaironex.ui.components.KxTextField
 import com.mursaline.kaironex.ui.theme.KaironexColors
@@ -56,9 +55,9 @@ fun ChatScreen() {
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            KxOrb(
-                isAgentSpeaking = true, 
-                isUserListening = false,
+            com.mursaline.kaironex.ui.components.VoiceOrb(
+                isListening = true, 
+                onClick = {},
                 modifier = Modifier.size(48.dp)
             )
             Spacer(Modifier.width(12.dp))

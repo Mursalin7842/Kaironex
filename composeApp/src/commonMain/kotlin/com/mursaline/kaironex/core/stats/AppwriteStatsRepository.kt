@@ -12,6 +12,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 
 /**
  * 📊 APPWRITE STATS REPOSITORY
@@ -33,8 +34,15 @@ import kotlinx.serialization.json.booleanOrNull
  *   repo.refreshAll()
  *   val homeStats = repo.homeStats.value
  */
+import io.ktor.client.HttpClient
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.statement.bodyAsText
+import com.mursaline.kaironex.core.AppConfig
+
 class AppwriteStatsRepository(
     private val brainClient: BrainApiClient,
+    private val httpClient: HttpClient,
     private val userId: String
 ) {
 
@@ -63,8 +71,7 @@ class AppwriteStatsRepository(
         _isLoading.value = true
 
         try {
-            // 1. Get user state (contains cached studentState_json)
-            val state = brainClient.getUserState(userId)
+            val state = fetchUserState()
             _userState.value = state
 
             if (state != null) {
@@ -87,7 +94,7 @@ class AppwriteStatsRepository(
         _isLoading.value = true
 
         try {
-            val state = brainClient.getUserState(userId)
+            val state = fetchUserState()
             if (state != null) {
                 parseHomeStats(state)
             }
@@ -105,7 +112,7 @@ class AppwriteStatsRepository(
         _isLoading.value = true
 
         try {
-            val state = brainClient.getUserState(userId)
+            val state = fetchUserState()
             if (state != null) {
                 parseMoreStats(state)
             }
@@ -113,6 +120,49 @@ class AppwriteStatsRepository(
             println("❌ Failed to refresh more stats: ${e.message}")
         } finally {
             _isLoading.value = false
+        }
+    }
+
+    private suspend fun fetchUserState(): UserStateResponse? {
+        return try {
+            val url = "${AppConfig.Appwrite.ENDPOINT}/databases/${AppConfig.Appwrite.DATABASE_ID}/collections/${AppConfig.Collections.USERS}/documents/$userId"
+            
+            val response = httpClient.get(url) {
+                header("X-Appwrite-Project", AppConfig.Appwrite.PROJECT_ID)
+                if (AppConfig.Appwrite.API_KEY.isNotBlank()) {
+                    header("X-Appwrite-Key", AppConfig.Appwrite.API_KEY)
+                }
+            }
+            
+            val docJson = json.parseToJsonElement(response.bodyAsText()).jsonObject
+            
+            val stateString = docJson["studentState_json"]?.jsonPrimitive?.contentOrNull
+            val profileString = docJson["profile_json"]?.jsonPrimitive?.contentOrNull
+            
+            val stateMap: Map<String, String> = if (stateString != null) {
+                try {
+                    val parsed = json.parseToJsonElement(stateString).jsonObject
+                    parsed.mapValues { it.value.toString() }
+                } catch (e: Exception) { emptyMap<String, String>() }
+            } else {
+                emptyMap<String, String>()
+            }
+
+            UserStateResponse(
+                userId = userId,
+                state = stateMap,
+                profile = profileString,
+                lastUpdated = docJson["\$updatedAt"]?.jsonPrimitive?.contentOrNull
+            )
+        } catch (e: Exception) {
+            println("⚠️ Error fetching state from Appwrite: ${e.message}")
+            if (AppConfig.useMockData) {
+                // Fallback to mock if needed, or maybe BrainApiClient was doing something else?
+                // For now, return null.
+                null
+            } else {
+                null
+            }
         }
     }
 

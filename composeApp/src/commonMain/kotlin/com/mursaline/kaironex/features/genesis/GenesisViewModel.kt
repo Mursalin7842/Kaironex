@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import com.mursaline.kaironex.agents.genesis.StudentProfile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.mursaline.kaironex.brain.GeminiReasoningEngine
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import com.mursaline.kaironex.PlatformSecrets
@@ -24,7 +23,6 @@ data class GenesisUiState(
 class GenesisViewModel : ViewModel(), KoinComponent {
 
     // --- DEPENDENCIES ---
-    private val reasoningEngine: GeminiReasoningEngine by inject()
     private val profileStorage: ProfileStorage by inject()
     
     // --- STATE ---
@@ -50,14 +48,14 @@ class GenesisViewModel : ViewModel(), KoinComponent {
         }
     }
         
-    // Expose Connection State for UI Orb
-    val connectionState = reasoningEngine.connectionState
-    val audioRms = reasoningEngine.audioRms
+    // Expose Connection State for UI Orb - Mocked/Disabled
+    // val connectionState = reasoningEngine.connectionState
+    // val audioRms = reasoningEngine.audioRms
     
     // --- CORE LOGIC ---
     
     fun startInterview(userName: String, wakeWord: String) {
-        if (reasoningEngine.connectionState.value is GeminiReasoningEngine.ConnectionState.Connected) return
+        // if (reasoningEngine.connectionState.value is GeminiReasoningEngine.ConnectionState.Connected) return
 
         // 1. Basic Initial Instruction (Transitioning to Backend Agent)
         val initialPrompt = """
@@ -84,7 +82,7 @@ class GenesisViewModel : ViewModel(), KoinComponent {
     
     fun disconnect() {
         viewModelScope.launch {
-            reasoningEngine.disconnect()
+            // reasoningEngine.disconnect()
         }
     }
 

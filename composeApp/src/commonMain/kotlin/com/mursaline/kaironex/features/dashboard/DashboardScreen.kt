@@ -75,9 +75,17 @@ object DashboardScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        var hasAudioPermission by remember { mutableStateOf(false) }
+
+        // Request Audio Permission on Entry
+        com.mursaline.kaironex.core.EnsureAudioPermission {
+            hasAudioPermission = true
+        }
 
         // Get comprehensive stats
         val homeStats = remember { StatsProvider.getHomeStats() }
+        
+        // ... (rest of variable definitions)
 
         // Cortex State - derived from stats
         val cortexState by remember {
@@ -158,7 +166,7 @@ object DashboardScreen : Screen {
                     
                     LaunchedEffect(voiceTrigger) {
                         if (voiceTrigger) {
-                            navigator.push(com.mursaline.kaironex.features.voice.VoiceCallScreen())
+                            // navigator.push(com.mursaline.kaironex.features.voice.VoiceCallScreen())
                         }
                     }
 
@@ -206,6 +214,25 @@ object DashboardScreen : Screen {
                     // Extra bottom spacing for navbar
                     Spacer(Modifier.height(if (isMobile) 120.dp else 48.dp))
                 }
+            }
+
+            // The Floating Orb at the bottom (Reflex Arc Voice Agent)
+            // Inject ViewModel
+            val voiceViewModel = org.koin.compose.koinInject<com.mursaline.kaironex.features.voice.VoiceViewModel>()
+            val isListening by voiceViewModel.isListening.collectAsState()
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 20.dp)
+            ) {
+                com.mursaline.kaironex.ui.components.VoiceOrb(
+                    isListening = isListening,
+                    onClick = {
+                        // Toggle Session
+                        voiceViewModel.toggleSession("user_mursaline")
+                    }
+                )
             }
         }
     }

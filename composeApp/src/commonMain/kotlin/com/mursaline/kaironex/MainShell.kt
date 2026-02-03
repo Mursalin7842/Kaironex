@@ -40,9 +40,8 @@ import com.mursaline.kaironex.features.profile.ProfileScreen
 import com.mursaline.kaironex.features.study.StudySessionsScreen
 import com.mursaline.kaironex.features.agents.LifeSupportAgentsScreen
 import com.mursaline.kaironex.features.agents.AgentDashboardScreen
-import com.mursaline.kaironex.features.voice.VoiceCallScreen
-import com.mursaline.kaironex.features.voice.VoiceCallScreenParams
-import com.mursaline.kaironex.ui.components.KxOrb
+
+
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -71,49 +70,26 @@ object MainShellScreen : Screen {
     override fun Content() {
         var isOrbExpanded by remember { mutableStateOf(false) }
 
-        // Get wake word service and brain client from DI
-        val wakeWordService: com.mursaline.kaironex.core.audio.WakeWordService = org.koin.compose.koinInject()
+        // Get brain client from DI
         val brainClient: com.mursaline.kaironex.brain.BrainApiClient = org.koin.compose.koinInject()
+        val httpClient: io.ktor.client.HttpClient = org.koin.compose.koinInject()
 
-        // Session manager for wake word and data sync
+        // Session manager for data sync
         val sessionManager = com.mursaline.kaironex.core.rememberKaironexSession(
-            wakeWordService = wakeWordService,
-            brainClient = brainClient
+            brainClient = brainClient,
+            httpClient = httpClient
         )
 
         Navigator(DashboardScreen) { navigator ->
             val currentRoute = navigator.lastItem
 
-            // Track last detection for potential UI feedback
-            var lastDetection by remember { mutableStateOf<com.mursaline.kaironex.core.audio.WakeWordDetection?>(null) }
-
-            // Initialize session and start wake word detection
+            // Initialize session
             LaunchedEffect(Unit) {
                 // TODO: Get actual userId from auth
                 val userId = "demo_user_001"
-
-                // Get wake word from stored profile (or use default)
-                val profileStorage = org.koin.core.context.GlobalContext.get().get<com.mursaline.kaironex.core.storage.ProfileStorage>()
-                val profile = profileStorage.loadProfile()
-                val wakeWord = profile?.wakeWord ?: "kaironex"
-                val agentName = profile?.agentNickname ?: "Kairo"
-
+                
                 // Initialize session
-                sessionManager.initialize(userId, wakeWord, agentName)
-
-                // Start wake word detection
-                sessionManager.startWakeWordDetection { detection ->
-                    lastDetection = detection
-                    // Navigate to voice call with the detected command
-                    navigator.push(
-                        VoiceCallScreen(
-                            VoiceCallScreenParams(
-                                initialCommand = detection.followUpCommand,
-                                agentName = agentName
-                            )
-                        )
-                    )
-                }
+                sessionManager.initialize(userId)
             }
 
             // Cleanup on dispose
@@ -197,7 +173,7 @@ object MainShellScreen : Screen {
                         isMobile = isMobile,
                         onStartVoiceCall = {
                             isOrbExpanded = false
-                            navigator.push(VoiceCallScreen(VoiceCallScreenParams()))
+                            // navigator.push(VoiceCallScreen(VoiceCallScreenParams())) // REMOVED
                         },
                         onOpenAgentDashboard = {
                             isOrbExpanded = false
@@ -290,13 +266,12 @@ fun FiveItemNavBar(
                         colors = listOf(KaironexColors.Indigo600, KaironexColors.GeminiBlurple)
                     )
                 )
-                .border(3.dp, KaironexColors.CanvasWhite, CircleShape)
-                .clickable(onClick = onOrbClick),
+                .border(3.dp, KaironexColors.CanvasWhite, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            KxOrb(
-                isAgentSpeaking = false,
-                isUserListening = false,
+            com.mursaline.kaironex.ui.components.VoiceOrb(
+                isListening = false,
+                onClick = onOrbClick,
                 modifier = Modifier.size(40.dp)
             )
         }
@@ -375,13 +350,12 @@ fun FiveItemNavRail(
                             colors = listOf(KaironexColors.Indigo600, KaironexColors.GeminiBlurple)
                         )
                     )
-                    .border(2.dp, KaironexColors.CloudGray, CircleShape)
-                    .clickable(onClick = onOrbClick),
+                    .border(2.dp, KaironexColors.CloudGray, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-            KxOrb(
-                isAgentSpeaking = false,
-                isUserListening = false,
+            com.mursaline.kaironex.ui.components.VoiceOrb(
+                isListening = false,
+                onClick = onOrbClick,
                 modifier = Modifier.size(40.dp)
             )
             }
@@ -411,27 +385,13 @@ fun FiveItemNavRail(
 fun ImmersiveAssistantPanel(
     onDismiss: () -> Unit,
     isMobile: Boolean,
-    onStartVoiceCall: () -> Unit = {},
+    onStartVoiceCall: () -> Unit = {}, 
     onOpenAgentDashboard: () -> Unit = {}
 ) {
-    // Inject the Voice Engine (Gemini 2.5)
-    val reasoningEngine: com.mursaline.kaironex.brain.GeminiReasoningEngine = org.koin.compose.koinInject()
-    val apiKey = com.mursaline.kaironex.PlatformSecrets.apiKey
+    // Inject the Voice ViewModel
+    val voiceViewModel = org.koin.compose.koinInject<com.mursaline.kaironex.features.voice.VoiceViewModel>()
+    val isListening by voiceViewModel.isListening.collectAsState()
     
-    // Connect when panel opens, disconnect when closes
-    LaunchedEffect(Unit) {
-        if (apiKey.isNotEmpty() && apiKey != "PLACEHOLDER") {
-            // reasoningEngine.connect(apiKey) // CONNECT IS HANDLED BY GENESIS VIEWMODEL NOW
-        }
-    }
-    
-    DisposableEffect(Unit) {
-        onDispose {
-            kotlinx.coroutines.GlobalScope.launch {
-                reasoningEngine.disconnect()
-            }
-        }
-    }
     // Floating animation
     val infiniteTransition = rememberInfiniteTransition(label = "orb")
     val orbFloat by infiniteTransition.animateFloat(
@@ -442,16 +402,6 @@ fun ImmersiveAssistantPanel(
             repeatMode = RepeatMode.Reverse
         ),
         label = "orbFloat"
-    )
-
-    val orbPulse by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "orbPulse"
     )
 
     var inputText by remember { mutableStateOf("") }
@@ -529,8 +479,6 @@ fun ImmersiveAssistantPanel(
                 modifier = Modifier
                     .graphicsLayer {
                         translationY = -orbFloat
-                        scaleX = orbPulse
-                        scaleY = orbPulse
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -549,71 +497,19 @@ fun ImmersiveAssistantPanel(
                         )
                 )
 
-                // Middle ring
-                Box(
-                    modifier = Modifier
-                        .size(if (isMobile) 160.dp else 200.dp)
-                        .clip(CircleShape)
-                        .border(
-                            2.dp,
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.4f),
-                                    Color.White.copy(alpha = 0.1f)
-                                )
-                            ),
-                            CircleShape
-                        )
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.1f),
-                                    Color.Transparent
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Inner orb
-                    Box(
-                        modifier = Modifier
-                            .size(if (isMobile) 120.dp else 150.dp)
-                            .shadow(24.dp, CircleShape)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        Color.White,
-                                        KaironexColors.CloudGray
-                                    )
-                                )
-                            )
-                            .border(
-                                3.dp,
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        Color.White,
-                                        Color.White.copy(alpha = 0.5f)
-                                    )
-                                ),
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        KxOrb(
-                            isAgentSpeaking = true,
-                            isUserListening = true,
-                            modifier = Modifier.size(if (isMobile) 100.dp else 130.dp)
-                        )
-                    }
-                }
+                // The Voice Orb
+                 com.mursaline.kaironex.ui.components.VoiceOrb(
+                    isListening = isListening,
+                    onClick = { voiceViewModel.toggleSession("user_demo") }, // TODO: Real user ID
+                    modifier = Modifier.size(if (isMobile) 120.dp else 160.dp)
+                )
             }
 
             Spacer(Modifier.height(40.dp))
 
             // Status Text
             Text(
-                "I'm listening...",
+                if (isListening) "Listening..." else "Tap to speak",
                 style = MaterialTheme.typography.headlineMedium,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
@@ -634,12 +530,13 @@ fun ImmersiveAssistantPanel(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                AssistantQuickAction("🎤", "Voice") { onStartVoiceCall() }
+                AssistantQuickAction("🎤", "Voice") { voiceViewModel.toggleSession("user_demo") }
                 AssistantQuickAction("🧠", "Brain") { onOpenAgentDashboard() }
                 AssistantQuickAction("🖥️", "Screen") { }
             }
 
             Spacer(Modifier.height(24.dp))
+
 
             // Input Field with glassmorphism
             Surface(

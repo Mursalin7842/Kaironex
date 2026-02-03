@@ -28,7 +28,7 @@ import com.mursaline.kaironex.ui.theme.KaironexColors
 import kaironex.composeapp.generated.resources.Res
 import kaironex.composeapp.generated.resources.robot_hero
 import org.jetbrains.compose.resources.painterResource
-import com.mursaline.kaironex.brain.GeminiReasoningEngine
+
 
 @Composable
 fun GenesisInterviewScreen(

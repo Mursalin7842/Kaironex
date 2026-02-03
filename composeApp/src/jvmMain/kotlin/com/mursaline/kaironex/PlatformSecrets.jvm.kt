@@ -4,23 +4,38 @@ import java.io.File
 import java.util.Properties
 
 actual object PlatformSecrets {
-    actual val apiKey: String by lazy {
-        // Try multiple sources for the API key
-
-        // 1. JVM System Property (from Gradle jvmArgs)
-        System.getProperty("GEMINI_API_KEY")?.takeIf { it.isNotBlank() }
-
-        // 2. Environment Variable
-        ?: System.getenv("GEMINI_API_KEY")?.takeIf { it.isNotBlank() }
-
-        // 3. Read from local.properties file directly
-        ?: readFromLocalProperties()
-
-        // 4. Fallback placeholder
-        ?: "PLACEHOLDER_FOR_DESKTOP"
+    private fun loadSecret(sysProp: String, envVar: String, localProp: String, default: String): String {
+        return System.getProperty(sysProp)?.takeIf { it.isNotBlank() }
+            ?: System.getenv(envVar)?.takeIf { it.isNotBlank() }
+            ?: readFromLocalProperties(localProp)
+            ?: default
     }
 
-    private fun readFromLocalProperties(): String? {
+    actual val apiKey: String by lazy {
+        loadSecret("GEMINI_API_KEY", "GEMINI_API_KEY", "GeminiAPI", "PLACEHOLDER_API_KEY")
+    }
+
+    actual val appwriteEndpoint: String by lazy {
+        loadSecret("APPWRITE_ENDPOINT", "APPWRITE_ENDPOINT", "AppwriteEndpoint", "https://nyc.cloud.appwrite.io/v1")
+    }
+
+    actual val appwriteProject: String by lazy {
+        loadSecret("APPWRITE_PROJECT", "APPWRITE_PROJECT", "AppwriteProject", "")
+    }
+
+    actual val appwriteDatabase: String by lazy {
+        loadSecret("APPWRITE_DATABASE", "APPWRITE_DATABASE", "AppwriteDatabase", "")
+    }
+
+    actual val appwriteFunctionId: String by lazy {
+        loadSecret("APPWRITE_FUNCTION_ID", "APPWRITE_FUNCTION_ID", "AppwriteFunctionId", "kaironex-brain")
+    }
+
+    actual val appwriteApiKey: String by lazy {
+        loadSecret("APPWRITE_API_KEY", "APPWRITE_API_KEY", "AppwriteApiKey", "")
+    }
+
+    private fun readFromLocalProperties(keyName: String): String? {
         return try {
             val workDir = File(System.getProperty("user.dir"))
 
@@ -36,13 +51,13 @@ actual object PlatformSecrets {
             if (propsFile != null) {
                 val props = Properties()
                 propsFile.inputStream().use { props.load(it) }
-                val key = props.getProperty("GeminiAPI")
-                if (!key.isNullOrBlank()) {
-                    println("✅ API Key loaded from ${propsFile.absolutePath}")
-                    key
+                val value = props.getProperty(keyName)
+                if (!value.isNullOrBlank()) {
+                    // println("✅ $keyName loaded from ${propsFile.absolutePath}") // valid for debugging but maybe noisy
+                    value
                 } else null
             } else {
-                println("⚠️ local.properties not found in: ${candidates.map { it.absolutePath }}")
+                // println("⚠️ local.properties not found")
                 null
             }
         } catch (e: Exception) {

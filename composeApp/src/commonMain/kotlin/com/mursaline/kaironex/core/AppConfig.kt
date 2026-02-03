@@ -31,9 +31,11 @@ object AppConfig {
      * Appwrite configuration.
      */
     object Appwrite {
-        const val ENDPOINT = "https://nyc.cloud.appwrite.io/v1"
-        const val PROJECT_ID = "696e9248002198ef6273"
-        const val DATABASE_ID = "697cb20f00110f6d7530"
+        val ENDPOINT = com.mursaline.kaironex.PlatformSecrets.appwriteEndpoint
+        val PROJECT_ID = com.mursaline.kaironex.PlatformSecrets.appwriteProject
+        val DATABASE_ID = com.mursaline.kaironex.PlatformSecrets.appwriteDatabase
+        val FUNCTION_ID = com.mursaline.kaironex.PlatformSecrets.appwriteFunctionId
+        val API_KEY = com.mursaline.kaironex.PlatformSecrets.appwriteApiKey
     }
 
     // ==========================================================================
@@ -51,7 +53,7 @@ object AppConfig {
      * Enable real-time brain connection via WebSocket.
      */
     val enableRealtimeBrain: Boolean
-        get() = getEnvOrDefault("KAIRONEX_ENABLE_REALTIME", "true").toBoolean()
+        get() = getEnvOrDefault("KAIRONEX_ENABLE_REALTIME", "false").toBoolean()
 
     /**
      * Enable voice calls (requires microphone permission).

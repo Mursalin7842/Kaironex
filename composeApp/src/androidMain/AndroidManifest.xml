@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BIND_VOICE_INTERACTION" />
-    <uses-permission android:name="android.permission.MANAGE_SOUND_TRIGGER" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:name=".KaironexApplication"
@@ -42,23 +39,9 @@
                 android:resource="@xml/accessibility_config" />
         </service>
 
-        <service
-            android:name=".voice.KaironexVoiceInteractionService"
-            android:label="@string/app_name"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true">
-            <meta-data
-                android:name="android.voice_interaction"
-                android:resource="@xml/voice_interaction_service" />
-            <intent-filter>
-                <action android:name="android.service.voice.VoiceInteractionService" />
-            </intent-filter>
-        </service>
 
-        <service
-            android:name=".voice.KaironexVoiceInteractionSessionService"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true" />
+
+
     </application>
 
 </manifest>

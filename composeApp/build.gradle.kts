@@ -19,6 +19,11 @@ if (localPropertiesFile.exists()) {
 }
 
 val geminiKey = localProperties.getProperty("GeminiAPI") ?: ""
+val appwriteEndpoint = localProperties.getProperty("AppwriteEndpoint") ?: "https://nyc.cloud.appwrite.io/v1"
+val appwriteProject = localProperties.getProperty("AppwriteProject") ?: ""
+val appwriteDatabase = localProperties.getProperty("AppwriteDatabase") ?: ""
+val appwriteFunctionId = localProperties.getProperty("AppwriteFunctionId") ?: ""
+val appwriteApiKey = localProperties.getProperty("AppwriteApiKey") ?: ""
 
 kotlin {
     jvmToolchain(17)
@@ -57,11 +62,13 @@ kotlin {
             implementation(libs.firebase.common)
 
             // Ktor (The Brain)
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.cio)
-            implementation(libs.ktor.websockets)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.serialization.kotlinx.json)
+            implementation("io.ktor:ktor-client-core:3.0.0")
+            implementation("io.ktor:ktor-client-cio:3.0.0")
+            implementation("io.ktor:ktor-client-websockets:3.0.0")
+            implementation("io.ktor:ktor-client-content-negotiation:3.0.0")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
             
             // Koin (DI)
             implementation(libs.koin.core)
@@ -152,6 +159,11 @@ android {
 
     defaultConfig {
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
+        buildConfigField("String", "APPWRITE_ENDPOINT", "\"$appwriteEndpoint\"")
+        buildConfigField("String", "APPWRITE_PROJECT", "\"$appwriteProject\"")
+        buildConfigField("String", "APPWRITE_DATABASE", "\"$appwriteDatabase\"")
+        buildConfigField("String", "APPWRITE_FUNCTION_ID", "\"$appwriteFunctionId\"")
+        buildConfigField("String", "APPWRITE_API_KEY", "\"$appwriteApiKey\"")
     }
 }
 
@@ -164,6 +176,11 @@ compose.desktop {
         mainClass = "com.mursaline.kaironex.MainKt"
         jvmArgs += listOf(
             "-DGEMINI_API_KEY=$geminiKey",
+            "-DAPPWRITE_ENDPOINT=$appwriteEndpoint",
+            "-DAPPWRITE_PROJECT=$appwriteProject",
+            "-DAPPWRITE_DATABASE=$appwriteDatabase",
+            "-DAPPWRITE_FUNCTION_ID=$appwriteFunctionId",
+            "-DAPPWRITE_API_KEY=$appwriteApiKey",
             "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
             "--add-opens=java.desktop/java.awt=ALL-UNNAMED",
             "--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED"

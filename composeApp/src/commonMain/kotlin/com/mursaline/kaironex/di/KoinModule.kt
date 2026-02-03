@@ -1,7 +1,7 @@
 package com.mursaline.kaironex.di
 
 import com.mursaline.kaironex.brain.BrainApiClient
-import com.mursaline.kaironex.brain.GeminiReasoningEngine
+
 import com.mursaline.kaironex.brain.ReflexAgent
 import com.mursaline.kaironex.core.AppConfig
 import com.mursaline.kaironex.core.stats.AppwriteStatsRepository
@@ -12,7 +12,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import org.koin.dsl.module
-import com.mursaline.kaironex.core.audio.WakeWordService
+
 import com.mursaline.kaironex.core.KaironexSessionManager
 
 /**
@@ -53,8 +53,7 @@ val appModule = module {
         )
     }
 
-    // 3. The Gemini Live Engine (Voice)
-    single { GeminiReasoningEngine(get(), get(), get()) }
+
 
     // 4. Reflex Agent (Fast local responses)
     factory { (userId: String) ->
@@ -68,6 +67,7 @@ val appModule = module {
     factory { (userId: String) ->
         AppwriteStatsRepository(
             brainClient = get(),
+            httpClient = get(),
             userId = userId
         )
     }
@@ -75,8 +75,17 @@ val appModule = module {
     // 6. Authentication
     single<AuthRepository> { MockAuthRepository() }
     
-    // 8. Wake Word Service
-    single { WakeWordService(get()) }
+    // 7. ViewModels
+    factory { com.mursaline.kaironex.features.dashboard.ProfileCalibrationViewModel(get()) }
+    factory { com.mursaline.kaironex.features.voice.VoiceViewModel(get(), get()) }
+
+    // 8. Wake Word Service (Removed)
+    // single { WakeWordService(get()) }
+
+    
+    // Voice Agent System
+    single { com.mursaline.kaironex.brain.AppwriteBridge(get()) }
+    single { com.mursaline.kaironex.brain.GeminiLiveAgent(get(), get(), get()) }
 
     // 9. Session Manager (Central Brain)
     single { KaironexSessionManager(get(), get()) }
