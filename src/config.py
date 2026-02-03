@@ -13,7 +13,7 @@ from typing import Optional, Tuple, List
 # APPWRITE CONFIGURATION
 # =============================================================================
 APPWRITE_ENDPOINT = os.environ.get('APPWRITE_ENDPOINT', 'https://nyc.cloud.appwrite.io/v1')
-APPWRITE_PROJECT_ID = os.environ.get('APPWRITE_FUNCTION_PROJECT_ID') or os.environ.get('APPWRITE_PROJECT_ID')
+APPWRITE_PROJECT_ID = os.environ.get('APPWRITE_FUNCTION_PROJECT_ID') or os.environ.get('APPWRITE_PROJECT_ID', '696e9248002198ef6273') # Default to known ID
 APPWRITE_API_KEY = os.environ.get('APPWRITE_API_KEY')
 APPWRITE_DATABASE_ID = os.environ.get('APPWRITE_DATABASE_ID', '697cb20f00110f6d7530')
 STORAGE_BUCKET_ID = os.environ.get('APPWRITE_STORAGE_BUCKET_ID', 'academic_files')
