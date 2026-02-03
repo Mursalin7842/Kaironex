@@ -54,6 +54,30 @@ def run_study_agent(db_helper, payload, context):
         
         response_actions.append("quiz_generated")
 
+    # --- LOGIC C: RESOURCE INGESTION (File Upload) ---
+    resource_response = None
+    if status == 'resource_ingestion' or payload.get('type') == 'resource_ingestion':
+        title = payload.get('title', 'Untitled Resource')
+        resource_type = payload.get('resourceType', 'document')
+        drive_link = payload.get('driveLink', '')
+        
+        prompt = f"""
+NEW LEARNING RESOURCE UPLOADED:
+Title: {title}
+Type: {resource_type}
+Link: {drive_link[:100] if drive_link else 'Local upload'}
+
+TASK:
+1. Acknowledge the resource upload briefly
+2. Suggest how this resource might fit into study planning
+3. Provide one tip for using this type of resource effectively
+
+Keep response to 2-3 sentences max. Be encouraging.
+"""
+        resource_response = ai.generate_response(prompt)
+        response_actions.append("resource_ingested")
+        context.log(f"📄 Resource processed: {title}")
+
     # --- SYNC: UPDATE CACHE ---
     state_update = {
         "study_session": {
@@ -68,5 +92,6 @@ def run_study_agent(db_helper, payload, context):
     return context.res.json({
         "status": "study_processed", 
         "actions": response_actions,
-        "quiz": quiz_data
+        "quiz": quiz_data,
+        "resource_response": resource_response
     })
