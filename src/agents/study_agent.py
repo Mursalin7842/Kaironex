@@ -500,7 +500,7 @@ Keep response brief and helpful (2-3 sentences).
                     "source": source,
                     "timestamp": self._get_timestamp()
                 },
-                "total_resources": (context.user_state.get('resources', {}).get('total_resources', 0) + 1)
+                "total_resources": (payload.get('resources', {}).get('total_resources', 0) + 1)
             }
         }
         
