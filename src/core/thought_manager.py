@@ -160,6 +160,7 @@ class ThoughtManager:
         try:
             # Update agent_memory with latest thought
             from appwrite.query import Query
+            print(f"🧠 [DEBUG-TM] Persisting thought {thought.thought_id} to Appwrite... DB:{APPWRITE_DATABASE_ID} COL:{AGENT_MEMORY_COL}")
             
             results = self.db.db.list_rows(
                 database_id=APPWRITE_DATABASE_ID,
@@ -175,14 +176,20 @@ class ThoughtManager:
             
             if results['total'] > 0:
                 doc_id = results['rows'][0]['$id']
+                print(f"🧠 [DEBUG-TM] Updating existing row {doc_id}...")
                 self.db.db.update_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, doc_id, data)
             else:
+                print(f"🧠 [DEBUG-TM] Creating NEW memory row...")
                 data['userId'] = thought.user_id
                 data['pressure_index'] = "50"  # String for Appwrite compatibility
                 self.db.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, 'unique()', data)
+            
+            print(f"🧠 [DEBUG-TM] Successfully persisted thought signature.")
                 
         except Exception as e:
-            print(f"Appwrite persist error: {e}")
+            print(f"❌ [DEBUG-TM] Appwrite persist error: {e}")
+            import traceback
+            traceback.print_exc()
     
     async def get(self, thought_id: str) -> Optional[ThoughtSignature]:
         """Retrieve a thought by ID."""
