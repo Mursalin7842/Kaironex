@@ -63,13 +63,37 @@ def main(context):
     payload = _parse_payload(context)
     
     context.log(f"🧠 DEEP BRAIN ACTIVE | Trigger: {trigger_event} | Path: {request_path}")
+    context.log(f"📦 Payload: {json.dumps(payload)[:500]}")
     
     # ==========================================================================
     # ROUTING LOGIC
     # ==========================================================================
     
+    # --- MANUAL TEST FROM CONSOLE (root path with payload) ---
+    if request_path in ['/', ''] and payload:
+        event_type = payload.get('type', payload.get('trigger', ''))
+        context.log(f"🧪 Console test detected | Event: {event_type}")
+        
+        # Route based on payload type
+        if event_type in ['session_start', 'session_end', 'focus_update', 'quiz_request', 'IN_PROGRESS', 'COMPLETED', 'resource_ingestion']:
+            context.log("📚 Routing to Study Agent (console test)")
+            return run_study_agent(db, payload, context)
+        elif event_type in ['sleep_update', 'meal_logged', 'health_check']:
+            context.log("⚡ Routing to Vitality Agent (console test)")
+            return run_vitality_agent(db, payload, context)
+        elif event_type in ['location_update', 'social_event']:
+            context.log("🌍 Routing to Radius Agent (console test)")
+            return run_radius_agent(db, payload, context)
+        elif event_type == 'cron_schedule':
+            context.log("🛡️ Running Supervisor Check (console test)")
+            return run_supervisor(db, context)
+        else:
+            # Default to supervisor for unknown types
+            context.log(f"🛡️ Unknown event '{event_type}' - Running Supervisor")
+            return run_supervisor(db, context)
+    
     # --- HTTP API ROUTES (for app to call directly) ---
-    if request_path:
+    if request_path and request_path != '/':
         return _handle_http_request(db, context, request_path, request_method, payload)
     
     # --- DATABASE EVENT TRIGGERS ---
