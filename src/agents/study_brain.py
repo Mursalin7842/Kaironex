@@ -1,7 +1,72 @@
 import json
 import datetime
+import hashlib
+import uuid
 from ..utils.gemini_client import GeminiClient
 from ..config import *
+
+def _create_thought_signature(user_id, agent, prompt, response, db_helper, context=None):
+    """
+    Create and store a thought signature for traceability.
+    This is the CRITICAL piece for hackathon - proof of AI reasoning.
+    
+    NOW STORES IN BOTH:
+    - thought_signatures table (permanent record)
+    - agent_memory table (latest reference)
+    """
+    try:
+        thought_id = f"thought_{uuid.uuid4().hex[:12]}"
+        timestamp = datetime.datetime.now().isoformat()
+        
+        # Create context hash for integrity
+        context_hash = hashlib.sha256(
+            f"{user_id}:{prompt[:200]}:{timestamp}".encode()
+        ).hexdigest()[:16]
+        
+        thought_data = {
+            "thought_id": thought_id,
+            "timestamp": timestamp,
+            "agent": agent,
+            "context_hash": context_hash,
+            "reasoning_trace": [f"Prompt: {prompt[:100]}...", f"Response: {response[:200]}..."],
+            "confidence": 0.85,
+            "tool_calls": [],
+            "action_output": response[:500],
+            "parent_signature": ""
+        }
+        
+        # 1. Store in thought_signatures table (CRITICAL!)
+        if context:
+            context.log(f"🧠 Creating thought signature: {thought_id}")
+        db_helper.create_thought_signature(user_id, thought_data)
+        
+        # 2. Update agent_memory with reference
+        if context:
+            context.log(f"💾 Updating agent_memory with thought reference")
+        db_helper.update_agent_memory_full(
+            user_id=user_id,
+            thought_sig_dict={
+                "thought_id": thought_id,
+                "timestamp": timestamp,
+                "agent": agent,
+                "context_hash": context_hash,
+                "confidence": 0.85,
+                "action_output": response[:200]
+            },
+            active_agents=agent,
+            reasoning_mode='DEEP'
+        )
+        
+        if context:
+            context.log(f"✅ Thought signature stored: {thought_id}")
+        print(f"🧠 Thought signature stored: {thought_id}")
+        return thought_id
+        
+    except Exception as e:
+        print(f"❌ Thought signature error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 def run_study_agent(db_helper, payload, context):
     """
@@ -41,6 +106,12 @@ def run_study_agent(db_helper, payload, context):
         try:
             ai_msg = ai.generate_response(prompt)
             context.log(f"🤖 Focus intervention: {ai_msg[:100]}...")
+            
+            # Store thought signature
+            thought_id = _create_thought_signature(user_id, "study", prompt, ai_msg, db_helper, context)
+            if thought_id:
+                response_actions.append(f"thought:{thought_id}")
+            
             db_helper.create_intervention(
                 user_id, "FOCUS_DROP", ai_msg, strategy="NEGOTIATION"
             )
@@ -58,6 +129,12 @@ def run_study_agent(db_helper, payload, context):
         try:
             raw_quiz = ai.generate_response(prompt)
             context.log(f"🤖 Raw quiz response: {raw_quiz[:200]}...")
+            
+            # Store thought signature
+            thought_id = _create_thought_signature(user_id, "study", prompt, raw_quiz, db_helper, context)
+            if thought_id:
+                response_actions.append(f"thought:{thought_id}")
+            
             raw_quiz = raw_quiz.replace('```json', '').replace('```', '')
             quiz_data = json.loads(raw_quiz)
             response_actions.append("quiz_generated")
@@ -94,6 +171,15 @@ Keep response to 2-3 sentences max. Be encouraging.
             context.log(f"🤖 AI Response: {resource_response[:300]}...")
             response_actions.append("resource_analyzed")
             
+            # CRITICAL: Create and store thought signature!
+            context.log("🧠 Creating thought signature...")
+            thought_id = _create_thought_signature(
+                user_id, "study", prompt, resource_response, db_helper
+            )
+            if thought_id:
+                context.log(f"✅ Thought signature created: {thought_id}")
+                response_actions.append(f"thought:{thought_id}")
+            
             # CRITICAL: Create intervention so app can see the response!
             context.log("💾 Creating intervention in database...")
             db_helper.create_intervention(
@@ -108,6 +194,8 @@ Keep response to 2-3 sentences max. Be encouraging.
             
         except Exception as e:
             context.error(f"❌ Resource processing error: {str(e)}")
+            import traceback
+            context.error(f"❌ Traceback: {traceback.format_exc()}")
             resource_response = f"Error: {str(e)}"
             response_actions.append("error")
 

@@ -155,39 +155,39 @@ class ThoughtManager:
     async def _persist_to_appwrite(self, thought: ThoughtSignature):
         """Persist thought to Appwrite database."""
         if not self.db:
+            print("⚠️ No DB helper - thought not persisted")
             return
         
         try:
-            # Update agent_memory with latest thought
-            from appwrite.query import Query
-            print(f"🧠 [DEBUG-TM] Persisting thought {thought.thought_id} to Appwrite... DB:{APPWRITE_DATABASE_ID} COL:{AGENT_MEMORY_COL}")
-            
-            results = self.db.db.list_rows(
-                database_id=APPWRITE_DATABASE_ID,
-                table_id=AGENT_MEMORY_COL,
-                queries=[Query.equal('userId', thought.user_id)]
-            )
-            
-            data = {
-                'current_thought_signature': json.dumps(thought.to_dict())[:999999],
-                'last_active': thought.timestamp.isoformat(),
-                'active_agents': thought.agent
+            # 1. Store in thought_signatures table (THE CRITICAL FIX!)
+            thought_data = {
+                'thought_id': thought.thought_id,
+                'agent': thought.agent,
+                'timestamp': thought.timestamp.isoformat(),
+                'context_hash': thought.context_hash,
+                'reasoning_trace': thought.reasoning_trace,
+                'confidence': thought.confidence,
+                'tool_calls': thought.tool_calls,
+                'action_output': thought.action_output,
+                'parent_signature': thought.parent_signature
             }
             
-            if results['total'] > 0:
-                doc_id = results['rows'][0]['$id']
-                print(f"🧠 [DEBUG-TM] Updating existing row {doc_id}...")
-                self.db.db.update_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, doc_id, data)
-            else:
-                print(f"🧠 [DEBUG-TM] Creating NEW memory row...")
-                data['userId'] = thought.user_id
-                data['pressure_index'] = "50"  # String for Appwrite compatibility
-                self.db.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, 'unique()', data)
+            print(f"🧠 [THOUGHT] Storing thought {thought.thought_id} to thought_signatures table...")
+            self.db.create_thought_signature(thought.user_id, thought_data)
             
-            print(f"🧠 [DEBUG-TM] Successfully persisted thought signature.")
+            # 2. Update agent_memory with latest thought reference
+            print(f"🧠 [THOUGHT] Updating agent_memory with thought reference...")
+            self.db.update_agent_memory_full(
+                user_id=thought.user_id,
+                thought_sig_dict=thought.to_dict(),
+                active_agents=thought.agent,
+                reasoning_mode='DEEP' if thought.confidence > 0.7 else 'REFLEX'
+            )
+            
+            print(f"✅ [THOUGHT] Successfully persisted thought {thought.thought_id}")
                 
         except Exception as e:
-            print(f"❌ [DEBUG-TM] Appwrite persist error: {e}")
+            print(f"❌ [THOUGHT] Appwrite persist error: {e}")
             import traceback
             traceback.print_exc()
     
@@ -274,7 +274,36 @@ class ThoughtManager:
             chain.status = 'complete'
             
             # Archive to policy_episodes for learning
-            # TODO: Implement policy episode creation
+            if self.db and chain.thoughts:
+                try:
+                    # Summarize the chain
+                    first_thought = chain.thoughts[0]
+                    last_thought = chain.thoughts[-1]
+                    
+                    episode_data = {
+                        'user_id': user_id,
+                        'agent': agent,
+                        'trigger': f"chain_{chain.chain_id}",
+                        'state_before': {
+                            'first_thought_id': first_thought.thought_id,
+                            'first_confidence': first_thought.confidence,
+                            'chain_started': first_thought.timestamp.isoformat()
+                        },
+                        'action_taken': f"Completed {len(chain.thoughts)} thoughts",
+                        'outcome': 'chain_complete',
+                        'reward': chain.total_confidence,  # Higher confidence = better
+                        'state_after': {
+                            'last_thought_id': last_thought.thought_id,
+                            'last_confidence': last_thought.confidence,
+                            'chain_ended': last_thought.timestamp.isoformat()
+                        },
+                        'thought_chain_summary': chain.get_reasoning_summary()
+                    }
+                    
+                    self.db.create_policy_episode(episode_data)
+                    print(f"📊 Policy Episode created from chain {chain.chain_id}")
+                except Exception as e:
+                    print(f"❌ Policy Episode creation error: {e}")
             
             del self._chains[chain_key]
     

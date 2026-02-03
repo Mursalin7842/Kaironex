@@ -452,7 +452,10 @@ Be specific and actionable.
         Handle new resource upload with REAL content extraction.
         """
         import io
-        import pypdf
+        try:
+            import pypdf
+        except ImportError:
+            pypdf = None  # Fallback if pypdf not installed
 
         title = payload.get('title', 'Untitled Resource')
         

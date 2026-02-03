@@ -623,15 +623,86 @@ Be thorough but concise.
     async def _persist_session(self, session: MarathonSession):
         """Persist session to database."""
         if not self.db:
+            print("⚠️ No DB helper - marathon session not persisted")
             return
         
-        # TODO: Implement Appwrite persistence for marathon_sessions table
-        pass
+        try:
+            session_data = session.to_dict()
+            
+            # Check if session exists
+            existing = self.db.get_marathon_session(session.session_id)
+            
+            if existing:
+                # Update existing session
+                self.db.update_marathon_session(session.session_id, {
+                    'status': session.status.value,
+                    'steps': session_data['steps'],
+                    'current_step_index': session.current_step_index,
+                    'progress': session.progress,
+                    'thought_chain': session.thought_chain,
+                    'metadata': session.metadata
+                })
+            else:
+                # Create new session
+                self.db.create_marathon_session({
+                    'session_id': session.session_id,
+                    'user_id': session.user_id,
+                    'agent_type': session.agent_type,
+                    'goal': session_data['goal'],
+                    'status': session.status.value,
+                    'steps': session_data['steps'],
+                    'current_step_index': session.current_step_index,
+                    'progress': session.progress,
+                    'thought_chain': session.thought_chain,
+                    'estimated_completion': session_data.get('estimated_completion', ''),
+                    'metadata': session.metadata
+                })
+            
+            print(f"🏃 Marathon session {session.session_id} persisted (status: {session.status.value})")
+            
+        except Exception as e:
+            print(f"❌ Marathon persist error: {e}")
+            import traceback
+            traceback.print_exc()
     
     async def _load_session(self, session_id: str) -> Optional[MarathonSession]:
         """Load session from database."""
-        # TODO: Implement Appwrite loading
-        return self._sessions.get(session_id)
+        # Check in-memory cache first
+        if session_id in self._sessions:
+            return self._sessions[session_id]
+        
+        # Try loading from database
+        if self.db:
+            try:
+                row = self.db.get_marathon_session(session_id)
+                if row:
+                    # Convert row to session object
+                    goal_data = json.loads(row.get('goal_json', '{}'))
+                    steps_data = json.loads(row.get('steps_json', '[]'))
+                    
+                    session = MarathonSession.from_dict({
+                        'session_id': row.get('session_id'),
+                        'user_id': row.get('userId'),
+                        'agent_type': row.get('agent_type'),
+                        'goal': goal_data,
+                        'status': row.get('status', 'pending'),
+                        'steps': steps_data,
+                        'current_step_index': row.get('current_step_index', 0),
+                        'progress': row.get('progress', 0.0),
+                        'thought_chain': json.loads(row.get('thought_chain', '[]')),
+                        'created_at': row.get('$createdAt', datetime.now().isoformat()),
+                        'last_active_at': row.get('$updatedAt', datetime.now().isoformat()),
+                        'estimated_completion': row.get('estimated_completion'),
+                        'metadata': json.loads(row.get('metadata_json', '{}'))
+                    })
+                    
+                    # Cache it
+                    self._sessions[session_id] = session
+                    return session
+            except Exception as e:
+                print(f"❌ Load session error: {e}")
+        
+        return None
     
     # Notification helpers
     async def _notify_step_start(self, session: MarathonSession, step: MarathonStep):
