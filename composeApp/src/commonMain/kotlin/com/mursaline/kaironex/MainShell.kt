@@ -72,11 +72,13 @@ object MainShellScreen : Screen {
 
         // Get brain client from DI
         val brainClient: com.mursaline.kaironex.brain.BrainApiClient = org.koin.compose.koinInject()
+        val appwriteBridge: com.mursaline.kaironex.brain.AppwriteBridge = org.koin.compose.koinInject()
         val httpClient: io.ktor.client.HttpClient = org.koin.compose.koinInject()
 
         // Session manager for data sync
         val sessionManager = com.mursaline.kaironex.core.rememberKaironexSession(
             brainClient = brainClient,
+            appwriteBridge = appwriteBridge,
             httpClient = httpClient
         )
 

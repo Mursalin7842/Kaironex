@@ -30,7 +30,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.mursaline.kaironex.agents.genesis.StudentProfile
-import com.mursaline.kaironex.brain.BrainApiClient
+import com.mursaline.kaironex.brain.AppwriteBridge
 import com.mursaline.kaironex.core.stats.AppwriteStatsRepository
 import com.mursaline.kaironex.ui.theme.KaironexColors
 import kotlinx.coroutines.launch
@@ -46,7 +46,7 @@ class CampaignSetupScreen(private val isEditMode: Boolean = false) : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val brainClient = koinInject<BrainApiClient>()
+        val appwriteBridge = koinInject<AppwriteBridge>()
         val statsRepo = koinInject<AppwriteStatsRepository>()
         val scope = rememberCoroutineScope()
         
@@ -391,7 +391,8 @@ class CampaignSetupScreen(private val isEditMode: Boolean = false) : Screen {
                                         )
                                         
                                         if (userId.isNotEmpty()) {
-                                            brainClient.triggerCampaign(userId, "campaign_calibration", calibrationData)
+                                            println("🧠 Triggering Campaign Calibration (Async)...")
+                                            appwriteBridge.triggerBrain(userId, "campaign", "campaign_calibration", calibrationData)
                                         }
                                         
                                         statsRepo.refreshAll()

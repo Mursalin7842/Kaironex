@@ -3,6 +3,7 @@ package com.mursaline.kaironex.core
 import androidx.compose.runtime.*
 import cafe.adriel.voyager.navigator.Navigator
 import com.mursaline.kaironex.brain.BrainApiClient
+import com.mursaline.kaironex.brain.AppwriteBridge
 import com.mursaline.kaironex.brain.ReflexAgent
 import com.mursaline.kaironex.core.stats.AppwriteStatsRepository
 
@@ -26,6 +27,7 @@ import io.ktor.client.HttpClient
 
 class KaironexSessionManager(
     private val brainClient: BrainApiClient,
+    private val appwriteBridge: AppwriteBridge,
     private val httpClient: HttpClient
 ) {
     private val supervisorJob = SupervisorJob()
@@ -54,7 +56,7 @@ class KaironexSessionManager(
 
         // Create user-specific components
         reflexAgent = ReflexAgent(brainClient, userId)
-        statsRepository = AppwriteStatsRepository(brainClient, httpClient, userId)
+        statsRepository = AppwriteStatsRepository(appwriteBridge, httpClient, userId)
 
         // Connect to brain WebSocket
         // Connect to brain WebSocket
@@ -151,11 +153,13 @@ val LocalKaironexSession = staticCompositionLocalOf<KaironexSessionManager?> { n
 @Composable
 fun rememberKaironexSession(
     brainClient: BrainApiClient,
+    appwriteBridge: AppwriteBridge,
     httpClient: HttpClient
 ): KaironexSessionManager {
     return remember {
         KaironexSessionManager(
             brainClient = brainClient,
+            appwriteBridge = appwriteBridge,
             httpClient = httpClient
         )
     }

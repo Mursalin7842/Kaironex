@@ -1,6 +1,7 @@
 package com.mursaline.kaironex.core.stats
 
 import com.mursaline.kaironex.brain.BrainApiClient
+import com.mursaline.kaironex.brain.AppwriteBridge
 import com.mursaline.kaironex.brain.UserStateResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,7 +57,7 @@ import com.mursaline.kaironex.brain.ThoughtStreamItem
 import com.mursaline.kaironex.features.campaign.CampaignState
 
 class AppwriteStatsRepository(
-    private val brainClient: BrainApiClient,
+    private val appwriteBridge: AppwriteBridge,
     private val httpClient: HttpClient,
     private val userId: String
 ) {
@@ -138,6 +139,10 @@ class AppwriteStatsRepository(
 
     private val _lastSyncTime = MutableStateFlow<Long>(0)
     val lastSyncTime: StateFlow<Long> = _lastSyncTime.asStateFlow()
+
+    // NEW: Parsed Student Profile
+    private val _profile = MutableStateFlow(StudentProfile())
+    val profile: StateFlow<StudentProfile> = _profile.asStateFlow()
 
     /**
      * Refresh all stats from backend.
@@ -411,6 +416,15 @@ class AppwriteStatsRepository(
     private fun parseUserState(state: UserStateResponse) {
         parseHomeStats(state)
         parseMoreStats(state)
+        
+        // Parse Profile
+        state.profile?.let { jsonStr ->
+            try {
+                _profile.value = json.decodeFromString<StudentProfile>(jsonStr)
+            } catch (e: Exception) {
+                // Keep default
+            }
+        }
     }
 
     private fun parseHomeStats(state: UserStateResponse) {

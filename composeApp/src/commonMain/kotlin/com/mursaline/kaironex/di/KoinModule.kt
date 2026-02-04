@@ -73,7 +73,7 @@ val appModule = module {
         val sessionManager = get<KaironexSessionManager>()
         // Delegate to session manager which holds the active user's repo
         sessionManager.getStatsRepository() ?: AppwriteStatsRepository(
-            brainClient = get(),
+            appwriteBridge = get(),
             httpClient = get(),
             userId = "uninitialized_user" 
         )
@@ -98,7 +98,7 @@ val appModule = module {
     single { com.mursaline.kaironex.brain.GeminiLiveAgent(get(), get(), get()) }
 
     // 9. Session Manager (Central Brain)
-    single { KaironexSessionManager(get(), get()) }
+    single { KaironexSessionManager(get(), get(), get()) }
 
     // 10. Resources Repository
     single { com.mursaline.kaironex.features.resources.FileRepository(get(), get()) }
