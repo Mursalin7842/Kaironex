@@ -48,19 +48,14 @@ class GeminiClient:
         prompt: str,
         system_instruction: Optional[str] = None,
         use_search: bool = False,
-        max_tokens: int = 2048
+        max_tokens: int = 2048,
+        json_mode: bool = False,
+        response_schema: Optional[Any] = None,
+        model_type: str = "thinking"
     ) -> str:
         """
-        Generate a response using deep reasoning with retries.
-        
-        Args:
-            prompt: The user prompt
-            system_instruction: Optional system instruction
-            use_search: Whether to use Google Search grounding
-            max_tokens: Maximum output tokens
-        
-        Returns:
-            Generated text response
+        Generate response with optional JSON enforcement.
+        STRICTLY uses the Thinking Model as configured.
         """
         import time
         import random
@@ -69,30 +64,35 @@ class GeminiClient:
         
         for attempt in range(max_retries):
             try:
-                # Build config with HIGH thinking for deep reasoning
-                config = types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(
-                        thinking_budget=8192  # HIGH thinking
-                    ),
-                    temperature=0.7,
-                    max_output_tokens=max_tokens
-                )
-                
-                # Add system instruction if provided
+                # 1. Base Config Args
+                config_args = {
+                    "temperature": 0.7,
+                    "max_output_tokens": max_tokens
+                }
+
+                # 2. Configure Thinking (ALWAYS ON for Deep Brain due to User Constraint)
+                # Note: Newer Thinking models support JSON schema.
+                config_args["thinking_config"] = types.ThinkingConfig(thinking_budget=8192)
+
+                # 3. JSON Enforcement
+                if json_mode:
+                    config_args["response_mime_type"] = "application/json"
+                    if response_schema:
+                        config_args["response_schema"] = response_schema
+
+                # 4. Search Grounding (Disable if JSON mode to prevent conflict)
+                if use_search and not json_mode:
+                     config_args["tools"] = [types.Tool(google_search=types.GoogleSearch())]
+
                 if system_instruction:
-                    config.system_instruction = system_instruction
+                    config_args["system_instruction"] = system_instruction
+
+                config = types.GenerateContentConfig(**config_args)
                 
-                # Google Search Grounding
-                if use_search:
-                    config.tools = [types.Tool(google_search=types.GoogleSearch())]
-                
-                # Build content
-                contents = prompt
-                
-                # Generate response
+                # 5. Generate with Thinking Model
                 response = self.client.models.generate_content(
                     model=self.model,
-                    contents=contents,
+                    contents=prompt,
                     config=config
                 )
                 
@@ -102,20 +102,18 @@ class GeminiClient:
                 error_msg = str(e)
                 print(f"⚠️ Gemini Error (Attempt {attempt+1}/{max_retries}): {error_msg}")
                 
-                # Retry on transient errors
-                if "503" in error_msg or "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg or "overloaded" in error_msg.lower():
+                if "503" in error_msg or "429" in error_msg or "quota" in error_msg.lower():
                     if attempt < max_retries - 1:
                         backoff = (2 ** attempt) + random.uniform(0.1, 1.0)
-                        print(f"⏳ Retrying in {backoff:.2f}s...")
                         time.sleep(backoff)
                         continue
-                
-                # If we're out of retries or it's a non-retriable error, handle specifically
+
                 if attempt == max_retries - 1:
+                    # Propagate error to caller so they see the RAW error
                     print(f"❌ Gemini Failed after {max_retries} attempts.")
-                    raise e # Propagate to caller (Campaign Brain) so fallback triggers logic
+                    raise e
             
-            return f"I encountered an issue: {error_msg}"
+        return ""
     
     def generate_with_tools(
         self,

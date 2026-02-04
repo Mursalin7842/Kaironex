@@ -69,64 +69,89 @@ def run_campaign_agent(db_helper, payload, context):
 
         elif event_type == 'campaign_calibration':
             # CALIBRATION LOGIC
-            # 1. Generate Skill Tree
+            # CALIBRATION LOGIC
+            
+            # SCHEMAS for Native JSON Mode
+            skill_schema = {
+                "type": "ARRAY",
+                "items": { "type": "OBJECT", "properties": {
+                    "id": {"type": "STRING"}, "name": {"type": "STRING"}, "level": {"type": "INTEGER"},
+                    "status": {"type": "STRING"}, "description": {"type": "STRING"},
+                    "parent": {"type": "STRING", "nullable": True}, "xpCost": {"type": "INTEGER"}, "icon": {"type": "STRING"}
+                }}
+            }
+            quest_schema = {
+                "type": "ARRAY",
+                "items": { "type": "OBJECT", "properties": {
+                    "id": {"type": "STRING"}, "title": {"type": "STRING"}, "type": {"type": "STRING"},
+                    "description": {"type": "STRING"}, "xp": {"type": "INTEGER"},
+                    "status": {"type": "STRING"}, "tags": {"type": "ARRAY", "items": {"type": "STRING"}}
+                }}
+            }
+            armory_schema = {
+                "type": "OBJECT",
+                "properties": {
+                    "inventory": { "type": "ARRAY", "items": { "type": "OBJECT", "properties": {
+                        "id": {"type": "STRING"}, "name": {"type": "STRING"}, "type": {"type": "STRING"},
+                        "status": {"type": "STRING"}, "description": {"type": "STRING"}
+                    }}},
+                    "blueprints": { "type": "ARRAY", "items": { "type": "OBJECT", "properties": {
+                        "id": {"type": "STRING"}, "name": {"type": "STRING"}, "cost_xp": {"type": "INTEGER"}
+                    }}}
+                }
+            }
+
+            # 1. Generate Skill Tree (5-10 Skills)
             target_role = payload.get('data', {}).get('targetRole', 'General Tech')
             skills = payload.get('data', {}).get('skills', 'Python, Java')
             
             prompt_skills = f"""
             Act as a Senior Career Strategist. Create a Skill Tree for a student aiming for '{target_role}' with current skills: {skills}.
-            Return ONLY a JSON array of objects. No markdown.
-            Schema: [{{ "id": "s1", "name": "Skill Name", "level": 1, "status": "unlocked", "description": "Short desc", "parent": null, "xpCost": 100, "icon": "📚" }}]
-            Generate 10-20 distinct nodes (Foundation to Advanced).
+            Generate 5-10 distinct nodes (Foundation to Advanced).
             """
-            # Fallback Data
-            fallback_skill_tree = json.dumps([
-                { "id": "s1", "name": "Career Foundations", "level": 1, "status": "unlocked", "description": "Understand your career path basics.", "xpCost": 50, "icon": "🌱" },
-                { "id": "s2", "name": "Skill Acquisition", "level": 1, "status": "locked", "description": "Start learning core tools.", "parent": "s1", "xpCost": 100, "icon": "📚" },
-                { "id": "s3", "name": "Networking 101", "level": 1, "status": "locked", "description": "Connect with peers.", "parent": "s1", "xpCost": 100, "icon": "🤝" }
-            ])
-            
-            fallback_quests = json.dumps([
-                { "id": "q_init_1", "title": "Update Resume", "type": "APPLICATION", "description": "Ensure your CV is up to date.", "xp": 100, "status": "active", "tags": ["Foundation"] },
-                { "id": "q_init_2", "title": "Research Roles", "type": "RESEARCH", "description": "Look up 3 job descriptions.", "xp": 50, "status": "active", "tags": ["Strategy"] }
-            ])
 
-            try:
-                skill_json_str = ai.generate_response(prompt_skills).strip().replace("```json", "").replace("```", "")
-                # Validate JSON
-                json.loads(skill_json_str) 
-                campaign_data["skill_tree_json"] = skill_json_str
-                response_actions.append("skill_tree_generated")
-            except Exception as e:
-                context.log(f"⚠️ Skill Tree Gen Error: {e} - Using Fallback")
-                campaign_data["skill_tree_json"] = fallback_skill_tree
-                response_actions.append("skill_tree_fallback")
-                
+            # NO FALLBACK - Raw Error if fails
+            skill_json_str = ai.generate_response(
+                prompt=prompt_skills, json_mode=True, response_schema=skill_schema, use_search=False
+            )
+            json.loads(skill_json_str) # Verify
+            campaign_data["skill_tree_json"] = skill_json_str
+            response_actions.append("skill_tree_generated")
+
             # 2. Generate Quest Board
             prompt_quests = f"""
             Create 3 starter quests for a student targeting '{target_role}'.
-            Return ONLY a JSON array of objects. No markdown.
-            Schema: [{{ "id": "q1", "title": "Quest Title", "type": "SKILL", "description": "Actionable task", "xp": 50, "status": "active", "tags": ["Strategy"] }}]
             Types: SKILL, APPLICATION, NETWORKING.
             """
-            try:
-                quest_json_str = ai.generate_response(prompt_quests).strip().replace("```json", "").replace("```", "")
-                json.loads(quest_json_str)
-                campaign_data["quest_board_json"] = quest_json_str
-                response_actions.append("quest_board_generated")
-            except Exception as e:
-                context.log(f"⚠️ Quest Gen Error: {e} - Using Fallback")
-                campaign_data["quest_board_json"] = fallback_quests
-                response_actions.append("quest_board_fallback")
+            
+            quest_json_str = ai.generate_response(
+                prompt=prompt_quests, json_mode=True, response_schema=quest_schema, use_search=False
+            )
+            json.loads(quest_json_str)
+            campaign_data["quest_board_json"] = quest_json_str
+            response_actions.append("quest_board_generated")
 
-            # 3. Mark as Calibrated
+            # 3. Generate The Armory
+            prompt_armory = f"""
+            Recommend 1 initial career tool for a student targeting '{target_role}'.
+            """
+            
+            armory_json_str = ai.generate_response(
+                prompt=prompt_armory, json_mode=True, response_schema=armory_schema, use_search=False
+            )
+            json.loads(armory_json_str)
+            campaign_data["the_armory_json"] = armory_json_str
+            response_actions.append("armory_generated")
+
+            # 4. Mark as Calibrated
             campaign_data["is_calibrated"] = True
             
-            # 4. Thought Signature (Dynamic from AI Output)
+            # 5. Thought Signature (Dynamic from AI Output)
             st_len = len(json.loads(campaign_data.get("skill_tree_json", "[]")))
             qb_len = len(json.loads(campaign_data.get("quest_board_json", "[]")))
+            arm_len = len(json.loads(campaign_data.get("the_armory_json", "{\"inventory\":[]}")).get("inventory", []))
             
-            dynamic_response = f"Generated {st_len} Skill Nodes and {qb_len} Quests for {target_role}.\n"
+            dynamic_response = f"Generated {st_len} Skill Nodes, {qb_len} Quests, {arm_len} Tools for {target_role}.\n"
             dynamic_response += f"Sample: {campaign_data.get('skill_tree_json', '')[:50]}..."
             
             _create_thought_signature(user_id, "campaign", f"Calibrate for {target_role}", dynamic_response, db_helper, context)
