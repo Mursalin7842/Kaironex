@@ -24,18 +24,14 @@ import com.mursaline.kaironex.core.stats.AppwriteStatsRepository
 import com.mursaline.kaironex.ui.components.SimulacrumWebView
 import com.mursaline.kaironex.ui.theme.KaironexColors
 import com.mursaline.kaironex.PlatformSecrets
+import androidx.compose.ui.platform.LocalContext
+import android.view.WindowManager
 
 /**
  * Simulacrum: Mock Interview Simulator
  */
 object SimulacrumScreen : Screen {
     private fun readResolve(): Any = SimulacrumScreen
-
-// Imports
-import androidx.compose.ui.platform.LocalContext
-import android.view.WindowManager
-
-// ...
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -56,8 +52,6 @@ import android.view.WindowManager
         }
         
         // Fetch User Context
-// ...
-// (and remove the artifact line further down)
         val statsRepo = koinInject<AppwriteStatsRepository>()
         val profile by statsRepo.profile.collectAsState()
         

@@ -29,6 +29,7 @@ export const useSimulacrumLive = ({ context, onEnd, videoRef }: UseSimulacrumLiv
     // Session Refs
     const sessionPromiseRef = useRef<Promise<any> | null>(null);
     const isConnectedRef = useRef<boolean>(false);
+    const isEndingRef = useRef<boolean>(false);
 
     // Tools
     const endInterviewTool: FunctionDeclaration = {
@@ -128,7 +129,17 @@ export const useSimulacrumLive = ({ context, onEnd, videoRef }: UseSimulacrumLiv
                         if (msg.toolCall?.functionCalls) {
                             for (const fc of msg.toolCall.functionCalls) {
                                 if (fc.name === 'endInterview') {
-                                    onEnd();
+                                    console.log("🛑 Agent requested end of interview. Waiting for audio...");
+                                    isEndingRef.current = true;
+
+                                    // If we are not currently playing audio, end immediately
+                                    // But wait a tick just in case audio packet is processing
+                                    setTimeout(() => {
+                                        if (sourcesRef.current.size === 0) {
+                                            onEnd();
+                                        }
+                                    }, 500);
+
                                     // Send empty response to acknowledge
                                     sessionPromise.then((s: any) => s.sendToolResponse({ functionResponses: [{ id: fc.id, name: fc.name, response: { result: 'ok' } }] }));
                                 }
@@ -244,7 +255,17 @@ export const useSimulacrumLive = ({ context, onEnd, videoRef }: UseSimulacrumLiv
         sourcesRef.current.add(source);
         source.onended = () => {
             sourcesRef.current.delete(source);
-            if (sourcesRef.current.size === 0) setIsTalking(false);
+            if (sourcesRef.current.size === 0) {
+                setIsTalking(false);
+                // If the agent requested to end, and we just finished the last sentence:
+                if (isEndingRef.current) {
+                    console.log("🛑 Audio finished. Ending session now.");
+                    // Verify empty again after small delay (sometimes packets come in chunks)
+                    setTimeout(() => {
+                        if (sourcesRef.current.size === 0) onEnd();
+                    }, 500);
+                }
+            }
         };
     };
 

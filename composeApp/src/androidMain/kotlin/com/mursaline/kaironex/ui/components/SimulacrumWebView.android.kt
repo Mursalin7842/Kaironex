@@ -71,6 +71,12 @@ actual fun SimulacrumWebView(
                webView.loadUrl(url)
             }
         },
+        onRelease = { webView ->
+            webView.loadUrl("about:blank")
+            webView.onPause()
+            webView.removeAllViews()
+            webView.destroy()
+        },
         modifier = modifier
     )
 }
