@@ -150,6 +150,9 @@ def main(context):
         elif event_type in ['location_update', 'social_event']:
             context.log("🌍 Routing to Radius Agent (console test)")
             return run_radius_agent(db, payload, context)
+        elif event_type in ['campaign_calibration', 'campaign_init']:
+            context.log("⚔️ Routing to Campaign Agent (Calibration)")
+            return run_campaign_agent(db, payload, context)
         elif event_type == 'cron_schedule':
             context.log("🛡️ Running Supervisor Check (console test)")
             return run_supervisor(db, context)
