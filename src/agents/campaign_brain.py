@@ -67,11 +67,63 @@ def run_campaign_agent(db_helper, payload, context):
         elif event_type == 'schedule_update':
             campaign_data["schedule_status"] = "Optimized"
 
-        elif event_type == 'campaign_calibration':
-            # CALIBRATION LOGIC
-            # CALIBRATION LOGIC
+        elif event_type == 'scan_jobs':
+            # Manual Job Scan Trigger
+            # We call the shared logic but force it (optional: add force flag to scan_daily_jobs later if needed)
+            # For now, we just invoke it and report status.
+            context.log(f"🔎 Manual Job Scan requested for {user_id}")
+            success = scan_daily_jobs(db_helper, user_id, context)
+            if success:
+                response_actions.append("jobs_scanned_success")
+            else:
+                response_actions.append("jobs_scan_skipped_or_failed")
+            return context.res.json({"status": "scan_complete", "actions": response_actions})
+
+        elif event_type == 'analyze_resume':
+            # Armory: Resume Analysis
+            resume_text = payload.get('data', {}).get('resumeText', '')
+            job_desc = payload.get('data', {}).get('jobDesc', '')
             
-            # SCHEMAS for Native JSON Mode
+            if not resume_text:
+                return context.res.json({"error": "No resume text provided"}, 400)
+                
+            prompt = f"""
+            Act as an expert ATS (Applicant Tracking System) Scanner.
+            RESUME: {resume_text[:2000]}
+            JOB DESCRIPTION: {job_desc[:1000]}
+            
+            Task:
+            1. Calculate Match Score (0-100).
+            2. List 3 critical missing keywords.
+            3. Provide 3 specific bullet point improvements.
+            
+            Output JSON Schema: {{ "score": 75, "improvements": ["Add python", "Quantify sales"], "missing_keywords": ["Java", "Sales"] }}
+            """
+            
+            ats_schema = {
+                "type": "OBJECT",
+                "properties": {
+                    "score": {"type": "INTEGER"},
+                    "improvements": {"type": "ARRAY", "items": {"type": "STRING"}},
+                    "missing_keywords": {"type": "ARRAY", "items": {"type": "STRING"}}
+                }
+            }
+            
+            analysis_json = ai.generate_response(prompt, json_mode=True, response_schema=ats_schema)
+            # Store/Return analysis
+            # We could store in 'armory' state or just return ephemeral result. 
+            # Storing in state allows UI to persist "Last Analysis".
+            campaign_data["last_ats_analysis"] = analysis_json
+            response_actions.append("resume_analyzed")
+            
+            # Update Armory State with last analysis
+            # ... (Logic to merge into armory state if desired, for now we just return it)
+            return context.res.json({"status": "analysis_complete", "data": json.loads(analysis_json)})
+
+        elif event_type == 'campaign_calibration':
+            # CALIBRATION LOGIC - Foundation Only (No Job Search/Resume Gen yet)
+            
+            # SCHEMAS
             skill_schema = {
                 "type": "ARRAY",
                 "items": { "type": "OBJECT", "properties": {
@@ -88,18 +140,6 @@ def run_campaign_agent(db_helper, payload, context):
                     "status": {"type": "STRING"}, "tags": {"type": "ARRAY", "items": {"type": "STRING"}}
                 }}
             }
-            armory_schema = {
-                "type": "OBJECT",
-                "properties": {
-                    "inventory": { "type": "ARRAY", "items": { "type": "OBJECT", "properties": {
-                        "id": {"type": "STRING"}, "name": {"type": "STRING"}, "type": {"type": "STRING"},
-                        "status": {"type": "STRING"}, "description": {"type": "STRING"}
-                    }}},
-                    "blueprints": { "type": "ARRAY", "items": { "type": "OBJECT", "properties": {
-                        "id": {"type": "STRING"}, "name": {"type": "STRING"}, "cost_xp": {"type": "INTEGER"}
-                    }}}
-                }
-            }
 
             # 1. Generate Skill Tree (5-10 Skills)
             target_role = payload.get('data', {}).get('targetRole', 'General Tech')
@@ -110,50 +150,44 @@ def run_campaign_agent(db_helper, payload, context):
             Generate 5-10 distinct nodes (Foundation to Advanced).
             """
 
-            # NO FALLBACK - Raw Error if fails
             skill_json_str = ai.generate_response(
                 prompt=prompt_skills, json_mode=True, response_schema=skill_schema, use_search=False
             )
-            json.loads(skill_json_str) # Verify
             campaign_data["skill_tree_json"] = skill_json_str
             response_actions.append("skill_tree_generated")
 
-            # 2. Generate Quest Board
+            # 2. Generate Guidance Quests (NO SEARCH)
+            # These are "Meta-Quests" to guide the user to use the Tools (Armory, Job Scan)
             prompt_quests = f"""
-            Create 3 starter quests for a student targeting '{target_role}'.
-            Types: SKILL, APPLICATION, NETWORKING.
+            Create 3 guidance quests for a student starting their journey to '{target_role}'.
+            Focus on: 1. Networking, 2. Skill verification, 3. Portfolio prep.
+            DO NOT generate specific job applications.
             """
             
             quest_json_str = ai.generate_response(
                 prompt=prompt_quests, json_mode=True, response_schema=quest_schema, use_search=False
             )
-            json.loads(quest_json_str)
             campaign_data["quest_board_json"] = quest_json_str
             response_actions.append("quest_board_generated")
 
-            # 3. Generate The Armory
-            prompt_armory = f"""
-            Recommend 1 initial career tool for a student targeting '{target_role}'.
-            """
-            
-            armory_json_str = ai.generate_response(
-                prompt=prompt_armory, json_mode=True, response_schema=armory_schema, use_search=False
-            )
-            json.loads(armory_json_str)
-            campaign_data["the_armory_json"] = armory_json_str
-            response_actions.append("armory_generated")
+            # 3. Armory - Initialize Empty/Default (User must trigger specific Resume/Tool gen later)
+            # We provide the container but no AI content yet.
+            campaign_data["the_armory_json"] = json.dumps({
+                "inventory": [
+                    { "id": "item_resume_placeholder", "name": "Resume Builder", "type": "TOOL_LINK", "status": "equipped", "description": "Upload or Paste Resume to Activate." }
+                ],
+                "blueprints": []
+            })
+            response_actions.append("armory_initialized")
 
             # 4. Mark as Calibrated
             campaign_data["is_calibrated"] = True
             
-            # 5. Thought Signature (Dynamic from AI Output)
+            # 5. Thought Signature
             st_len = len(json.loads(campaign_data.get("skill_tree_json", "[]")))
             qb_len = len(json.loads(campaign_data.get("quest_board_json", "[]")))
-            arm_len = len(json.loads(campaign_data.get("the_armory_json", "{\"inventory\":[]}")).get("inventory", []))
             
-            dynamic_response = f"Generated {st_len} Skill Nodes, {qb_len} Quests, {arm_len} Tools for {target_role}.\n"
-            dynamic_response += f"Sample: {campaign_data.get('skill_tree_json', '')[:50]}..."
-            
+            dynamic_response = f"Calibrated for {target_role}. Gen {st_len} Skills, {qb_len} Guidance Quests. Armory standing by."
             _create_thought_signature(user_id, "campaign", f"Calibrate for {target_role}", dynamic_response, db_helper, context)
 
         # --- SYNC: UPDATE CACHE ---
