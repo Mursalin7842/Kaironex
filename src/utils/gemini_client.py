@@ -70,9 +70,10 @@ class GeminiClient:
                     "max_output_tokens": max_tokens
                 }
 
-                # 2. Configure Thinking (ALWAYS ON for Deep Brain due to User Constraint)
-                # Note: Newer Thinking models support JSON schema.
-                config_args["thinking_config"] = types.ThinkingConfig(thinking_budget=8192)
+                # 2. Configure Thinking
+                if model_type == "thinking":
+                    # Note: Newer Thinking models support JSON schema.
+                    config_args["thinking_config"] = types.ThinkingConfig(thinking_budget=8192)
 
                 # 3. JSON Enforcement
                 if json_mode:

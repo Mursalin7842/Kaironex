@@ -151,7 +151,7 @@ def run_campaign_agent(db_helper, payload, context):
             """
 
             skill_json_str = ai.generate_response(
-                prompt=prompt_skills, json_mode=True, response_schema=skill_schema, use_search=False
+                prompt=prompt_skills, json_mode=True, response_schema=skill_schema, use_search=False, model_type="flash"
             )
             campaign_data["skill_tree_json"] = skill_json_str
             response_actions.append("skill_tree_generated")
@@ -165,7 +165,7 @@ def run_campaign_agent(db_helper, payload, context):
             """
             
             quest_json_str = ai.generate_response(
-                prompt=prompt_quests, json_mode=True, response_schema=quest_schema, use_search=False
+                prompt=prompt_quests, json_mode=True, response_schema=quest_schema, use_search=False, model_type="flash"
             )
             campaign_data["quest_board_json"] = quest_json_str
             response_actions.append("quest_board_generated")
@@ -183,12 +183,31 @@ def run_campaign_agent(db_helper, payload, context):
             # 4. Mark as Calibrated
             campaign_data["is_calibrated"] = True
             
-            # 5. Thought Signature
-            st_len = len(json.loads(campaign_data.get("skill_tree_json", "[]")))
-            qb_len = len(json.loads(campaign_data.get("quest_board_json", "[]")))
-            
-            dynamic_response = f"Calibrated for {target_role}. Gen {st_len} Skills, {qb_len} Guidance Quests. Armory standing by."
-            _create_thought_signature(user_id, "campaign", f"Calibrate for {target_role}", dynamic_response, db_helper, context)
+            # --- PERSISTENCE: PARSE & SAVE TO DB ---
+            # Parse JSONs to Objects for DB Helper and Thought Sig
+            try:
+                st_obj = json.loads(campaign_data.get("skill_tree_json", "[]"))
+                qb_obj = json.loads(campaign_data.get("quest_board_json", "[]"))
+                ar_obj = json.loads(campaign_data.get("the_armory_json", "{}"))
+                
+                # 1. Update Canonical Table (campaign_state)
+                persistence_payload = {
+                    "skill_tree": st_obj,
+                    "quest_board": qb_obj,
+                    "armory": ar_obj
+                }
+                db_helper.update_campaign_state(user_id, persistence_payload)
+                response_actions.append("db_state_persisted")
+                
+                # 2. Thought Signature
+                st_len = len(st_obj)
+                qb_len = len(qb_obj)
+                dynamic_response = f"Calibrated for {target_role}. Gen {st_len} Skills, {qb_len} Guidance Quests. Armory standing by."
+                _create_thought_signature(user_id, "campaign", f"Calibrate for {target_role}", dynamic_response, db_helper, context)
+
+            except Exception as e:
+                context.error(f"Persistence/Parsing Error: {e}")
+                response_actions.append("persistence_failed")
 
         # --- SYNC: UPDATE CACHE ---
         if campaign_data:
@@ -253,7 +272,7 @@ def scan_daily_jobs(db_helper, user_id, context):
         """
         
         try:
-            raw_response = ai.generate_response(prompt, use_search=True)
+            raw_response = ai.generate_response(prompt, use_search=True, model_type="flash")
             job_json_str = raw_response.strip().replace("```json", "").replace("```", "")
             
             # Check for error text in response before parsing
