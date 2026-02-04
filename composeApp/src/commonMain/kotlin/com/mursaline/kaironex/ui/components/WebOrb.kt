@@ -6,5 +6,7 @@ import androidx.compose.ui.Modifier
 @Composable
 expect fun WebOrb(
     modifier: Modifier = Modifier,
-    apiKey: String
+    apiKey: String,
+    onProfileUpdate: (String, String) -> Unit = { _, _ -> },
+    onAgentState: (String) -> Unit = {}
 )

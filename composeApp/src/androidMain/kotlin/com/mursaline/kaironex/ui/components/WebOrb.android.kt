@@ -13,7 +13,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 @Composable
 actual fun WebOrb(
     modifier: Modifier,
-    apiKey: String
+    apiKey: String,
+    onProfileUpdate: (String, String) -> Unit,
+    onAgentState: (String) -> Unit
 ) {
     AndroidView(
         modifier = modifier,
@@ -39,8 +41,21 @@ actual fun WebOrb(
 
                 addJavascriptInterface(object {
                     @android.webkit.JavascriptInterface
-                    fun getApiKey(): String {
-                        return apiKey
+                    fun getApiKey(): String = apiKey
+
+                    @android.webkit.JavascriptInterface
+                    fun onProfileUpdate(field: String, value: String) {
+                        onProfileUpdate(field, value)
+                    }
+
+                    @android.webkit.JavascriptInterface
+                    fun onAgentState(state: String) {
+                        onAgentState(state)
+                    }
+
+                    @android.webkit.JavascriptInterface
+                    fun onComplete() {
+                        // Optional: Handle session end
                     }
                 }, "Android")
                 

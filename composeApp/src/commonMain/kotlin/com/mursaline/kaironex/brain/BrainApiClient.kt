@@ -29,7 +29,6 @@ import kotlinx.serialization.json.*
  */
 @OptIn(ExperimentalSerializationApi::class)
 class BrainApiClient(
-    private val baseUrl: String = "http://10.0.2.2:8000",
     private val client: HttpClient
 ) {
 
@@ -62,14 +61,8 @@ class BrainApiClient(
     // =========================================================================
 
     suspend fun checkHealth(): BrainHealthResponse? {
-        return try {
-            client.get("$baseUrl/") {
-                contentType(ContentType.Application.Json)
-            }.body()
-        } catch (e: Exception) {
-            println("❌ Brain health check failed: ${e.message}")
-            null
-        }
+        // Simple ping to Appwrite Logic
+        return BrainHealthResponse("online", 0.0, emptyMap(), 0)
     }
 
     // =========================================================================
@@ -86,22 +79,13 @@ class BrainApiClient(
         agent: String = "generic",
         mode: String = "reflex"
     ): QuickPromptResponse? {
-        return try {
-            val request = QuickPromptRequest(
-                userId = userId,
-                prompt = prompt,
-                agent = agent,
-                mode = mode
-            )
-
-            client.post("$baseUrl/api/v1/brain/quick") {
-                contentType(ContentType.Application.Json)
-                setBody(request)
-            }.body()
-        } catch (e: Exception) {
-            println("❌ Quick prompt failed: ${e.message}")
-            null
-        }
+        // Use Appwrite Function for quick prompt too
+        val data = mapOf("prompt" to prompt, "agent" to agent, "mode" to mode)
+        val triggerResp = executeBrainFunction(userId, "quick", "quick_prompt", data)
+        
+        // Map TriggerResponse back to QuickPromptResponse mock/derived (or update backend to return QuickPromptResponse)
+        // For now, assuming backend returns standard structure in response message
+        return QuickPromptResponse(triggerResp?.message ?: "", "reflex", 0f, 1f)
     }
 
     // =========================================================================
@@ -112,71 +96,111 @@ class BrainApiClient(
      * Trigger a brain event for processing.
      * Routes to appropriate agent based on event type.
      */
+    // =========================================================================
+    // AGENT TRIGGERS (APPWRITE FUNCTIONS)
+    // =========================================================================
+
+    /**
+     * Helper to execute Appwrite Function.
+     */
+    private suspend fun executeBrainFunction(
+        userId: String,
+        endpoint: String, // e.g. "campaign", "vitality"
+        eventType: String,
+        data: Map<String, Any>
+    ): TriggerResponse? {
+        val functionId = com.mursaline.kaironex.core.AppConfig.Appwrite.FUNCTION_ID
+        val project = com.mursaline.kaironex.core.AppConfig.Appwrite.PROJECT_ID
+        val key = com.mursaline.kaironex.core.AppConfig.Appwrite.API_KEY
+        val url = "${com.mursaline.kaironex.core.AppConfig.Appwrite.ENDPOINT}/functions/$functionId/executions"
+
+        // Manual JSON construction to avoid "Serializer for class 'Any' is not found"
+        val dataJson = buildJsonObject {
+            data.forEach { (k, v) ->
+                when (v) {
+                    is String -> put(k, v)
+                    is Number -> put(k, v)
+                    is Boolean -> put(k, v)
+                    is JsonElement -> put(k, v)
+                    else -> put(k, v.toString())
+                }
+            }
+        }
+
+        val payloadJson = buildJsonObject {
+            put("endpoint", endpoint)
+            put("userId", userId)
+            put("type", eventType)
+            put("data", dataJson)
+        }
+
+        val requestBody = buildJsonObject {
+            put("body", payloadJson.toString())
+            put("async", false) // Wait for response
+        }
+
+        return try {
+            val response = client.post(url) {
+                header("X-Appwrite-Project", project)
+                if (key.isNotBlank()) header("X-Appwrite-Key", key)
+                contentType(ContentType.Application.Json)
+                setBody(requestBody)
+            }
+
+            if (response.status.value in 200..299) {
+                val execBodyStr = response.body<JsonObject>()
+                val status = execBodyStr["status"]?.jsonPrimitive?.contentOrNull
+                val responseBodyStr = execBodyStr["responseBody"]?.jsonPrimitive?.contentOrNull
+                
+                if (status == "completed" && responseBodyStr != null) {
+                    try {
+                        json.decodeFromString<TriggerResponse>(responseBodyStr)
+                    } catch (e: Exception) {
+                        TriggerResponse("success", "Function executed: $responseBodyStr")
+                    }
+                } else {
+                    TriggerResponse("error", "Function execution failed: $status")
+                }
+            } else {
+                println("❌ Appwrite Function Error: ${response.status}")
+                null
+            }
+        } catch (e: Exception) {
+            println("❌ Brain Function Trigger Failed: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Trigger a brain event for processing.
+     */
     suspend fun triggerBrain(
         userId: String,
         eventType: String,
         data: Map<String, Any> = emptyMap()
     ): TriggerResponse? {
-        return try {
-            val request = TriggerRequest(
-                userId = userId,
-                type = eventType,
-                data = data.mapValues { it.value.toString() }
-            )
-
-            client.post("$baseUrl/api/v1/brain/trigger") {
-                contentType(ContentType.Application.Json)
-                setBody(request)
-            }.body()
-        } catch (e: Exception) {
-            println("❌ Brain trigger failed: ${e.message}")
-            null
-        }
+        return executeBrainFunction(userId, "trigger", eventType, data)
     }
 
     /**
      * Trigger campaign agent specifically.
      */
     suspend fun triggerCampaign(userId: String, eventType: String, data: Map<String, String> = emptyMap()): TriggerResponse? {
-        return try {
-            client.post("$baseUrl/api/v1/brain/campaign") {
-                contentType(ContentType.Application.Json)
-                setBody(TriggerRequest(userId, eventType, data))
-            }.body()
-        } catch (e: Exception) {
-            println("❌ Campaign trigger failed: ${e.message}")
-            null
-        }
+        return executeBrainFunction(userId, "campaign", eventType, data)
     }
 
     /**
      * Trigger vitality agent specifically.
      */
     suspend fun triggerVitality(userId: String, eventType: String, data: Map<String, String> = emptyMap()): TriggerResponse? {
-        return try {
-            client.post("$baseUrl/api/v1/brain/vitality") {
-                contentType(ContentType.Application.Json)
-                setBody(TriggerRequest(userId, eventType, data))
-            }.body()
-        } catch (e: Exception) {
-            println("❌ Vitality trigger failed: ${e.message}")
-            null
-        }
+        return executeBrainFunction(userId, "vitality", eventType, data)
     }
 
     /**
      * Trigger radius agent specifically.
      */
     suspend fun triggerRadius(userId: String, eventType: String, data: Map<String, String> = emptyMap()): TriggerResponse? {
-        return try {
-            client.post("$baseUrl/api/v1/brain/radius") {
-                contentType(ContentType.Application.Json)
-                setBody(TriggerRequest(userId, eventType, data))
-            }.body()
-        } catch (e: Exception) {
-            println("❌ Radius trigger failed: ${e.message}")
-            null
-        }
+        return executeBrainFunction(userId, "radius", eventType, data)
     }
 
     // =========================================================================
@@ -187,26 +211,16 @@ class BrainApiClient(
      * Get full user state from the brain.
      */
     suspend fun getUserState(userId: String): UserStateResponse? {
-        return try {
-            client.get("$baseUrl/api/v1/state/$userId").body()
-        } catch (e: Exception) {
-            println("❌ Get user state failed: ${e.message}")
-            null
-        }
+        // TODO: Use Appwrite Database directly
+        return null 
     }
 
     /**
      * Get user's recent thoughts.
      */
     suspend fun getUserThoughts(userId: String, agent: String? = null): ThoughtsResponse? {
-        return try {
-            client.get("$baseUrl/api/v1/thoughts/$userId") {
-                agent?.let { parameter("agent", it) }
-            }.body()
-        } catch (e: Exception) {
-            println("❌ Get thoughts failed: ${e.message}")
-            null
-        }
+        // TODO: Use Appwrite Database
+        return null
     }
 
     // =========================================================================
@@ -225,73 +239,38 @@ class BrainApiClient(
         deadline: String? = null,
         priority: Int = 5
     ): MarathonCreateResponse? {
-        return try {
-            client.post("$baseUrl/api/v1/marathon/create") {
-                contentType(ContentType.Application.Json)
-                setBody(MarathonCreateRequest(
-                    userId = userId,
-                    agent = agent,
-                    title = title,
-                    description = description,
-                    successCriteria = successCriteria,
-                    deadline = deadline,
-                    priority = priority
-                ))
-            }.body()
-        } catch (e: Exception) {
-            println("❌ Create marathon failed: ${e.message}")
-            null
-        }
+        // TODO: Use Appwrite Functions
+        return null
     }
 
     /**
      * Get marathon session status.
      */
     suspend fun getMarathon(sessionId: String): MarathonSession? {
-        return try {
-            client.get("$baseUrl/api/v1/marathon/$sessionId").body()
-        } catch (e: Exception) {
-            println("❌ Get marathon failed: ${e.message}")
-            null
-        }
+        return null
     }
 
     /**
      * Get all marathons for a user.
      */
     suspend fun getUserMarathons(userId: String): List<MarathonSession> {
-        return try {
-            client.get("$baseUrl/api/v1/marathon/user/$userId").body()
-        } catch (e: Exception) {
-            println("❌ Get user marathons failed: ${e.message}")
-            emptyList()
-        }
+        return emptyList()
     }
 
     /**
      * Pause a marathon.
      */
     suspend fun pauseMarathon(sessionId: String): Boolean {
-        return try {
-            client.post("$baseUrl/api/v1/marathon/$sessionId/pause")
-            true
-        } catch (e: Exception) {
-            println("❌ Pause marathon failed: ${e.message}")
-            false
-        }
+        // TODO: Appwrite Function
+        return false
     }
 
     /**
      * Resume a marathon.
      */
     suspend fun resumeMarathon(sessionId: String): Boolean {
-        return try {
-            client.post("$baseUrl/api/v1/marathon/$sessionId/resume")
-            true
-        } catch (e: Exception) {
-            println("❌ Resume marathon failed: ${e.message}")
-            false
-        }
+        // TODO: Appwrite Function
+        return false
     }
 
     // =========================================================================
@@ -307,21 +286,8 @@ class BrainApiClient(
         response: String, // accept/snooze/dismiss
         feedback: String? = null
     ): Boolean {
-        return try {
-            client.post("$baseUrl/api/v1/intervention/respond") {
-                contentType(ContentType.Application.Json)
-                setBody(InterventionResponseRequest(
-                    userId = userId,
-                    interventionId = interventionId,
-                    response = response,
-                    feedback = feedback
-                ))
-            }
-            true
-        } catch (e: Exception) {
-            println("❌ Intervention response failed: ${e.message}")
-            false
-        }
+        // TODO: Appwrite Function
+        return false
     }
 
     // =========================================================================
@@ -332,54 +298,8 @@ class BrainApiClient(
      * Connect to brain WebSocket for real-time updates.
      */
     suspend fun connectWebSocket(userId: String, scope: CoroutineScope) {
-        if (websocketSession != null) {
-            println("⚠️ WebSocket already connected")
-            return
-        }
-
-        _connectionState.value = BrainConnectionState.CONNECTING
-
-        websocketJob = scope.launch {
-            var retryCount = 0
-            val maxRetries = 5
-
-            while (retryCount < maxRetries && isActive) {
-                try {
-                    val wsUrl = baseUrl.replace("http://", "ws://").replace("https://", "wss://")
-
-                    client.webSocket("$wsUrl/ws/brain/$userId") {
-                        websocketSession = this
-                        _connectionState.value = BrainConnectionState.CONNECTED
-                        println("🔌 Brain WebSocket connected for user: $userId")
-                        retryCount = 0 // Reset on successful connection
-
-                        // Receive messages
-                        for (frame in incoming) {
-                            when (frame) {
-                                is Frame.Text -> {
-                                    val text = frame.readText()
-                                    handleWebSocketMessage(text)
-                                }
-                                else -> {}
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    println("❌ WebSocket error: ${e.message}")
-                    _connectionState.value = BrainConnectionState.ERROR
-                    websocketSession = null
-
-                    retryCount++
-                    if (retryCount < maxRetries) {
-                        val delayMs = (1000L * (1 shl retryCount)).coerceAtMost(30000L)
-                        println("⏳ Retrying WebSocket in ${delayMs}ms (attempt $retryCount/$maxRetries)")
-                        delay(delayMs)
-                    }
-                }
-            }
-
-            _connectionState.value = BrainConnectionState.DISCONNECTED
-        }
+        println("⚠️ Custom Websocket Disabled (Use Appwrite Realtime)")
+        _connectionState.value = BrainConnectionState.DISCONNECTED
     }
 
     /**

@@ -80,6 +80,9 @@ kotlin {
             implementation(libs.voyager.transitions)
             implementation(libs.voyager.koin)
 
+            // FileKit (Picker)
+            implementation(libs.filekit.compose)
+
 //            // WebView
 //            implementation(libs.compose.webview)
         }

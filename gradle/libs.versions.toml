@@ -25,12 +25,16 @@ voyager = "1.1.0-beta02"
 sqldelight = "2.0.2"
 webview = "2.0.3"
 kcef = "2024.04.20.4"
+filekit = "0.8.0"
 
 [libraries]
 firebase-admin = { module = "com.google.firebase:firebase-admin", version.ref = "firebaseAdmin" }
 firebase-common = { module = "dev.gitlive:firebase-common", version.ref = "firebaseCommon" }
 firebase-database = { module = "dev.gitlive:firebase-database", version.ref = "firebaseCommon" }
 firebase-database-ktx = { module = "com.google.firebase:firebase-database-ktx", version.ref = "firebaseDatabaseKtx" }
+
+# FileKit (File Picker)
+filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekit" }
 
 # JNA (Desktop Eye)
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }

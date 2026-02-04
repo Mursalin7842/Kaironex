@@ -18,6 +18,10 @@ import com.mursaline.kaironex.ui.components.KxCard
 import com.mursaline.kaironex.ui.components.KxCardVariant
 import com.mursaline.kaironex.features.study.components.*
 
+// Koin / Voyager Imports
+import cafe.adriel.voyager.koin.getScreenModel
+import com.mursaline.kaironex.features.study.StudyViewModel
+
 @Suppress("unused")
 object StudyRoomScreen : Screen {
     @Suppress("unused")
@@ -26,6 +30,11 @@ object StudyRoomScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
+        
+        // Inject ViewModel
+        val viewModel = getScreenModel<StudyViewModel>()
+        val resources by viewModel.resources.collectAsState()
+        // val isLoading by viewModel.isLoading.collectAsState() // Can add loading UI later
         
         BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
             val isMobile = this.maxWidth < 800.dp
@@ -41,10 +50,10 @@ object StudyRoomScreen : Screen {
 
                 if (isMobile) {
                     // Mobile: Tabbed View (Resources | Viewer | Tools)
-                    MobileStudyLayout()
+                    MobileStudyLayout(resources)
                 } else {
                     // Desktop: 3-Pane Layout
-                    DesktopStudyLayout()
+                    DesktopStudyLayout(resources)
                 }
                 
                 // Bottom Context Bar (Common)
@@ -98,18 +107,10 @@ fun StudyHeader(onBack: () -> Unit, title: String, timer: String, isMobile: Bool
 }
 
 @Composable
-fun DesktopStudyLayout() {
+fun DesktopStudyLayout(resources: List<Resource>) {
     var selectedResource by remember { mutableStateOf<Resource?>(null) }
     
-    val dummyResources = remember {
-        listOf(
-            Resource("1", "Chapter 1: Limits and Continuity", ResourceType.PDF, "45 min"),
-            Resource("2", "Derivatives Tutorial", ResourceType.VIDEO, "1h 20min"),
-            Resource("3", "Integration Practice Problems", ResourceType.PDF, "30 min"),
-            Resource("4", "Calculus Concepts Overview", ResourceType.VIDEO, "55 min"),
-            Resource("5", "Sample Code: Numerical Integration", ResourceType.CODE)
-        )
-    }
+    // Removed dummyResources, using passed 'resources'
     
     Row(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
         // Left Pane: Resource Index
@@ -119,7 +120,7 @@ fun DesktopStudyLayout() {
             backgroundColor = KaironexColors.CanvasWhite
         ) {
             ResourceIndex(
-                resources = dummyResources,
+                resources = resources,
                 selectedResourceId = selectedResource?.id,
                 onResourceSelect = { selectedResource = it }
             )
@@ -150,17 +151,12 @@ fun DesktopStudyLayout() {
 }
 
 @Composable
-fun MobileStudyLayout() {
+fun MobileStudyLayout(resources: List<Resource>) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Resources", "Viewer", "Tools")
 
-    val dummyResources = remember {
-        listOf(
-            Resource("1", "Ch 1: Limits", ResourceType.PDF, "45 min"),
-            Resource("2", "Derivatives", ResourceType.VIDEO, "1h 20min"),
-            Resource("3", "Practice", ResourceType.PDF, "30 min")
-        )
-    }
+    // Removed dummyResources
+    
     var selectedResource by remember { mutableStateOf<Resource?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -201,7 +197,7 @@ fun MobileStudyLayout() {
                         backgroundColor = KaironexColors.CanvasWhite
                     ) {
                         ResourceIndex(
-                            resources = dummyResources,
+                            resources = resources,
                             selectedResourceId = selectedResource?.id,
                             onResourceSelect = {
                                 selectedResource = it

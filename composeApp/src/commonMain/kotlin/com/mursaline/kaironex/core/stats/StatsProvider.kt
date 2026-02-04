@@ -120,9 +120,9 @@ object StatsProvider {
                 faangReadinessScore = 48,
                 agentStatus = AgentStatus.ATTENTION,
                 riskAlerts = listOf(
-                    "Interview readiness below target",
                     "System Design practice needed"
-                )
+                ),
+                isCalibrated = false
             ),
             vitality = VitalityStats(
                 budgetRunwayDays = 23,

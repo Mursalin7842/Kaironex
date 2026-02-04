@@ -74,6 +74,7 @@ class KaironexSessionManager(
         // Initial data sync
         scope.launch {
             try {
+                statsRepository?.initializeUserTables() // Ensure all tables exist (Idempotent)
                 statsRepository?.refreshAll()
                 println("✅ Initial data sync complete")
             } catch (e: Exception) {

@@ -42,13 +42,17 @@ val appModule = module {
             install(io.ktor.client.plugins.websocket.WebSockets) {
                 pingIntervalMillis = AppConfig.Timing.WS_PING_INTERVAL_MS
             }
+            install(io.ktor.client.plugins.HttpTimeout) {
+                requestTimeoutMillis = 60_000 // 60s for Deep Brain Reasoning
+                connectTimeoutMillis = 60_000
+                socketTimeoutMillis = 60_000
+            }
         }
     }
 
     // 2. Brain API Client (Backend Connection)
     single {
         BrainApiClient(
-            baseUrl = AppConfig.brainServerUrl,
             client = get()
         )
     }
@@ -64,11 +68,14 @@ val appModule = module {
     }
 
     // 5. Stats Repository (Real data from Appwrite)
-    factory { (userId: String) ->
-        AppwriteStatsRepository(
+    // 5. Stats Repository (Real data from Appwrite)
+    factory { 
+        val sessionManager = get<KaironexSessionManager>()
+        // Delegate to session manager which holds the active user's repo
+        sessionManager.getStatsRepository() ?: AppwriteStatsRepository(
             brainClient = get(),
             httpClient = get(),
-            userId = userId
+            userId = "uninitialized_user" 
         )
     }
 
@@ -76,8 +83,11 @@ val appModule = module {
     single<AuthRepository> { MockAuthRepository() }
     
     // 7. ViewModels
-    factory { com.mursaline.kaironex.features.dashboard.ProfileCalibrationViewModel(get()) }
+    // 7. ViewModels
+    factory { com.mursaline.kaironex.features.dashboard.ProfileCalibrationViewModel(get(), get()) }
     factory { com.mursaline.kaironex.features.voice.VoiceViewModel(get(), get()) }
+    factory { com.mursaline.kaironex.features.study.StudyViewModel(get()) }
+
 
     // 8. Wake Word Service (Removed)
     // single { WakeWordService(get()) }
@@ -89,8 +99,11 @@ val appModule = module {
 
     // 9. Session Manager (Central Brain)
     single { KaironexSessionManager(get(), get()) }
+
+    // 10. Resources Repository
+    single { com.mursaline.kaironex.features.resources.FileRepository(get(), get()) }
     
     // 7. ViewModels
-    factory { com.mursaline.kaironex.features.dashboard.ProfileCalibrationViewModel(get()) }
+
 }
 

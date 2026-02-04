@@ -498,10 +498,21 @@ fun ImmersiveAssistantPanel(
                 )
 
                 // The Voice Orb
+                val sessionManager = com.mursaline.kaironex.core.LocalKaironexSession.current
+                val scope = androidx.compose.runtime.rememberCoroutineScope()
+
                 // The Voice Orb (Web Version)
                  com.mursaline.kaironex.ui.components.WebOrb(
                     apiKey = com.mursaline.kaironex.PlatformSecrets.apiKey,
-                    modifier = Modifier.size(if (isMobile) 300.dp else 400.dp) // Larger for web view content
+                    modifier = Modifier.size(if (isMobile) 300.dp else 400.dp), // Larger for web view content
+                    onProfileUpdate = { field, value ->
+                        scope.launch {
+                             sessionManager?.getStatsRepository()?.updateProfileField(field, value)
+                        }
+                    },
+                    onAgentState = { state -> 
+                        // Optional: Update outer UI state
+                    }
                  )
             }
 

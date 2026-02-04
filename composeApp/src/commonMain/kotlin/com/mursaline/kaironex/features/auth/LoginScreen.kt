@@ -533,6 +533,14 @@ object LoginScreen : Screen {
                                 scope.launch {
                                     authRepo.login(email, password)
                                         .onSuccess {
+                                            // Initialize session correctly
+                                            val sessionManager = org.koin.core.context.GlobalContext.get().get<com.mursaline.kaironex.core.KaironexSessionManager>()
+                                            
+                                            // Use a default user ID or fetch from authRepo if available
+                                            // For now assuming email logic or fixed ID, but ideally authRepo returns User
+                                            // Since this is MockAuth, we can use "user_001" or similar
+                                            sessionManager.initialize("demo_user_001") // Using demo user for now as MockAuth doesn't return ID
+                                            
                                             navigator.replaceAll(MainShellScreen)
                                         }
                                         .onFailure {
@@ -602,15 +610,21 @@ object LoginScreen : Screen {
 
                         Spacer(modifier = Modifier.height(20.dp))
 
-                        // Judge Access (Shortcut)
-                        Text(
-                            "🔐 Hackathon Judge Access",
-                            color = KaironexColors.Slate500.copy(alpha = 0.6f),
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.clickable { 
-                                navigator.push(com.mursaline.kaironex.features.onboarding.SystemSetupScreen(userName = "Mursaline Huqe"))
-                            }
-                        )
+                            // Judge Access (Shortcut)
+                            Text(
+                                "🔐 Hackathon Judge Access",
+                                color = KaironexColors.Slate500.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.clickable {
+                                    scope.launch {
+                                        // Initialize session for demo user before onboarding flow
+                                        val sessionManager = org.koin.core.context.GlobalContext.get().get<com.mursaline.kaironex.core.KaironexSessionManager>()
+                                        sessionManager.initialize("demo_user_001")
+                                        
+                                        navigator.push(com.mursaline.kaironex.features.onboarding.SystemSetupScreen(userName = "Mursaline Huqe"))
+                                    }
+                                }
+                            )
 
 
 

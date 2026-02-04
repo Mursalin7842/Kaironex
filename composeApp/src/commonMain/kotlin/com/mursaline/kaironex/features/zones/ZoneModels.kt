@@ -72,22 +72,22 @@ enum class CampaignFeature(
 ) {
     SkillTree(
         title = "The Skill Tree",
-        description = "Visual roadmap showing exactly what skills you need next. If you want to be a Google Engineer, it highlights: Learn DSA → Master System Design → Cloud Cert.",
+        description = "Brain-generated roadmap that tells you exactly which skills you need next to level up.",
         emoji = "🌳"
     ),
     QuestBoard(
         title = "Quest Board",
-        description = "Intelligent job aggregator. Filters for 'Student Friendly Hours' or 'Visa Sponsorship' for international students.",
+        description = "Intelligent job aggregator that searches for jobs tailored exactly to your setup and constraints.",
         emoji = "📋"
     ),
     Armory(
         title = "The Armory",
-        description = "Resume builder that 'equips your armor'. Upload a job description, and AI rewrites your resume bullets to match that specific role.",
+        description = "AI Resume Writer & ATS Scanner. Provide a Job Description and the Brain optimizes your armor to match.",
         emoji = "🛡️"
     ),
     Simulacrum(
         title = "Simulacrum",
-        description = "Mock interview training simulation. Voice mode that acts as an angry interviewer or technical recruiter to test your nerves.",
+        description = "Mock Interview with a Live AI Agent (Webview). Choose your interviewer's mood and face generated scenarios.",
         emoji = "🎭"
     )
 }

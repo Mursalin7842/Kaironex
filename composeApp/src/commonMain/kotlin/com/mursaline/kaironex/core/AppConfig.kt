@@ -16,16 +16,7 @@ object AppConfig {
     // API ENDPOINTS
     // ==========================================================================
 
-    /**
-     * The Kaironex Brain server URL.
-     * In development: localhost
-     * In production: Cloud-hosted FastAPI server
-     */
-    val brainServerUrl: String
-        get() = getEnvOrDefault(
-            "KAIRONEX_BRAIN_URL",
-            "http://10.0.2.2:8000"
-        )
+
 
     /**
      * Appwrite configuration.
@@ -36,6 +27,9 @@ object AppConfig {
         val DATABASE_ID = com.mursaline.kaironex.PlatformSecrets.appwriteDatabase
         val FUNCTION_ID = com.mursaline.kaironex.PlatformSecrets.appwriteFunctionId
         val API_KEY = com.mursaline.kaironex.PlatformSecrets.appwriteApiKey
+        
+        // TODO: Move to Secrets
+        const val STORAGE_BUCKET_ID = "academic_files" 
     }
 
     // ==========================================================================

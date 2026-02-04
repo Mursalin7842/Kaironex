@@ -55,7 +55,7 @@ class ProfileCalibrationScreen(
         // Auto-navigate if saved during onboarding
         LaunchedEffect(isSaved) {
             if (isSaved && isOnboarding) {
-                 navigator.push(com.mursaline.kaironex.features.onboarding.GoogleDriveLinkScreen())
+                 navigator.push(com.mursaline.kaironex.features.onboarding.DataIngestionScreen())
             }
         }
         
@@ -438,7 +438,8 @@ fun KxTextField(
 }
 
 class ProfileCalibrationViewModel(
-    private val profileStorage: ProfileStorage
+    private val profileStorage: ProfileStorage,
+    private val sessionManager: com.mursaline.kaironex.core.KaironexSessionManager
 ) : ScreenModel {
 
     private val _profile = kotlinx.coroutines.flow.MutableStateFlow<StudentProfile?>(null)
@@ -498,7 +499,17 @@ class ProfileCalibrationViewModel(
         screenModelScope.launch {
             if (validate()) {
                 _profile.value?.let { 
-                    profileStorage.saveProfile(it) 
+                    // 1. Save locally
+                    profileStorage.saveProfile(it)
+                    
+                    // 2. Sync to Appwrite (Triggers Brain)
+                    val success = sessionManager.getStatsRepository()?.saveUserProfile(it)
+                    if (success == true) {
+                        println("✅ Profile synced to Appwrite & Brain")
+                    } else {
+                        println("⚠️ Failed to sync profile to Appwrite")
+                    }
+                    
                     _isSaved.value = true
                 }
             }

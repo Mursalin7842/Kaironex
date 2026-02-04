@@ -223,7 +223,8 @@ data class CampaignStats(
 
     // Status
     val agentStatus: AgentStatus,
-    val riskAlerts: List<String>
+    val riskAlerts: List<String>,
+    val isCalibrated: Boolean = false
 )
 
 /**

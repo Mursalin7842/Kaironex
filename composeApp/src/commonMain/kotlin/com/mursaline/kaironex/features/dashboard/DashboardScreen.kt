@@ -1,7 +1,6 @@
 package com.mursaline.kaironex.features.dashboard
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -39,7 +38,6 @@ import com.mursaline.kaironex.ui.components.KxCard
 import com.mursaline.kaironex.ui.components.KxCardVariant
 import com.mursaline.kaironex.ui.components.KxBadge
 import com.mursaline.kaironex.ui.components.KxBadgeVariant
-import com.mursaline.kaironex.features.dashboard.components.PressureMap
 import com.mursaline.kaironex.features.dashboard.components.CortexHeroCard
 import com.mursaline.kaironex.features.dashboard.components.CognitivePerformanceCard
 import com.mursaline.kaironex.features.dashboard.components.LearningProgressCard
@@ -54,18 +52,16 @@ import com.mursaline.kaironex.features.study.StudyRoomScreen
 import com.mursaline.kaironex.core.stats.StatsProvider
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import com.mursaline.kaironex.brain.ThoughtStreamItem 
+import com.mursaline.kaironex.core.KaironexSessionManager
+import org.koin.compose.koinInject
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 
 /**
  * Dashboard Screen - "Daily Command Center"
- *
- * Philosophy:
- * - Home = Mind + Study + Pressure + Direction
- * - Stats should: Motivate, Expose Risk, Guide Action
- *
- * Answers:
- * - "Am I winning today or losing today?"
- * - "Am I improving?"
- * - "What should I do next?"
  */
 @Suppress("unused")
 object DashboardScreen : Screen {
@@ -82,11 +78,31 @@ object DashboardScreen : Screen {
             hasAudioPermission = true
         }
 
+        // --- AGENT POLLING LOGIC ---
+        // Use Koin to get SessionManager, then get Repo
+        val sessionManager = koinInject<KaironexSessionManager>()
+        val repo = sessionManager.getStatsRepository()
+        
+        var polledThought by remember { mutableStateOf<ThoughtStreamItem?>(null) }
+        var isBrainConnected by remember { mutableStateOf(false) }
+
+        LaunchedEffect(Unit) {
+            while (isActive) {
+                try {
+                    // repo might be null if session not ready, but that's okay, we just skip
+                    val thought = repo?.getLatestThought()
+                    if (thought != null) {
+                        polledThought = thought
+                        isBrainConnected = true
+                    }
+                } catch (e: Exception) { }
+                delay(4000)
+            }
+        }
+
         // Get comprehensive stats
         val homeStats = remember { StatsProvider.getHomeStats() }
         
-        // ... (rest of variable definitions)
-
         // Cortex State - derived from stats
         val cortexState by remember {
             mutableStateOf(
@@ -118,6 +134,46 @@ object DashboardScreen : Screen {
                     DashboardHeader(isMobile = isMobile, mentalState = homeStats.mentalState)
 
                     Spacer(Modifier.height(if (isMobile) 12.dp else 24.dp))
+
+                    // ===== AGENT PULSE (Live Brain Monitor) =====
+                    KxCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        variant = KxCardVariant.Elevated,
+                        // Navigate to AgentDashboardScreen
+                        onClick = { navigator.push(com.mursaline.kaironex.features.agents.AgentDashboardScreen) }
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("🧠 Neural Pulse", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.width(8.dp))
+                                    if (isBrainConnected) {
+                                        KxBadge(text = "LIVE", variant = KxBadgeVariant.Success)
+                                    } else {
+                                        KxBadge(text = "CONNECTING", variant = KxBadgeVariant.Neutral)
+                                    }
+                                }
+                                androidx.compose.material3.Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "View",
+                                    tint = KaironexColors.GeminiBlurple
+                                )
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                text = polledThought?.thought?.take(150)?.let { "$it..." } ?: "Initializing neural link...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = KaironexColors.SlateGray,
+                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(if (isMobile) 16.dp else 24.dp))
 
                     // ===== SECTION 1: THE HERO - CORTEX (Study Room) =====
                     Text(
@@ -209,16 +265,10 @@ object DashboardScreen : Screen {
                     )
                     Spacer(Modifier.height(if (isMobile) 6.dp else 12.dp))
 
-
-
                     // Extra bottom spacing for navbar
                     Spacer(Modifier.height(if (isMobile) 120.dp else 48.dp))
                 }
             }
-
-            // The Floating Orb at the bottom (Reflex Arc Voice Agent)
-            // Inject ViewModel
-            // [REMOVED] Duplicate Orb from Dashboard content. Access via MainShell Nav Bar.
         }
     }
 

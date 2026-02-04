@@ -13,6 +13,9 @@ import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.decodeFromString
+import com.mursaline.kaironex.features.campaign.*
 
 /**
  * 📊 APPWRITE STATS REPOSITORY
@@ -40,13 +43,81 @@ import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import com.mursaline.kaironex.core.AppConfig
 
+import com.mursaline.kaironex.agents.genesis.StudentProfile
+import kotlinx.serialization.encodeToString
+import io.ktor.client.request.patch
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import io.ktor.client.request.parameter
+import com.mursaline.kaironex.brain.ThoughtStreamItem
+
+import com.mursaline.kaironex.features.campaign.CampaignState
+
 class AppwriteStatsRepository(
     private val brainClient: BrainApiClient,
     private val httpClient: HttpClient,
     private val userId: String
 ) {
 
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true; encodeDefaults = true }
+
+    /**
+     * Fetch the latest thought directly from Appwrite Database.
+     */
+    suspend fun getLatestThought(): ThoughtStreamItem? {
+        val url = "${AppConfig.Appwrite.ENDPOINT}/databases/${AppConfig.Appwrite.DATABASE_ID}/collections/${AppConfig.Collections.THOUGHT_SIGNATURES}/documents"
+        return try {
+            val response = httpClient.get(url) {
+                header("X-Appwrite-Project", AppConfig.Appwrite.PROJECT_ID)
+                if (AppConfig.Appwrite.API_KEY.isNotBlank()) {
+                    header("X-Appwrite-Key", AppConfig.Appwrite.API_KEY)
+                }
+                // Appwrite REST API query format (v1.4+)
+                parameter("queries[0]", """{"method":"equal","attribute":"userId","values":["$userId"]}""")
+                parameter("queries[1]", """{"method":"orderDesc","attribute":"${'$'}createdAt"}""")
+                parameter("queries[2]", """{"method":"limit","values":[1]}""")
+            }
+
+            if (response.status.value == 200) {
+                val bodyText = response.bodyAsText()
+                val root = json.parseToJsonElement(bodyText).jsonObject
+                val documents = root["documents"]?.jsonArray
+                
+                documents?.firstOrNull()?.let { doc ->
+                    val obj = doc.jsonObject
+                    
+                    // Try to extract thought text
+                    var thoughtText = "Thinking..."
+                    val reasoning = obj["reasoning_trace"]?.jsonPrimitive?.contentOrNull
+                    if (!reasoning.isNullOrBlank()) {
+                        // Sometimes it's a JSON list string, sometimes plain text
+                        thoughtText = if (reasoning.startsWith("[")) {
+                             try {
+                                 val list = json.parseToJsonElement(reasoning).jsonArray
+                                 list.lastOrNull()?.jsonPrimitive?.content ?: "..."
+                             } catch(e:Exception) { reasoning.take(150) }
+                        } else {
+                             reasoning.take(150)
+                        }
+                    }
+
+                    ThoughtStreamItem(
+                        agent = obj["agentType"]?.jsonPrimitive?.contentOrNull ?: "System",
+                        thought = thoughtText,
+                        confidence = obj["confidence"]?.jsonPrimitive?.floatOrNull ?: 0.5f
+                    )
+                }
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            println("❌ Get Latest Thought Error: ${e.message}")
+            null
+        }
+    }
 
     // Cached state from backend
     private val _userState = MutableStateFlow<UserStateResponse?>(null)
@@ -57,6 +128,10 @@ class AppwriteStatsRepository(
 
     private val _moreStats = MutableStateFlow(StatsProvider.getMoreStats())
     val moreStats: StateFlow<MoreStats> = _moreStats.asStateFlow()
+
+    // NEW: Campaign State
+    private val _campaignState = MutableStateFlow(CampaignState())
+    val campaignState: StateFlow<CampaignState> = _campaignState.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -71,13 +146,16 @@ class AppwriteStatsRepository(
         _isLoading.value = true
 
         try {
+            // 1. Fetch User State
             val state = fetchUserState()
             _userState.value = state
 
             if (state != null) {
-                // 2. Parse the state JSON
                 parseUserState(state)
             }
+            
+            // 2. Fetch Campaign State (Separate Collection)
+            fetchCampaignState()
 
             _lastSyncTime.value = System.currentTimeMillis()
         } catch (e: Exception) {
@@ -123,6 +201,166 @@ class AppwriteStatsRepository(
         }
     }
 
+    /**
+     * Save/Update user profile to Appwrite.
+     * This triggers the Brain function if configured.
+     */
+    /**
+     * Save/Update user profile to Appwrite.
+     * This triggers the Brain function if configured.
+     * Implements UPSERT: Tries to Update, if 404, Create.
+     */
+    suspend fun saveUserProfile(profile: StudentProfile): Boolean {
+        val profileJsonString = json.encodeToString(profile)
+        val dataPayload = buildJsonObject {
+            put("data", buildJsonObject {
+                put("studentprofile_json", profileJsonString)
+                put("userId", userId) // Ensure userId is also in the data
+            })
+        }
+
+        return try {
+            // 1. Try UPDATE (Patch)
+            val updateUrl = "${AppConfig.Appwrite.ENDPOINT}/databases/${AppConfig.Appwrite.DATABASE_ID}/collections/${AppConfig.Collections.USERS}/documents/$userId"
+            
+            val updateResponse = httpClient.patch(updateUrl) {
+                header("X-Appwrite-Project", AppConfig.Appwrite.PROJECT_ID)
+                if (AppConfig.Appwrite.API_KEY.isNotBlank()) {
+                    header("X-Appwrite-Key", AppConfig.Appwrite.API_KEY)
+                }
+                header("Content-Type", "application/json")
+                setBody(dataPayload)
+            }
+
+            if (updateResponse.status.value in 200..299) {
+                refreshAll()
+                return true
+            } else if (updateResponse.status.value == 404) {
+                // 2. Document not found -> CREATE (Post)
+                println("⚠️ User doc not found (404), creating new document for $userId...")
+                
+                val createUrl = "${AppConfig.Appwrite.ENDPOINT}/databases/${AppConfig.Appwrite.DATABASE_ID}/collections/${AppConfig.Collections.USERS}/documents"
+                
+                val createPayload = buildJsonObject {
+                    put("documentId", userId)
+                    put("data", buildJsonObject {
+                         put("studentprofile_json", profileJsonString)
+                         put("userId", userId)
+                         // Initialize empty state
+                         put("studentState_json", "{}") 
+                    })
+                }
+
+                val createResponse = httpClient.post(createUrl) {
+                    header("X-Appwrite-Project", AppConfig.Appwrite.PROJECT_ID)
+                    if (AppConfig.Appwrite.API_KEY.isNotBlank()) {
+                        header("X-Appwrite-Key", AppConfig.Appwrite.API_KEY)
+                    }
+                    header("Content-Type", "application/json")
+                    setBody(createPayload)
+                }
+
+                if (createResponse.status.value in 200..299) {
+                    println("✅ Created new user document for $userId")
+                    refreshAll()
+                    return true
+                } else {
+                    println("❌ Failed to create user profile: ${createResponse.status} - ${createResponse.bodyAsText()}")
+                    return false
+                }
+            } else {
+                println("❌ Failed to update profile appwrite: ${updateResponse.status} - ${updateResponse.bodyAsText()}")
+                return false
+            }
+        } catch (e: Exception) {
+            println("❌ Error saving profile to Appwrite: ${e.message}")
+            e.printStackTrace()
+            false
+        }
+    }
+
+    /**
+     * Update a specific field in the profile (for Voice Agents).
+     */
+    /**
+     * Update a specific field in the profile (for Voice Agents).
+     */
+    suspend fun updateProfileField(field: String, value: String): Boolean {
+        return updateProfileGeneric { current ->
+            when(field) {
+                "name" -> current.copy(name = value)
+                "university" -> current.copy(university = value)
+                "major" -> current.copy(major = value)
+                "currentCgpa" -> current.copy(currentCgpa = value)
+                "targetCgpa" -> current.copy(targetCgpa = value)
+                "semester" -> current.copy(semester = value)
+                "totalSemesters" -> current.copy(totalSemesters = value)
+                
+                // International
+                "isInternationalStudent" -> current.copy(isInternationalStudent = value.toBoolean())
+                "homeCountry" -> current.copy(homeCountry = value)
+                "currentCountry" -> current.copy(currentCountry = value)
+                "visaStatus" -> current.copy(visaStatus = value)
+                
+                // Work/Finances
+                "hasJob" -> current.copy(hasJob = value.toBoolean())
+                "jobDescription" -> current.copy(jobDescription = value)
+                "jobSchedule" -> current.copy(jobSchedule = value)
+                "jobImportance" -> current.copy(jobImportance = value)
+                "financialStatus" -> current.copy(financialStatus = value)
+                
+                // Psych
+                "learningStyle" -> current.copy(learningStyle = value)
+                "productivityKiller" -> current.copy(productivityKiller = value)
+                "preferredResources" -> current.copy(preferredResources = value)
+                "dailyFocusCapacity" -> current.copy(dailyFocusCapacity = value)
+                "energyPreference" -> current.copy(energyPreference = value) // chronotype
+                "workPreference" -> current.copy(workPreference = value)
+                "environmentType" -> current.copy(environmentType = value)
+                
+                // Ambition
+                "targetRole" -> current.copy(targetRole = value)
+                "targetIndustry" -> current.copy(targetIndustry = value)
+                "stabilityPreference" -> current.copy(stabilityPreference = value)
+                "allowedWorkHours" -> current.copy(allowedWorkHours = value.toIntOrNull())
+                
+                else -> current
+            }
+        }
+    }
+
+    /**
+     * Update a list field in the profile.
+     */
+    suspend fun updateProfileListField(field: String, list: List<String>): Boolean {
+        return updateProfileGeneric { current ->
+            when(field) {
+                "skills" -> current.copy(skills = list)
+                "valueDrivers" -> current.copy(valueDrivers = list)
+                else -> current
+            }
+        }
+    }
+
+    private suspend fun updateProfileGeneric(transform: (StudentProfile) -> StudentProfile): Boolean {
+        val state = fetchUserState() ?: return false
+        val profileString = state.profile ?: "{}"
+        
+        try {
+            val currentProfile = try {
+                json.decodeFromString<StudentProfile>(profileString)
+            } catch (e: Exception) {
+                StudentProfile()
+            }
+            
+            val updatedProfile = transform(currentProfile)
+            return saveUserProfile(updatedProfile)
+        } catch (e: Exception) {
+            println("❌ Error updating profile: ${e.message}")
+            return false
+        }
+    }
+
     private suspend fun fetchUserState(): UserStateResponse? {
         return try {
             val url = "${AppConfig.Appwrite.ENDPOINT}/databases/${AppConfig.Appwrite.DATABASE_ID}/collections/${AppConfig.Collections.USERS}/documents/$userId"
@@ -137,7 +375,7 @@ class AppwriteStatsRepository(
             val docJson = json.parseToJsonElement(response.bodyAsText()).jsonObject
             
             val stateString = docJson["studentState_json"]?.jsonPrimitive?.contentOrNull
-            val profileString = docJson["profile_json"]?.jsonPrimitive?.contentOrNull
+            val profileString = docJson["studentprofile_json"]?.jsonPrimitive?.contentOrNull
             
             val stateMap: Map<String, String> = if (stateString != null) {
                 try {
@@ -157,12 +395,16 @@ class AppwriteStatsRepository(
         } catch (e: Exception) {
             println("⚠️ Error fetching state from Appwrite: ${e.message}")
             if (AppConfig.useMockData) {
-                // Fallback to mock if needed, or maybe BrainApiClient was doing something else?
-                // For now, return null.
+                // Fallback to mock
                 null
             } else {
+                println("⚠️ Request Failed") 
                 null
             }
+        } catch (e: Exception) {
+            println("❌ Get Latest Thought Error: ${e.message}")
+            e.printStackTrace()
+            null
         }
     }
 
@@ -260,15 +502,42 @@ class AppwriteStatsRepository(
                 )
             }
 
+            // DERIVE CALIBRATION FROM PROFILE (Client-Side Immediate Unlock)
+            // We check if the user has a valid profile (Uni + Skills/Job) to consider them "Calibrated"
+            var isCalibrated = false
+            val profileStr = state.profile
+            if (profileStr != null) {
+                try {
+                    val p = json.decodeFromString<StudentProfile>(profileStr)
+                    // Calibration Condition: Must have University set AND (Skills added OR Job set)
+                    isCalibrated = !p.university.isNullOrBlank() && (p.skills.isNotEmpty() || p.hasJob == true)
+                } catch(e: Exception) { 
+                     // Fallback to checking campaign flag if profile parse fails
+                     isCalibrated = campaignJson?.get("is_calibrated")?.jsonPrimitive?.booleanOrNull ?: false
+                }
+            } else {
+                 isCalibrated = campaignJson?.get("is_calibrated")?.jsonPrimitive?.booleanOrNull ?: false
+            }
+
             // Parse campaign specifics
             campaignJson?.let { campaign ->
                 val skillProgress = campaign["skill_progress"]?.jsonPrimitive?.floatOrNull ?: 0.58f
-
+                
                 _moreStats.value = _moreStats.value.copy(
                     campaign = _moreStats.value.campaign.copy(
-                        skillsProgress = skillProgress
+                        skillsProgress = skillProgress,
+                        isCalibrated = isCalibrated
                     )
                 )
+            } ?: run {
+                // If campaignJson is null BUT we have calibration (from profile), update stats
+                if (isCalibrated) {
+                    _moreStats.value = _moreStats.value.copy(
+                        campaign = _moreStats.value.campaign.copy(
+                            isCalibrated = true
+                        )
+                    )
+                }
             }
 
             // Parse radius specifics
@@ -334,7 +603,189 @@ class AppwriteStatsRepository(
         }
         return "Kairo"
     }
-}
 
-// Extension to safely parse int from string
-private fun String.toIntOrNull(): Int? = try { this.toInt() } catch (e: Exception) { null }
+    // Extension to safely parse int from string
+    private fun String.toIntOrNull(): Int? = try { this.toInt() } catch (e: Exception) { null }
+    
+    /**
+     * Fetch dedicated Campaign State (Skill Tree, Quest Board, Armory).
+     */
+    private suspend fun fetchCampaignState() {
+        try {
+            val collectionId = "campaign_state"
+            
+            // First try to get by document ID (if userId is used as document ID)
+            val directUrl = "${AppConfig.Appwrite.ENDPOINT}/databases/${AppConfig.Appwrite.DATABASE_ID}/collections/$collectionId/documents/$userId"
+
+            val directResponse = httpClient.get(directUrl) {
+                header("X-Appwrite-Project", AppConfig.Appwrite.PROJECT_ID)
+                if (AppConfig.Appwrite.API_KEY.isNotBlank()) {
+                    header("X-Appwrite-Key", AppConfig.Appwrite.API_KEY)
+                }
+            }
+
+            if (directResponse.status.value == 200) {
+                parseCampaignDocument(directResponse.bodyAsText())
+                return
+            }
+
+            // Fallback: Query by userId field using proper Appwrite query format
+            val url = "${AppConfig.Appwrite.ENDPOINT}/databases/${AppConfig.Appwrite.DATABASE_ID}/collections/$collectionId/documents"
+            
+            val response = httpClient.get(url) {
+                header("X-Appwrite-Project", AppConfig.Appwrite.PROJECT_ID)
+                if (AppConfig.Appwrite.API_KEY.isNotBlank()) {
+                    header("X-Appwrite-Key", AppConfig.Appwrite.API_KEY)
+                }
+                // Appwrite REST API query format (v1.4+)
+                parameter("queries[0]", """{"method":"equal","attribute":"userId","values":["$userId"]}""")
+                parameter("queries[1]", """{"method":"limit","values":[1]}""")
+            }
+
+            if (response.status.value == 200) {
+                val docJson = json.parseToJsonElement(response.bodyAsText()).jsonObject
+                val documents = docJson["documents"]?.jsonArray
+                
+                documents?.firstOrNull()?.let { doc ->
+                    parseCampaignDocument(doc.toString())
+                }
+            } else {
+                val errorBody = response.bodyAsText()
+                println("⚠️ Campaign State Error (${response.status}): $errorBody")
+            }
+        } catch (e: Exception) {
+            println("❌ Fetch Campaign State Failed: ${e.message}")
+        }
+    }
+
+    private fun parseCampaignDocument(documentJson: String) {
+        try {
+            val obj = json.parseToJsonElement(documentJson).jsonObject
+
+            // Decode internal JSON strings
+            val skillTreeStr = obj["skill_tree_json"]?.jsonPrimitive?.contentOrNull
+            val questBoardStr = obj["quest_board_json"]?.jsonPrimitive?.contentOrNull
+            val armoryStr = obj["the_armory_json"]?.jsonPrimitive?.contentOrNull
+            val simulacrumStr = obj["simulacrum_data_json"]?.jsonPrimitive?.contentOrNull
+
+            // Parse into data classes
+            val skills = if (skillTreeStr != null) {
+                try { json.decodeFromString<List<com.mursaline.kaironex.features.campaign.SkillNode>>(skillTreeStr) } catch(e:Exception) { emptyList() }
+            } else emptyList()
+
+            val quests = if (questBoardStr != null) {
+                try { json.decodeFromString<List<com.mursaline.kaironex.features.campaign.Quest>>(questBoardStr) } catch(e:Exception) { emptyList() }
+            } else emptyList()
+
+            val armory = if (armoryStr != null) {
+                try { json.decodeFromString<com.mursaline.kaironex.features.campaign.ArmoryState>(armoryStr) } catch(e:Exception) { com.mursaline.kaironex.features.campaign.ArmoryState() }
+            } else com.mursaline.kaironex.features.campaign.ArmoryState()
+
+            val simulacrum = if (simulacrumStr != null) {
+                try { json.decodeFromString<com.mursaline.kaironex.features.campaign.SimulacrumState>(simulacrumStr) } catch(e:Exception) { com.mursaline.kaironex.features.campaign.SimulacrumState() }
+            } else com.mursaline.kaironex.features.campaign.SimulacrumState()
+
+            _campaignState.value = CampaignState(
+                skillTree = skills,
+                questBoard = quests,
+                armory = armory,
+                simulacrum = simulacrum
+            )
+        } catch (e: Exception) {
+            println("❌ Parse Campaign Document Failed: ${e.message}")
+        }
+    }
+
+    /**
+     * Verify and Initialize all user state tables.
+     * This implements the "Get or Create" pattern.
+     */
+    suspend fun initializeUserTables() {
+        // 1. Campaign State
+        ensureDocument(
+            collectionId = "campaign_state", // AppConfig.Collections.CAMPAIGN_STATE
+            defaultData = buildJsonObject {
+                put("userId", userId)
+                put("skill_tree_json", "[]")
+                put("quest_board_json", "[]")
+                put("the_armory_json", "{}")
+                put("simulacrum_data_json", "{}")
+            }
+        )
+        
+        // 2. Vitality State - Using CORRECT schema columns
+        ensureDocument(
+            collectionId = "vitality_state", // AppConfig.Collections.VITALITY_STATE
+            defaultData = buildJsonObject {
+                put("userId", userId)
+                // Correct columns from schema: bio_fuel_json, regen_mode_json, resource_monitor_json, bill_splitter_json
+                put("bio_fuel_json", "{\"energy_level\":75,\"hydration\":\"good\",\"caffeine_intake\":0}")
+                put("regen_mode_json", "{\"status\":\"active\",\"next_break_in\":45}")
+                put("resource_monitor_json", "{}")
+                put("bill_splitter_json", "{}")
+            }
+        )
+        
+        // 3. Radius State - Using CORRECT schema columns
+        ensureDocument(
+            collectionId = "radius_state", // AppConfig.Collections.RADIUS_STATE
+            defaultData = buildJsonObject {
+                put("userId", userId)
+                put("user_location", "Unknown") // Required by Schema (string, not coords)
+                // Correct columns: safehouse_json, local_scan_json, admin_protocol_json, signal_decoder_json, social_graph_json
+                put("safehouse_json", "[]")
+                put("local_scan_json", "{}")
+                put("admin_protocol_json", "{}")
+                put("signal_decoder_json", "{}")
+                put("social_graph_json", "[]")
+            }
+        )
+    }
+
+    /**
+     * Check if document exists, create if missing (Idempotent).
+     */
+    private suspend fun ensureDocument(collectionId: String, defaultData: kotlinx.serialization.json.JsonObject) {
+        val url = "${AppConfig.Appwrite.ENDPOINT}/databases/${AppConfig.Appwrite.DATABASE_ID}/collections/$collectionId/documents/$userId"
+        
+        try {
+            // 1. Check Existence (GET)
+            val check = httpClient.get(url) {
+                header("X-Appwrite-Project", AppConfig.Appwrite.PROJECT_ID)
+                if (AppConfig.Appwrite.API_KEY.isNotBlank()) header("X-Appwrite-Key", AppConfig.Appwrite.API_KEY)
+            }
+            
+            if (check.status.value == 200) {
+                // Exists - Do nothing (Preserve data)
+                return
+            }
+            
+            // 2. Not Found - Create (POST)
+            if (check.status.value == 404) {
+                println("✨ Initializing missing table: $collectionId")
+                
+                val createUrl = "${AppConfig.Appwrite.ENDPOINT}/databases/${AppConfig.Appwrite.DATABASE_ID}/collections/$collectionId/documents"
+                
+                val payload = buildJsonObject {
+                    put("documentId", userId) 
+                    put("data", defaultData)
+                }
+                
+                val create = httpClient.post(createUrl) {
+                    header("X-Appwrite-Project", AppConfig.Appwrite.PROJECT_ID)
+                    if (AppConfig.Appwrite.API_KEY.isNotBlank()) header("X-Appwrite-Key", AppConfig.Appwrite.API_KEY)
+                    header("Content-Type", "application/json")
+                    setBody(payload)
+                }
+                
+                if (create.status.value !in 200..299) {
+                     println("❌ Failed to init $collectionId: ${create.bodyAsText()}")
+                }
+            } else {
+                 println("⚠️ Error checking $collectionId: ${check.status} - ${check.bodyAsText()}")
+            }
+        } catch (e: Exception) {
+            println("❌ Error ensuring table $collectionId: ${e.message}")
+        }
+    }
+}
