@@ -35,83 +35,91 @@ def run_campaign_agent(db_helper, payload, context):
     user_id = payload.get('userId')
     if not user_id: return context.res.json({"error": "No userId"})
 
-    context.log(f"⚔️ Campaign Brain processing for {user_id}")
-    db_helper.log_heartbeat(user_id, f"EVENT:CAMPAIGN | {payload.get('type')}")
-    
-    ai = GeminiClient()
-    event_type = payload.get('type')
-    
-    campaign_data = {}
-    response_actions = []
+    try:
+        context.log(f"⚔️ Campaign Brain processing for {user_id}")
+        db_helper.log_heartbeat(user_id, f"EVENT:CAMPAIGN | {payload.get('type')}")
+        
+        ai = GeminiClient()
+        event_type = payload.get('type')
+        
+        campaign_data = {}
+        response_actions = []
 
-    if event_type == 'new_goal':
-        goal_title = payload.get('goal_title', 'New Project')
-        
-        prompt = f"User set a goal: {goal_title}. Give 1 strategic first step."
-        strategy = ai.generate_response(prompt)
-        
-        # Create thought signature
-        thought_id = _create_thought_signature(user_id, "campaign", prompt, strategy, db_helper, context)
-        if thought_id:
-            response_actions.append(f"thought:{thought_id}")
-        
-        db_helper.create_intervention(
-            user_id, "NEW_GOAL", strategy, strategy="PROACTIVE"
-        )
-        response_actions.append("intervention_created")
-        
-        campaign_data["active_quest"] = goal_title
-        campaign_data["current_strategy"] = strategy
-
-    elif event_type == 'schedule_update':
-        campaign_data["schedule_status"] = "Optimized"
-
-    elif event_type == 'campaign_calibration':
-        # CALIBRATION LOGIC
-        # 1. Generate Skill Tree
-        target_role = payload.get('data', {}).get('targetRole', 'General Tech')
-        skills = payload.get('data', {}).get('skills', 'Python, Java')
-        
-        prompt_skills = f"""
-        Act as a Senior Career Strategist. Create a Skill Tree for a student aiming for '{target_role}' with current skills: {skills}.
-        Return ONLY a JSON array of objects. No markdown.
-        Schema: [{{ "id": "s1", "name": "Skill Name", "level": 1, "status": "unlocked", "description": "Short desc", "parent": null, "xpCost": 100, "icon": "📚" }}]
-        Generate 10-20 distinct nodes (Foundation to Advanced).
-        """
-        try:
-            skill_json_str = ai.generate_response(prompt_skills).strip().replace("```json", "").replace("```", "")
-            # Validate JSON
-            json.loads(skill_json_str) 
-            campaign_data["skill_tree_json"] = skill_json_str
-            response_actions.append("skill_tree_generated")
-        except Exception as e:
-            context.log(f"⚠️ Skill Tree Gen Error: {e}")
+        if event_type == 'new_goal':
+            goal_title = payload.get('goal_title', 'New Project')
             
-        # 2. Generate Quest Board
-        prompt_quests = f"""
-        Create 3 starter quests for a student targeting '{target_role}'.
-        Return ONLY a JSON array of objects. No markdown.
-        Schema: [{{ "id": "q1", "title": "Quest Title", "type": "SKILL", "description": "Actionable task", "xp": 50, "status": "active", "tags": ["Strategy"] }}]
-        Types: SKILL, APPLICATION, NETWORKING.
-        """
-        try:
-            quest_json_str = ai.generate_response(prompt_quests).strip().replace("```json", "").replace("```", "")
-            json.loads(quest_json_str)
-            campaign_data["quest_board_json"] = quest_json_str
-            response_actions.append("quest_board_generated")
-        except Exception as e:
-            context.log(f"⚠️ Quest Gen Error: {e}")
+            prompt = f"User set a goal: {goal_title}. Give 1 strategic first step."
+            strategy = ai.generate_response(prompt)
+            
+            # Create thought signature
+            thought_id = _create_thought_signature(user_id, "campaign", prompt, strategy, db_helper, context)
+            if thought_id:
+                response_actions.append(f"thought:{thought_id}")
+            
+            db_helper.create_intervention(
+                user_id, "NEW_GOAL", strategy, strategy="PROACTIVE"
+            )
+            response_actions.append("intervention_created")
+            
+            campaign_data["active_quest"] = goal_title
+            campaign_data["current_strategy"] = strategy
 
-        # 3. Mark as Calibrated
-        campaign_data["is_calibrated"] = True
-        
-        # 4. Thought Signature
-        _create_thought_signature(user_id, "campaign", f"Calibrate for {target_role}", "Generated initial Skill Tree and Quests.", db_helper, context)
+        elif event_type == 'schedule_update':
+            campaign_data["schedule_status"] = "Optimized"
 
-    # --- SYNC: UPDATE CACHE ---
-    if campaign_data:
-        update_payload = {"campaign": campaign_data}
-        db_helper.update_state_cache(user_id, update_payload)
+        elif event_type == 'campaign_calibration':
+            # CALIBRATION LOGIC
+            # 1. Generate Skill Tree
+            target_role = payload.get('data', {}).get('targetRole', 'General Tech')
+            skills = payload.get('data', {}).get('skills', 'Python, Java')
+            
+            prompt_skills = f"""
+            Act as a Senior Career Strategist. Create a Skill Tree for a student aiming for '{target_role}' with current skills: {skills}.
+            Return ONLY a JSON array of objects. No markdown.
+            Schema: [{{ "id": "s1", "name": "Skill Name", "level": 1, "status": "unlocked", "description": "Short desc", "parent": null, "xpCost": 100, "icon": "📚" }}]
+            Generate 10-20 distinct nodes (Foundation to Advanced).
+            """
+            try:
+                skill_json_str = ai.generate_response(prompt_skills).strip().replace("```json", "").replace("```", "")
+                # Validate JSON
+                json.loads(skill_json_str) 
+                campaign_data["skill_tree_json"] = skill_json_str
+                response_actions.append("skill_tree_generated")
+            except Exception as e:
+                context.log(f"⚠️ Skill Tree Gen Error: {e}")
+                
+            # 2. Generate Quest Board
+            prompt_quests = f"""
+            Create 3 starter quests for a student targeting '{target_role}'.
+            Return ONLY a JSON array of objects. No markdown.
+            Schema: [{{ "id": "q1", "title": "Quest Title", "type": "SKILL", "description": "Actionable task", "xp": 50, "status": "active", "tags": ["Strategy"] }}]
+            Types: SKILL, APPLICATION, NETWORKING.
+            """
+            try:
+                quest_json_str = ai.generate_response(prompt_quests).strip().replace("```json", "").replace("```", "")
+                json.loads(quest_json_str)
+                campaign_data["quest_board_json"] = quest_json_str
+                response_actions.append("quest_board_generated")
+            except Exception as e:
+                context.log(f"⚠️ Quest Gen Error: {e}")
+
+            # 3. Mark as Calibrated
+            campaign_data["is_calibrated"] = True
+            
+            # 4. Thought Signature
+            _create_thought_signature(user_id, "campaign", f"Calibrate for {target_role}", "Generated initial Skill Tree and Quests.", db_helper, context)
+
+        # --- SYNC: UPDATE CACHE ---
+        if campaign_data:
+            update_payload = {"campaign": campaign_data}
+            db_helper.update_state_cache(user_id, update_payload)
+
+        context.log(f"✅ Campaign processed. Actions: {response_actions}")
+        return context.res.json({"status": "campaign_synced", "actions": response_actions})
+
+    except Exception as e:
+        context.error(f"❌ Campaign Agent Error: {e}")
+        return context.res.json({"error": str(e)}, 500)
 
 def scan_daily_jobs(db_helper, user_id, context):
     """
