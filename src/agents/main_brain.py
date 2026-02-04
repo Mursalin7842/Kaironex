@@ -86,6 +86,12 @@ def run_supervisor(db_helper, context):
             except Exception as e:
                 context.log(f"Date parse error for {user_id}: {e}")
 
+        # 2. RUN DAILY JOB SCAN (Campaign Agent Delegation)
+        from .campaign_brain import scan_daily_jobs
+        if scan_daily_jobs(db_helper, user_id, context):
+            interventions_triggered += 1
+            context.log(f"⚔️ Daily Job Scan completed for {user_id}")
+
     context.log(f"✅ Supervisor complete. Interventions: {interventions_triggered}, Thoughts: {thoughts_created}")
     return context.res.json({
         "status": "supervisor_complete",
