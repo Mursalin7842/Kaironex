@@ -1,14 +1,5 @@
 """
-🧭 RADIUS AGENT (v2.0)
-======================
-The Habitat Manager and Spatial Context Engine.
-
-This agent handles:
-- Location-based context switching
-- Environment mode detection
-- Safehouse management (home, library, etc.)
-- Context-aware notifications
-- Environmental wellness
+The Radius Agent: Habitat Manager.
 """
 
 import json

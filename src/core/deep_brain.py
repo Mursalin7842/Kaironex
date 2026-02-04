@@ -225,13 +225,13 @@ class DeepBrain:
             
             # Extract reasoning trace from thinking
             reasoning_trace = []
-            if hasattr(response, 'candidates') and response.candidates:
+            if hasattr(response, 'candidates') and response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
                 for part in response.candidates[0].content.parts:
                     if hasattr(part, 'thought') and part.thought:
                         reasoning_trace.append(part.text)
             
             # Calculate confidence based on response quality
-            confidence = self._calculate_confidence(content, reasoning_trace)
+            confidence = self._calculate_confidence(content or "", reasoning_trace)
             
         except Exception as e:
             error_msg = str(e)
@@ -251,7 +251,7 @@ class DeepBrain:
             context_hash=context_hash,
             reasoning_trace=reasoning_trace,
             confidence=confidence,
-            action_output=content[:500]
+            action_output=(content or "")[:500]
         )
         
         # Persist thought signature

@@ -1,28 +1,6 @@
 """
-🧬 VITALITY AGENT (v2.0)
-========================
-The Bio-Fuel Manager and Resource Monitor.
-
-This agent handles:
-- Sleep/energy tracking (Bio-Fuel system)
-- Recovery mode activation (Regen Mode)
-- Resource monitoring (money, time budgets)
-- Bill splitting and financial wellness
-- Physical activity integration
-
-CRITICAL SAFETY RULE:
-This agent uses GAMIFIED LANGUAGE ONLY.
-No medical terminology. No health advice.
-Think of it as managing a video game character's stats.
-
-Terminology Mapping:
-- Health → Stamina/Energy
-- Sleep → Recharge/Rest Cycle
-- Exercise → Training/Activity XP
-- Stress → Pressure/Load
-- Doctor → "Beyond my scope"
+The Vitality Agent: Bio-Fuel Manager.
 """
-
 import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta

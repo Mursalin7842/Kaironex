@@ -506,7 +506,72 @@ Be specific and actionable.
         elif drive_link:
             extracted_text = f"[Google Drive Link: {drive_link}] (Content not yet accessible)"
 
+        # 1. Fetch Context (The "Chain of Knowledge")
+        # User requested flexibility: Fetch more, but manage tokens safely.
+        prior_resources = self.db.get_user_resources(user_id, limit=50) 
+        kb_context = ""
+        total_chars = 0
+        MAX_CONTEXT_CHARS = 30000 # Approx 7-8k tokens, leaving room for file content
+        
+        if prior_resources:
+            kb_context = "\n--- EXISTING KNOWLEDGE BASE (Connect new content to these) ---\n"
+            for r in prior_resources:
+                 # Skip the current file if it appears in list
+                 if r.get('title') != title and r.get('summaryText'):
+                     entry = f"• {r.get('title')}: {r.get('summaryText')[:400]}...\n"
+                     
+                     if total_chars + len(entry) > MAX_CONTEXT_CHARS:
+                         kb_context += "\n... [Older resources omitted to fit context window] ..."
+                         break
+                         
+                     kb_context += entry
+                     total_chars += len(entry)
+                     
+        print(f"🧠 [DEBUG] Constructed Knowledge Base Context: {len(prior_resources)} files, {total_chars} chars.")
+
+        # 1.5 Fetch Internal State (Looking at own tables first as requested)
+        try:
+            # We use get_latest_thought from db_helper (assuming it exists or we use raw query if needed)
+            # Since db_helper.get_latest_thought isn't fully visible, I'll use a rigorous try-catch
+            # But wait, I added get_latest_thought to AppwriteStatsRepository (Kotlin), not Python db_helper?
+            # I need to verify db_helper has get_latest_thought. I saw it in Step 1335? 
+            # Actually, I haven't added get_latest_thought to Python db_helper yet.
+            # I should add it there OR just use a raw list_rows call here for safety.
+            # I will use raw list_rows for robustness.
+            latest_thoughts = self.db.db.list_rows(
+                database_id=self.db.APPWRITE_DATABASE_ID,
+                table_id=self.db.THOUGHT_SIGNATURES_COL,
+                queries=[
+                    self.db.Query.equal('userId', user_id),
+                    self.db.Query.order_desc('$createdAt'),
+                    self.db.Query.limit(1)
+                ]
+            )
+            latest_thought_row = latest_thoughts['rows'][0] if latest_thoughts['rows'] else None
+            
+            user_doc = self.db.get_user_doc(user_id)
+            student_state = json.loads(user_doc.get('studentState_json', '{}')) if user_doc else {}
+            concept_map = student_state.get('campaign', {}).get('concept_mastery', {})
+        except Exception as e:
+            print(f"⚠️ Internal State Fetch Error: {e}")
+            latest_thought_row = None
+            concept_map = {}
+
+        internal_context = ""
+        if latest_thought_row:
+             try:
+                 sig_json = json.loads(latest_thought_row.get('signature_json', '{}'))
+                 t_text = sig_json.get('thought', 'Processing...')
+                 internal_context += f"\n--- CURRENT AGENT STATE (Your Memory) ---\nLast Thought: {t_text}\n"
+             except:
+                 pass
+        
+        if concept_map:
+             # Contextualize mastery
+             internal_context += f"\n--- KNOWN CONCEPTS (Do not re-explain these) ---\n{json.dumps(concept_map, indent=2)[:1500]}\n"
+
         # 2. Analyze with Gemini
+        print(f"🧠 [DEBUG] Sending request to Gemini (Deep Mode)... API Key Configured: {bool(self.engine.api_key)}")
         prompt = f"""
 NEW LEARNING RESOURCE UPLOADED:
 Title: {title}
@@ -514,31 +579,62 @@ Type: {resource_type}
 Subject: {subject}
 Source: {source}
 
+{internal_context}
+
 EXTRACTED CONTENT PREVIEW:
 {extracted_text[:3000]}... [truncated]
 
-TASK:
-1. Analyze this content summary.
-2. Explain specifically how this helps with {subject}.
-3. Create 3 quiz questions based on this content immediately to test pre-knowledge.
-4. Suggest a study technique best suited for this material.
+{kb_context}
 
-Keep response helpful and actionable.
+TASK:
+1. DETAILED ANALYSIS: Summarize the key concepts in this document.
+2. RELEVANCE: Explain specifically how this helps with {subject}.
+3. CONNECTIONS: Explicitly mention how this new file relates to the "Existing Knowledge Base" above (e.g. "Extends the concept from [File X]").
+4. QUIZ: Create 3 quiz questions based on this content.
+5. STRATEGY: Suggest a study technique.
+
+Keep the summary DETAILED (approx 300 words) as this will be saved as the permanent knowledge record.
 """
-        
-        response = await self.engine.reason(ReasoningRequest(
-            prompt=prompt,
-            user_id=user_id,
-            agent="study",
-            mode=ReasoningMode.DEEP # Deep analysis for new content
-        ))
-        
-        # VISIBILITY: Store the thought so it appears on Dashboard
-        if response.thought_signature:
-            await self.thoughts.store(response.thought_signature)
+        try:
+            response = await self.engine.reason(ReasoningRequest(
+                prompt=prompt,
+                user_id=user_id,
+                agent="study",
+                mode=ReasoningMode.DEEP # Deep analysis for new content
+            ))
             
-        # VISIBILITY: Update dashboard activity feed immediately
-        self.log_heartbeat(user_id, f"📚 Analyzed {title}: {response.content[:60]}...")
+            print(f"🧠 [DEBUG] Gemini Response: Success. Len: {len(response.content)}")
+            print(f"🧠 [DEBUG] Thought Signature: {'PRESENT' if response.thought_signature else 'MISSING'}")
+            
+            # VISIBILITY: Store the thought so it appears on Dashboard
+            if response.thought_signature:
+                print(f"🧠 [DEBUG] Storing Thought: {response.thought_signature.thought_id}")
+                store_result = await self.thoughts.store(response.thought_signature)
+                print(f"🧠 [DEBUG] Store Result: {store_result}")
+
+            # PERSISTENCE: Save the detailed analysis back to the Resource Row
+            doc_id = payload.get('$id')
+            if doc_id:
+                print(f"🧠 [DEBUG] Saving Analysis to Resource Row: {doc_id}")
+                self.db.update_resource_summary(doc_id, response.content)
+                
+            # VISIBILITY: Update dashboard activity feed immediately
+            self.log_heartbeat(user_id, f"📚 Analyzed {title}: {response.content[:60]}...")
+        except Exception as e:
+            print(f"❌ Gemini Reasoning Error: {e}")
+            # Fallback for response content in case of error
+            response_content = f"Error analyzing resource: {str(e)}"
+            response_thought_id = None
+            # Log heartbeat even on error
+            self.log_heartbeat(user_id, f"📚 Failed to analyze {title}: {str(e)[:60]}...")
+            
+            return AgentResult(
+                success=False,
+                response=response_content,
+                thought_id=response_thought_id,
+                actions_taken=["resource_analysis_failed"],
+                state_updates={}
+            )
         
         # Update state cache
         resource_update = {

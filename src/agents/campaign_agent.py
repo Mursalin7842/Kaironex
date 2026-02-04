@@ -1,21 +1,5 @@
 """
-⚔️ CAMPAIGN AGENT (v2.0)
-========================
-The Career Strategist and Marathon Goal Tracker.
-
-This agent handles:
-- Goal decomposition and planning
-- Career strategy formulation
-- Long-running "marathon" campaigns
-- Schedule optimization
-- The Armory (skills and tools)
-- Simulacrum (interview simulation)
-
-Key Features:
-- Marathon Mode: Goals that span days/weeks
-- Thought Signatures: Every decision is traceable
-- Skill Tree: Progressive capability unlocks
-- Quest Board: Active objectives and rewards
+The Campaign Agent: Career strategist and marathon goal tracker.
 """
 
 import json
@@ -101,6 +85,7 @@ Remember: You're not just planning tasks—you're building a career."""
             'armory_unlock': self._handle_armory_unlock,
             'simulacrum_start': self._handle_simulacrum_start,
             'simulacrum_response': self._handle_simulacrum_response,
+            'campaign_calibration': self._handle_campaign_calibration,
         }
         
         handler = handlers.get(event_type, self._handle_generic)
@@ -631,6 +616,136 @@ Format:
         # Fallback: take first paragraph
         paragraphs = response.split('\n\n')
         return paragraphs[0] if paragraphs else response[:200]
+
+
+    async def _handle_campaign_calibration(self, user_id: str, payload: Dict[str, Any], context: StateContext) -> AgentResult:
+        """
+        Handle the Campaign Calibration event (Student Career Setup).
+        Generates:
+        1. Campaign Strategy (Overview)
+        2. Skill Tree (Roadmap)
+        3. Quest Board (Job Search / Networking Quests)
+        4. The Armory (Tools/Resumes)
+        """
+        # 1. Parsing Context (From payload and potential DB profile)
+        # We try to get the profile from DB first if payload is sparse
+        db_profile = self.db.get_student_profile(user_id) or {}
+        
+        major = payload.get('major') or db_profile.get('major', 'General Studies')
+        target_role = payload.get('targetRole') or 'Technology Professional'
+        target_industry = payload.get('targetIndustry') or 'Tech'
+        tech_skill = float(payload.get('techSkill', 5.0))
+        
+        # 2. Fetch Deep Context
+        study_context = self.db.get_user_doc(user_id) # Using this as proxy for now
+        
+        # 3. Construct Calibration Prompt
+        system_instruction = f"""
+        You are the Head of Strategy for Kaironex.
+        A student has calibrated their career profile. You must generate their specific Campaign assets.
+        
+        PROFILE:
+        - Major: {major}
+        - Target Role: {target_role} in {target_industry}
+        - Current Tech Skill: {tech_skill}/10
+        
+        MISSION:
+        Generate the initial JSON data for their Campaign State.
+        
+        1. **Skill Tree**: A dependency graph of 5-7 skills needed for {target_role}.
+           - Root skill (Level 1) -> Intermediate (Level 2) -> Advanced (Level 3).
+           - Status: 'unlocked' (first one), 'locked' (others).
+           
+        2. **Quest Board**: 3 initial quests.
+           - Mix of: Networking, Skill Building, and Market Research.
+           - Difficulty: Easy to Start.
+           
+        3. **The Armory**: Initial toolbox.
+           - Default: "Basic Resume Template" (Unlocked).
+           - Recommend 1 locked item related to their industry (e.g. "GitHub Portfolio Builder").
+           
+        OUTPUT JSON:
+        {{
+            "strategy": {{
+                "name": "Strategy Name",
+                "description": "2 sentence strategy summary."
+            }},
+            "skill_tree": [
+                {{ "id": "skill_1", "name": "Skill Name", "level": 1, "status": "unlocked", "description": "Start here.", "parent": null }},
+                {{ "id": "skill_2", "name": "Next Skill", "level": 2, "status": "locked", "description": "...", "parent": "skill_1" }}
+            ],
+            "quest_board": [
+                {{ "id": "dst_q1", "title": "Quest Title", "type": "RESEARCH", "xp": 100, "status": "active", "description": "..." }}
+            ],
+            "armory": {{
+                "inventory": [
+                    {{ "id": "item_resume_basic", "name": "Standard Resume", "type": "TEMPLATE", "status": "equipped" }}
+                ],
+                "blueprints": [
+                    {{ "id": "bp_portfolio", "name": "Portfolio Builder", "cost_xp": 500 }}
+                ]
+            }}
+        }}
+        """
+        
+        try:
+            # 4. Reason
+            response = await self.engine.reason(ReasoningRequest(
+                prompt="Initialize Campaign Assets based on profile.",
+                user_id=user_id,
+                agent="campaign",
+                mode=ReasoningMode.DEEP,
+                system_instruction=system_instruction
+            ))
+            
+            # 5. Parse
+            assets = json.loads(response.content)
+            
+            # 6. Save to CAMPAIGN_STATE table
+            campaign_data = {
+                "skill_tree": assets.get("skill_tree", []),
+                "quest_board": assets.get("quest_board", []),
+                "armory": assets.get("armory", {}),
+                "simulacrum": {"active": False} # Reset simulacrum
+            }
+            
+            self.db.update_campaign_state(user_id, campaign_data)
+            
+            # 7. Also update 'users' table cache for quick access (Legacy/App compatibility)
+            # We explicitly set 'is_calibrated' to True here
+            legacy_update = {
+                "campaign": {
+                    "is_calibrated": True,
+                    "active_goal": target_role,
+                    "strategy_name": assets.get("strategy", {}).get("name"),
+                    "strategy_desc": assets.get("strategy", {}).get("description"),
+                    "last_updated": datetime.now().isoformat()
+                }
+            }
+            self.db.update_state_cache(user_id, legacy_update)
+            
+            # 8. Log Thought
+            skills = campaign_data["skill_tree"]
+            quests = campaign_data["quest_board"]
+            
+            self.db.create_thought_signature(
+                user_id=user_id,
+                thought_data={
+                    "agent": "campaign",
+                    "thought": f"Generated Campaign Assets for {target_role}",
+                    "confidence": 0.98,
+                    "reasoning_trace": ["Calibration completed", f"Generated {len(skills)} skills", f"Generated {len(quests)} quests"]
+                }
+            )
+            
+            return AgentResult(
+                success=True,
+                response="Campaign Assets Generated.",
+                state_updates={"campaign": campaign_data}
+            )
+            
+        except Exception as e:
+            return AgentResult(success=False, response=f"Calibration failed: {str(e)}", error=str(e))
 
 
 # Factory function for compatibility with existing code

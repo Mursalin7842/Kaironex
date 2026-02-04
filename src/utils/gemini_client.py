@@ -86,7 +86,7 @@ class GeminiClient:
                 config=config
             )
             
-            return response.text
+            return response.text or ""
             
         except Exception as e:
             error_msg = str(e)
@@ -140,7 +140,7 @@ class GeminiClient:
             function_calls = []
             text_parts = []
             
-            if response.candidates:
+            if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
                 for part in response.candidates[0].content.parts:
                     if hasattr(part, 'function_call') and part.function_call:
                         function_calls.append({
@@ -204,7 +204,7 @@ Cite sources when possible.
                 # Note: Google Search grounding may need separate quota
             )
             
-            return response.text
+            return response.text or ""
             
         except Exception as e:
             error_msg = str(e)

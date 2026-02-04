@@ -16,6 +16,11 @@ class KairoDB:
         self.client.set_key(APPWRITE_API_KEY)
         self.db = TablesDB(self.client)
         self.storage = Storage(self.client)
+        
+        # Expose config for agents
+        self.APPWRITE_DATABASE_ID = APPWRITE_DATABASE_ID
+        self.THOUGHT_SIGNATURES_COL = THOUGHT_SIGNATURES_COL
+        self.Query = Query
 
     # =========================================================================
     # AGENT MEMORY - The Living Memory of Each User's Agent State
@@ -108,25 +113,27 @@ class KairoDB:
     # =========================================================================
     def create_thought_signature(self, user_id, thought_data):
         """
-        Store a thought signature in the thought_signatures table.
-        
-        Args:
-            user_id: The user ID
-            thought_data: Dict with thought_id, agent, context_hash, reasoning_trace, 
-                          confidence, tool_calls, action_output, parent_signature
+        Store a thought signature matching strict Appwrite Schema.
         """
         try:
+            # Construct signature_json as required by schema
+            signature_blob = {
+                'context_hash': thought_data.get('context_hash'),
+                'thought': thought_data.get('thought'),
+                'tool_calls': thought_data.get('tool_calls'),
+                'action_output': thought_data.get('action_output')
+            }
+
             row_data = {
                 'userId': user_id,
                 'thoughtId': thought_data.get('thought_id', ''),
-                'agent': thought_data.get('agent', ''),
-                'timestamp': thought_data.get('timestamp', datetime.datetime.now().isoformat()),
-                'context_hash': thought_data.get('context_hash', '')[:999],
-                'reasoning_trace': json.dumps(thought_data.get('reasoning_trace', []))[:9999],
+                'sessionId': thought_data.get('session_id', f"sess_{datetime.datetime.now().strftime('%Y%m%d')}"), # Fallback session
+                'agentType': thought_data.get('agent', 'general'),
+                'signature_json': json.dumps(signature_blob)[:999999],
                 'confidence': float(thought_data.get('confidence', 0.0)),
-                'tool_calls': json.dumps(thought_data.get('tool_calls', []))[:999],
-                'action_output': thought_data.get('action_output', '')[:9999],
-                'parent_signature': thought_data.get('parent_signature', '')
+                'reasoning_trace': json.dumps(thought_data.get('reasoning_trace', []))[:999999],
+                'parent_thought_id': thought_data.get('parent_signature', ''),
+                'created_at': thought_data.get('timestamp', datetime.datetime.now().isoformat())
             }
             
             self.db.create_row(APPWRITE_DATABASE_ID, THOUGHT_SIGNATURES_COL, 'unique()', row_data)
@@ -143,7 +150,7 @@ class KairoDB:
         try:
             queries = [Query.equal('userId', user_id), Query.order_desc('$createdAt'), Query.limit(1)]
             if agent:
-                queries.insert(1, Query.equal('agent', agent))
+                queries.insert(1, Query.equal('agentType', agent)) # Updated column name
                 
             results = self.db.list_rows(
                 database_id=APPWRITE_DATABASE_ID,
@@ -163,25 +170,20 @@ class KairoDB:
     # =========================================================================
     def create_marathon_session(self, session_data):
         """
-        Create a new marathon session.
-        
-        Args:
-            session_data: Dict with session_id, user_id, agent_type, goal, status,
-                          steps, progress, thought_chain, estimated_completion
+        Create a new marathon session matching strict Appwrite Schema.
         """
         try:
             row_data = {
-                'session_id': session_data.get('session_id', ''),
+                'sessionId': session_data.get('session_id', ''),
                 'userId': session_data.get('user_id', ''),
-                'agent_type': session_data.get('agent_type', ''),
-                'goal_json': json.dumps(session_data.get('goal', {}))[:9999],
+                'agentType': session_data.get('agent_type', ''),
+                'goal_json': json.dumps(session_data.get('goal', {}))[:999999],
                 'status': session_data.get('status', 'pending'),
-                'steps_json': json.dumps(session_data.get('steps', []))[:99999],
-                'current_step_index': session_data.get('current_step_index', 0),
+                'state_json': json.dumps(session_data.get('state', {}))[:999999], # Added state_json
+                'thought_chain_json': json.dumps(session_data.get('thought_chain', []))[:999999],
                 'progress': float(session_data.get('progress', 0.0)),
-                'thought_chain': json.dumps(session_data.get('thought_chain', []))[:9999],
-                'estimated_completion': session_data.get('estimated_completion', ''),
-                'metadata_json': json.dumps(session_data.get('metadata', {}))[:9999]
+                'started_at': datetime.datetime.now().isoformat(),
+                'estimated_completion': session_data.get('estimated_completion', '')
             }
             
             self.db.create_row(APPWRITE_DATABASE_ID, MARATHON_SESSIONS_COL, 'unique()', row_data)
@@ -199,7 +201,7 @@ class KairoDB:
             results = self.db.list_rows(
                 database_id=APPWRITE_DATABASE_ID,
                 table_id=MARATHON_SESSIONS_COL,
-                queries=[Query.equal('session_id', session_id)]
+                queries=[Query.equal('sessionId', session_id)] # Key is sessionId
             )
             
             if results['total'] > 0:
@@ -208,7 +210,7 @@ class KairoDB:
                 # Convert complex fields to JSON
                 update_data = {}
                 for key, value in updates.items():
-                    if key in ['goal', 'steps', 'thought_chain', 'metadata']:
+                    if key in ['goal', 'state', 'thought_chain']:
                         update_data[f'{key}_json'] = json.dumps(value)
                     else:
                         update_data[key] = value
@@ -227,7 +229,7 @@ class KairoDB:
             results = self.db.list_rows(
                 database_id=APPWRITE_DATABASE_ID,
                 table_id=MARATHON_SESSIONS_COL,
-                queries=[Query.equal('session_id', session_id)]
+                queries=[Query.equal('sessionId', session_id)]
             )
             
             if results['total'] > 0:
@@ -259,23 +261,21 @@ class KairoDB:
     # =========================================================================
     def create_policy_episode(self, episode_data):
         """
-        Store a policy episode for reinforcement learning.
-        
-        Args:
-            episode_data: Dict with user_id, agent, trigger, state_before, action_taken,
-                          outcome, reward, state_after, thought_chain_summary
+        Store a policy episode matching strict Appwrite Schema.
         """
         try:
             row_data = {
+                'episodeId': episode_data.get('episode_id', f"ep_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"), # Generate ID if missing
                 'userId': episode_data.get('user_id', ''),
-                'agent': episode_data.get('agent', ''),
-                'trigger_event': episode_data.get('trigger', '')[:999],
-                'state_before_json': json.dumps(episode_data.get('state_before', {}))[:9999],
-                'action_taken': episode_data.get('action_taken', '')[:999],
-                'outcome': episode_data.get('outcome', '')[:999],
-                'reward': float(episode_data.get('reward', 0.0)),
-                'state_after_json': json.dumps(episode_data.get('state_after', {}))[:9999],
-                'thought_chain_summary': episode_data.get('thought_chain_summary', '')[:9999]
+                 # Note: Schema doesn't show 'agent' column in policy_episodes provided by user, 
+                 # but usually it should be there. Assuming strict schema from user input:
+                 # Columns: episodeId, userId, context_hash, action_taken, reward, timestamp
+                 # I will skip 'agent' if not in schema, but logical to include it.
+                 # User schema list: episodeId, userId, context_hash, action_taken, reward, timestamp
+                'context_hash': episode_data.get('context_hash', '')[:9999],
+                'action_taken': episode_data.get('action_taken', '')[:99999],
+                'reward': int(episode_data.get('reward', 0)), # Integer
+                'timestamp': datetime.datetime.now().isoformat()
             }
             
             self.db.create_row(APPWRITE_DATABASE_ID, POLICY_EPISODES_COL, 'unique()', row_data)
@@ -400,6 +400,38 @@ class KairoDB:
             print(f"❌ Count Resources Error: {e}")
             return 0
 
+    def get_user_resources(self, user_id, limit=20):
+        """Get list of user's resources for context."""
+        try:
+            results = self.db.list_rows(
+                database_id=APPWRITE_DATABASE_ID,
+                table_id=RESOURCES_COL,
+                queries=[
+                    Query.equal('userId', user_id),
+                    Query.order_desc('$createdAt'),
+                    Query.limit(limit)
+                ]
+            )
+            return results.get('rows', [])
+        except Exception as e:
+            print(f"❌ Get User Resources Error: {e}")
+            return []
+
+    def update_resource_summary(self, resource_id, summary_text):
+        """Update the summaryText field of a resource."""
+        try:
+            self.db.update_row(
+                APPWRITE_DATABASE_ID,
+                RESOURCES_COL,
+                resource_id,
+                {'summaryText': summary_text[:999999]}
+            )
+            print(f"✅ Resource Summary Updated: {resource_id}")
+            return True
+        except Exception as e:
+            print(f"❌ Resource Summary Update Error: {e}")
+            return False
+
     def get_file_content(self, file_id, bucket_id=None):
         """Downloads file content as bytes."""
         try:
@@ -407,4 +439,84 @@ class KairoDB:
             return self.storage.get_file_download(target_bucket, file_id)
         except Exception as e:
             print(f"❌ File Download Error: {e}")
+            return None
+
+    # =========================================================================
+    # CAMPAIGN STATE - Career & Game Progression
+    # =========================================================================
+    def update_campaign_state(self, user_id, campaign_data):
+        """
+        Updates the campaign_state table (Skill Tree, Quest Board, Armory).
+        """
+        try:
+            # 1. Check if row exists
+            results = self.db.list_rows(
+                database_id=self.APPWRITE_DATABASE_ID,
+                table_id=CAMPAIGN_STATE_COL,
+                queries=[self.Query.equal('userId', user_id)]
+            )
+            
+            # 2. Prepare Data (ensure JSON serialization)
+            data = {'userId': user_id}
+            if 'skill_tree' in campaign_data:
+                data['skill_tree_json'] = json.dumps(campaign_data['skill_tree'])[:999999]
+            if 'quest_board' in campaign_data:
+                data['quest_board_json'] = json.dumps(campaign_data['quest_board'])[:999999]
+            if 'armory' in campaign_data:
+                data['the_armory_json'] = json.dumps(campaign_data['armory'])[:999999]
+            if 'simulacrum' in campaign_data:
+                data['simulacrum_data_json'] = json.dumps(campaign_data['simulacrum'])[:999999]
+                
+            # 3. Update or Create
+            if results['total'] > 0:
+                doc_id = results['rows'][0]['$id']
+                self.db.update_row(self.APPWRITE_DATABASE_ID, CAMPAIGN_STATE_COL, doc_id, data)
+                print(f"🏰 Campaign State Updated for {user_id}")
+            else:
+                self.db.create_row(self.APPWRITE_DATABASE_ID, CAMPAIGN_STATE_COL, 'unique()', data)
+                print(f"🏰 Campaign State Created for {user_id}")
+                
+            return True
+        except Exception as e:
+            print(f"❌ Campaign State Error: {e}")
+            return False
+
+    def get_campaign_state(self, user_id):
+        """Fetch full campaign state."""
+        try:
+            results = self.db.list_rows(
+                database_id=self.APPWRITE_DATABASE_ID,
+                table_id=CAMPAIGN_STATE_COL,
+                queries=[self.Query.equal('userId', user_id)]
+            )
+            if results['total'] > 0:
+                row = results['rows'][0]
+                # Parse JSONs back to dicts
+                return {
+                    'skill_tree': json.loads(row.get('skill_tree_json') or '{}'),
+                    'quest_board': json.loads(row.get('quest_board_json') or '[]'),
+                    'armory': json.loads(row.get('the_armory_json') or '{}'),
+                    'simulacrum': json.loads(row.get('simulacrum_data_json') or '{}')
+                }
+            return {}
+        except Exception as e:
+            print(f"❌ Get Campaign State Error: {e}")
+            return {}
+
+    # =========================================================================
+    # STUDENT PROFILE - detailed bio
+    # =========================================================================
+    def get_student_profile(self, user_id):
+        """Fetch advanced student profile."""
+        try:
+            results = self.db.list_rows(
+                database_id=self.APPWRITE_DATABASE_ID,
+                table_id=STUDENT_PROFILES_COL,
+                queries=[self.Query.equal('userId', user_id)]
+            )
+            if results['total'] > 0:
+                return results['rows'][0]
+            return None
+        except Exception as e:
+            print(f"❌ Get Student Profile Error: {e}")
             return None
