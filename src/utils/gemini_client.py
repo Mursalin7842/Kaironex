@@ -51,7 +51,7 @@ class GeminiClient:
         max_tokens: int = 2048
     ) -> str:
         """
-        Generate a response using deep reasoning.
+        Generate a response using deep reasoning with retries.
         
         Args:
             prompt: The user prompt
@@ -62,42 +62,58 @@ class GeminiClient:
         Returns:
             Generated text response
         """
-        try:
-            # Build config with HIGH thinking for deep reasoning
-            config = types.GenerateContentConfig(
-                thinking_config=types.ThinkingConfig(
-                    thinking_budget=8192  # HIGH thinking
-                ),
-                temperature=0.7,
-                max_output_tokens=max_tokens
-            )
-            
-            # Add system instruction if provided
-            if system_instruction:
-                config.system_instruction = system_instruction
-            
-            # Build content
-            contents = prompt
-            
-            # Generate response
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=contents,
-                config=config
-            )
-            
-            return response.text or ""
-            
-        except Exception as e:
-            error_msg = str(e)
-            print(f"❌ Gemini Error: {error_msg}")
-            
-            # Handle rate limits gracefully
-            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
-                return "I need a moment to think. Please try again shortly."
-            
-            if "quota" in error_msg.lower():
-                return "I'm currently at capacity. Please try again in a few minutes."
+        import time
+        import random
+
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            try:
+                # Build config with HIGH thinking for deep reasoning
+                config = types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(
+                        thinking_budget=8192  # HIGH thinking
+                    ),
+                    temperature=0.7,
+                    max_output_tokens=max_tokens
+                )
+                
+                # Add system instruction if provided
+                if system_instruction:
+                    config.system_instruction = system_instruction
+                
+                # Google Search Grounding
+                if use_search:
+                    config.tools = [types.Tool(google_search=types.GoogleSearch())]
+                
+                # Build content
+                contents = prompt
+                
+                # Generate response
+                response = self.client.models.generate_content(
+                    model=self.model,
+                    contents=contents,
+                    config=config
+                )
+                
+                return response.text or ""
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"⚠️ Gemini Error (Attempt {attempt+1}/{max_retries}): {error_msg}")
+                
+                # Retry on transient errors
+                if "503" in error_msg or "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg or "overloaded" in error_msg.lower():
+                    if attempt < max_retries - 1:
+                        backoff = (2 ** attempt) + random.uniform(0.1, 1.0)
+                        print(f"⏳ Retrying in {backoff:.2f}s...")
+                        time.sleep(backoff)
+                        continue
+                
+                # If we're out of retries or it's a non-retriable error, handle specifically
+                if attempt == max_retries - 1:
+                    print(f"❌ Gemini Failed after {max_retries} attempts.")
+                    raise e # Propagate to caller (Campaign Brain) so fallback triggers logic
             
             return f"I encountered an issue: {error_msg}"
     

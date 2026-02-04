@@ -79,6 +79,18 @@ def run_campaign_agent(db_helper, payload, context):
             Schema: [{{ "id": "s1", "name": "Skill Name", "level": 1, "status": "unlocked", "description": "Short desc", "parent": null, "xpCost": 100, "icon": "📚" }}]
             Generate 10-20 distinct nodes (Foundation to Advanced).
             """
+            # Fallback Data
+            fallback_skill_tree = json.dumps([
+                { "id": "s1", "name": "Career Foundations", "level": 1, "status": "unlocked", "description": "Understand your career path basics.", "xpCost": 50, "icon": "🌱" },
+                { "id": "s2", "name": "Skill Acquisition", "level": 1, "status": "locked", "description": "Start learning core tools.", "parent": "s1", "xpCost": 100, "icon": "📚" },
+                { "id": "s3", "name": "Networking 101", "level": 1, "status": "locked", "description": "Connect with peers.", "parent": "s1", "xpCost": 100, "icon": "🤝" }
+            ])
+            
+            fallback_quests = json.dumps([
+                { "id": "q_init_1", "title": "Update Resume", "type": "APPLICATION", "description": "Ensure your CV is up to date.", "xp": 100, "status": "active", "tags": ["Foundation"] },
+                { "id": "q_init_2", "title": "Research Roles", "type": "RESEARCH", "description": "Look up 3 job descriptions.", "xp": 50, "status": "active", "tags": ["Strategy"] }
+            ])
+
             try:
                 skill_json_str = ai.generate_response(prompt_skills).strip().replace("```json", "").replace("```", "")
                 # Validate JSON
@@ -86,7 +98,9 @@ def run_campaign_agent(db_helper, payload, context):
                 campaign_data["skill_tree_json"] = skill_json_str
                 response_actions.append("skill_tree_generated")
             except Exception as e:
-                context.log(f"⚠️ Skill Tree Gen Error: {e}")
+                context.log(f"⚠️ Skill Tree Gen Error: {e} - Using Fallback")
+                campaign_data["skill_tree_json"] = fallback_skill_tree
+                response_actions.append("skill_tree_fallback")
                 
             # 2. Generate Quest Board
             prompt_quests = f"""
@@ -101,13 +115,21 @@ def run_campaign_agent(db_helper, payload, context):
                 campaign_data["quest_board_json"] = quest_json_str
                 response_actions.append("quest_board_generated")
             except Exception as e:
-                context.log(f"⚠️ Quest Gen Error: {e}")
+                context.log(f"⚠️ Quest Gen Error: {e} - Using Fallback")
+                campaign_data["quest_board_json"] = fallback_quests
+                response_actions.append("quest_board_fallback")
 
             # 3. Mark as Calibrated
             campaign_data["is_calibrated"] = True
             
-            # 4. Thought Signature
-            _create_thought_signature(user_id, "campaign", f"Calibrate for {target_role}", "Generated initial Skill Tree and Quests.", db_helper, context)
+            # 4. Thought Signature (Dynamic from AI Output)
+            st_len = len(json.loads(campaign_data.get("skill_tree_json", "[]")))
+            qb_len = len(json.loads(campaign_data.get("quest_board_json", "[]")))
+            
+            dynamic_response = f"Generated {st_len} Skill Nodes and {qb_len} Quests for {target_role}.\n"
+            dynamic_response += f"Sample: {campaign_data.get('skill_tree_json', '')[:50]}..."
+            
+            _create_thought_signature(user_id, "campaign", f"Calibrate for {target_role}", dynamic_response, db_helper, context)
 
         # --- SYNC: UPDATE CACHE ---
         if campaign_data:
@@ -219,8 +241,11 @@ def scan_daily_jobs(db_helper, user_id, context):
             data=update_data
         )
         
-        # Log Logic Intervention
-        _create_thought_signature(user_id, "campaign", f"Daily Job Scan: {target_role}", f"Found {len(new_quests)} new jobs.", db_helper, context)
+        # Log Logic Intervention (Dynamic Context)
+        job_titles = [q.get('title', 'Unknown Role') for q in new_quests[:3]]
+        scan_summary = f"Daily Job Scan: Found {len(new_quests)} listings for {target_role}. Top matches: {', '.join(job_titles)}."
+        
+        _create_thought_signature(user_id, "campaign", f"Scanning for {target_role} in {location}", scan_summary, db_helper, context)
         
         return True
 
