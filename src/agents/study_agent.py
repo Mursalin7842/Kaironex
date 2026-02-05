@@ -13,8 +13,9 @@ This agent handles:
 """
 
 import json
-from typing import Dict, Any, List
-from datetime import datetime
+import logging
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta
 
 from .base_agent import BaseAgent, AgentConfig, AgentResult
 from ..core.bicameral_engine import ReasoningMode, ReasoningRequest
@@ -90,6 +91,7 @@ Remember: You're optimizing for long-term retention and sustainable study habits
             'quiz_answer': self._handle_quiz_answer,
             'pressure_check': self._handle_pressure_check,
             'resource_ingestion': self._handle_resource_ingestion,
+            'schedule_request': self._handle_schedule_request,
         }
         
         handler = handlers.get(event_type, self._handle_focus_update)
@@ -660,6 +662,235 @@ Keep the summary DETAILED (approx 300 words) as this will be saved as the perman
             state_updates=resource_update
         )
     
+    async def _handle_schedule_request(
+        self,
+        user_id: str,
+        payload: Dict[str, Any],
+        context: StateContext
+    ) -> AgentResult:
+        """
+        Generate a "UniFlow" Progressive Schedule.
+        Logic: Walls (Constraints) -> Energy Mapping (Gaps) -> Cognitive Modes (Flow).
+        """
+        duration_days = int(payload.get('duration_days', 120))
+        
+        # 1. Fetch & Parse User Profile (Deep Context)
+        user_doc = self.db.get_user_doc(user_id)
+        
+        # Default Context
+        profile_str = "Role: University Student\nGoal: Academic Success"
+        constraints_str = "Constraints: Standard 9-5 classes."
+        
+        if user_doc:
+            try:
+                sp = json.loads(user_doc.get('studentprofile_json', '{}'))
+                
+                # A. Identity & Goals
+                profile_str = f"""
+                STUDENT PROFILE:
+                - Major: {sp.get('major', 'General')}
+                - Semester: {sp.get('semester', '1')}
+                - Target Role: {sp.get('targetRole', 'Professional')}
+                - Weaknesses/Skills: {', '.join(sp.get('skills', []))}
+                - Target CGPA: {sp.get('targetCgpa', 'N/A')}
+                """
+                
+                # B. The "Walls" (Hard Constraints)
+                walls = []
+                if sp.get('jobDescription'): walls.append(f"JOB: {sp.get('jobDescription')} ({sp.get('allowedWorkHours')} hrs/wk)")
+                if sp.get('commuteTime'): walls.append(f"COMMUTE: {sp.get('commuteTime')}")
+                # We assume Class Schedule is implied or generic if not in DB, 
+                # but "University" is a standard Wall 9-3 in the user's example.
+                
+                # C. Bio/Energy
+                routine = sp.get('routine_preferences', {})
+                bio_str = f"- Wake: {routine.get('wake_time', '07:00')}, Sleep: {routine.get('bed_time', '23:00')}"
+                if sp.get('energyPreference'): bio_str += f"\n- Peak Energy: {sp.get('energyPreference')}"
+                
+                constraints_str = f"""
+                HARD CONSTRAINTS ("THE WALLS"):
+                {chr(10).join(walls)}
+                {bio_str}
+                """
+                
+            except Exception as e:
+                print(f"⚠️ Profile Parse Warning: {e}")
+                pass
+
+        # 2. Fetch Resources (Syllabus Material)
+        all_resources = self.db.get_user_resources(user_id, limit=50)
+        resource_text = ""
+        known_subjects = set()
+        for r in all_resources:
+            title = r.get('title', 'Untitled')
+            subject = r.get('subject', 'General')
+            resource_text += f"- [{subject}] {title}\n"
+            known_subjects.add(subject)
+            
+        if not resource_text:
+            resource_text = "- No specific files. Assume Core Major Subjects."
+
+        # 3. UniFlow Generation Prompt
+        prompt = f"""
+        ACT AS: Kairo (AI Academic Strategist).
+        
+        MISSION: Design a "UniFlow" Semester Schedule for {duration_days} days.
+        
+        {profile_str}
+        
+        {constraints_str}
+        
+        COURSE MATERIALS:
+        {resource_text}
+        
+        Apply "UniFlow Logic" to design the Weekly Routine:
+        1. **Block Detection ("Walls")**: Account for Work/Commute/Classes. These are RED ZONES.
+        2. **Energy Mapping ("Gaps")**: 
+           - If there is a gap < 2 hours between Walls (e.g., between Uni and Job), DO NOT SCHEDULE STUDY.
+           - Schedule "Recovery" or "Life" tasks instead to prevent burnout.
+        3. **Cognitive Mode Matching**:
+           - **High Flow (Deep Work)**: Schedule complex topics (Coding, Math) on Free Days or large blocks (Sunday/Wednesday PM).
+           - **Passive/Moderate**: Schedule review/admin tasks on busy days (Tuesday/Thursday).
+        
+        TASK:
+        Generate a JSON object with:
+        A. `weekly_routine`: A 7-day template (Day 0=Mon, 6=Sun) adhering to UniFlow Logic.
+        B. `syllabus_map`: A list of progressive topics (16+ weeks) for each Subject found in materials.
+        
+        OUTPUT FORMAT (Strict JSON):
+        {{
+            "weekly_routine": [
+                {{
+                    "day_offset": 0,
+                    "title": "University Classes",
+                    "startTime": "09:00",
+                    "endTime": "15:00",
+                    "type": "class",
+                    "description": "CS455, CS450"
+                }},
+                {{
+                    "day_offset": 0,
+                    "title": "Recovery / Commute",
+                    "startTime": "15:00",
+                    "endTime": "17:00",
+                    "type": "lifestyle",
+                    "description": "Eat & Travel (No Study)"
+                }},
+                {{
+                    "day_offset": 6,
+                    "title": "Deep Work",
+                    "startTime": "10:00",
+                    "endTime": "13:00",
+                    "type": "study",
+                    "subject": "CS460" (Must match syllabus_map key)
+                }}
+            ],
+            "syllabus_map": {{
+                "CS460": ["Week 1: Bresenham Line", "Week 2: Midpoint Circle", ...],
+                "CS450": ["Week 1: Intro", "Week 2: MLP", ...]
+            }}
+        }}
+        """
+        
+        print(f"🗓️ Generating UniFlow Schedule...")
+        
+        try:
+            # Custom System Instruction
+            system_instruction = """You are a JSON Generator. Output only the requested JSON object."""
+
+            response = await self.engine.reason(ReasoningRequest(
+                prompt=prompt,
+                user_id=user_id,
+                agent="study",
+                mode=ReasoningMode.DEEP,
+                system_instruction=system_instruction
+            ))
+            
+            # 4. Parse JSON
+            import re
+            content = response.content.strip()
+            print(f"🔍 AI RAW RESPONSE ({len(content)} chars)")
+            
+            if content.startswith("```json"): content = content[7:]
+            if content.endswith("```"): content = content[:-3]
+            
+            try:
+                data = json.loads(content)
+            except json.JSONDecodeError:
+                match = re.search(r'\{[\s\S]*\}', content)
+                if match:
+                    data = json.loads(match.group())
+                else:
+                    raise ValueError("Failed to parse JSON")
+            
+            routine = data.get('weekly_routine', [])
+            syllabus = data.get('syllabus_map', {})
+            
+            # 5. Merge Logic (Python)
+            final_tasks = []
+            self.db.clear_future_schedule(user_id)
+            
+            current_date = datetime.now()
+            start_date = current_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            for day_i in range(duration_days):
+                date_cursor = start_date + timedelta(days=day_i)
+                weekday_cursor = date_cursor.weekday() # 0=Mon
+                week_num = (day_i // 7) + 1
+                
+                daily_items = [x for x in routine if x.get('day_offset') == weekday_cursor]
+                
+                for item in daily_items:
+                    try:
+                        t_start = datetime.strptime(item['startTime'], "%H:%M")
+                        t_end = datetime.strptime(item['endTime'], "%H:%M")
+                        dt_start = date_cursor.replace(hour=t_start.hour, minute=t_start.minute)
+                        dt_end = date_cursor.replace(hour=t_end.hour, minute=t_end.minute)
+                        if dt_end < dt_start: dt_end += timedelta(days=1)
+                    except: continue
+                    
+                    title = item.get('title', 'Activity')
+                    subject = item.get('subject')
+                    desc = item.get('description', '')
+                    
+                    # Inject Progressive Syllabus
+                    if item.get('type') == 'study' and subject and subject in syllabus:
+                        topic_list = syllabus[subject]
+                        topic_idx = min(week_num - 1, len(topic_list) - 1)
+                        if topic_idx >= 0:
+                            topic = topic_list[topic_idx]
+                            # Clean "Week X"
+                            topic = re.sub(r'^Week \d+[:\s-]*', '', topic)
+                            desc = f"Topic: {topic}" 
+                            title = f"{subject}: {topic}"
+                    
+                    # Combine title and desc for storage if DB has no desc col
+                    full_title = title
+                    if desc and desc not in title:
+                        full_title = f"{title} ({desc})"
+                    
+                    task_data = {
+                        'userId': user_id,
+                        'title': full_title[:255], # Truncate for safety
+                        'startTime': dt_start.isoformat(),
+                        'endTime': dt_end.isoformat(),
+                        'status': 'pending',
+                        'type': item.get('type', 'lifestyle'),
+                        'priority': 5
+                    }
+                    final_tasks.append(task_data)
+            
+            # Save
+            count = 0
+            for t in final_tasks:
+                if self.db.create_schedule_task(t): count += 1
+            
+            return AgentResult(success=True, response=f"Generated UniFlow Plan: {count} blocks.", actions_taken=[f"created_{count}_tasks"])
+
+        except Exception as e:
+            print(f"❌ Schedule Error: {e}")
+            return AgentResult(success=False, response=str(e), error=str(e))
+
     def _get_timestamp(self) -> str:
         """Get current timestamp string."""
         from datetime import datetime

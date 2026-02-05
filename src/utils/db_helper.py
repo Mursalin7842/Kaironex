@@ -520,3 +520,77 @@ class KairoDB:
         except Exception as e:
             print(f"❌ Get Student Profile Error: {e}")
             return None
+
+    # =========================================================================
+    # SCHEDULE - Study Plan Management
+    # =========================================================================
+    def create_schedule_task(self, task_data):
+        """
+        Create a single schedule task.
+        """
+        try:
+            # Ensure required fields
+            if 'taskId' not in task_data:
+                task_data['taskId'] = f"task_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{os.urandom(4).hex()}"
+            
+            # Default values if missing
+            if 'status' not in task_data: task_data['status'] = 'pending'
+            if 'type' not in task_data: task_data['type'] = 'study'
+            if 'is_flexible' not in task_data: task_data['is_flexible'] = True
+            if 'priority' not in task_data: task_data['priority'] = 5
+            
+            self.db.create_row(
+                APPWRITE_DATABASE_ID, 
+                SCHEDULE_COL, 
+                'unique()', 
+                task_data
+            )
+            # print(f"📅 Task Created: {task_data['title']}") # Reduce verbosity
+            return True
+        except Exception as e:
+            print(f"❌ Create Task Error: {e}")
+            return False
+
+    def get_schedule(self, user_id, limit=1000):
+        """Get user's schedule."""
+        try:
+            results = self.db.list_rows(
+                database_id=APPWRITE_DATABASE_ID,
+                table_id=SCHEDULE_COL,
+                queries=[
+                    self.Query.equal('userId', user_id),
+                    self.Query.order_asc('startTime'),
+                    self.Query.limit(limit)
+                ]
+            )
+            return results.get('rows', [])
+        except Exception as e:
+            print(f"❌ Get Schedule Error: {e}")
+            return []
+
+    def clear_future_schedule(self, user_id):
+        """Clear upcoming schedule tasks (e.g. before regenerating)."""
+        try:
+            # 1. List future tasks
+            now_iso = datetime.datetime.now().isoformat()
+            results = self.db.list_rows(
+                database_id=APPWRITE_DATABASE_ID,
+                table_id=SCHEDULE_COL,
+                queries=[
+                    self.Query.equal('userId', user_id),
+                    self.Query.greater_than('startTime', now_iso),
+                    self.Query.limit(100) # Appwrite limit
+                ]
+            )
+            
+            # 2. Delete them
+            count = 0
+            for row in results.get('rows', []):
+                self.db.delete_row(APPWRITE_DATABASE_ID, SCHEDULE_COL, row['$id'])
+                count += 1
+                
+            print(f"🧹 Cleared {count} future tasks for {user_id}")
+            return True
+        except Exception as e:
+            print(f"❌ Clear Schedule Error: {e}")
+            return False

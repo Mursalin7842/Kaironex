@@ -141,7 +141,7 @@ def main(context):
         context.log(f"🧪 Console test / Generic trigger detected | Event: {event_type}")
         
         # Route based on payload type
-        if event_type in ['session_start', 'session_end', 'focus_update', 'quiz_request', 'IN_PROGRESS', 'COMPLETED', 'resource_ingestion']:
+        if event_type in ['session_start', 'session_end', 'focus_update', 'quiz_request', 'IN_PROGRESS', 'COMPLETED', 'resource_ingestion', 'schedule_request']:
             context.log("📚 Routing to Study Agent (console test)")
             return run_study_agent(db, payload, context)
         elif event_type in ['sleep_update', 'meal_logged', 'health_check']:

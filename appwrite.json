@@ -20,10 +20,10 @@
         "databases.697cb20f00110f6d7530.collections.users.documents.*.update"
       ],
       "schedule": "*/15 * * * *",
-      "timeout": 300,
+      "timeout": 900,
       "enabled": true,
       "logging": true,
-      "entrypoint": "src/main.py",
+      "entrypoint": "main.py",
       "commands": "pip install -r requirements.txt",
       "path": "."
     }
