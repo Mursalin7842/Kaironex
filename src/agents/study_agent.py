@@ -13,6 +13,7 @@ Capabilities:
 - Knowledge gatekeeper (quiz validation)
 """
 
+from typing import Optional, Dict, Any, List
 import json
 import logging
 import io
@@ -152,22 +153,54 @@ OUTPUT FORMAT:
         
         print(f"📚 Ingesting {len(all_resources)} files for Campaign Generation...")
         
+        failed_files = []
+        
         for r in all_resources:
             # Use summary if available to save time/tokens
             if r.get('summaryText'):
                 resource_text += f"\n=== [Summary] {r.get('title')} ===\n{r.get('summaryText')}\n"
             else:
                 file_id = r.get('resourceId') or r.get('fileId')
+                drive_link = r.get('driveLink')
+                explicit_bucket = None
+                
+                # Smart Link Parsing: If we have a URL, trust the URL's bucket/file data
+                if drive_link and '/buckets/' in drive_link:
+                    try:
+                        import re
+                        # Regex to extract: .../buckets/[BUCKET]/files/[FILE]
+                        match = re.search(r'/buckets/([^/]+)/files/([^/?]+)', drive_link)
+                        if match:
+                            explicit_bucket = match.group(1)
+                            # Only override file_id if it was missing or matches the link
+                            # We trust the link's bucket implicitly.
+                            print(f"🔗 Derived Bucket from link: {explicit_bucket}")
+                    except Exception as e:
+                        print(f"⚠️ Link parsing failed: {e}")
+
                 if file_id and not file_id.startswith('link_'):
                     try:
-                        content = await self._fetch_resource_content(file_id, r.get('type', 'pdf'))
-                        resource_text += f"\n=== [Raw Content] {r.get('title')} ===\n{content[:8000]}\n"
+                        content = await self._fetch_resource_content(file_id, r.get('type', 'pdf'), bucket_id=explicit_bucket)
+                        
+                        # Strict Check: Abort if file is missing or empty
+                        if content.startswith("[Error") or content.startswith("[Empty"):
+                            print(f"❌ Strict Mode: File missing - {r.get('title')}")
+                            failed_files.append(r.get('title', 'Unknown File'))
+                        else:
+                            resource_text += f"\n=== [Raw Content] {r.get('title')} ===\n{content[:8000]}\n"
+                            
                     except Exception as e:
                         print(f"⚠️ Failed to read content for {file_id}: {e}")
+                        failed_files.append(r.get('title', 'Unknown File'))
             
             if len(resource_text) > MAX_CHARS:
                 resource_text += "\n[...Context Limit Reached...]"
                 break
+
+        # CRITITAL: Abort if files are missing
+        if failed_files:
+            error_msg = f"Schedule Generation Aborted. Missing Files: {', '.join(failed_files)}. Please re-upload them."
+            return AgentResult(success=False, response=error_msg, error=error_msg)
 
         if not resource_text: resource_text = "No specific syllabi found. Use standard university curriculum for this Major."
 
@@ -413,7 +446,7 @@ OUTPUT FORMAT:
         except Exception as e:
             return AgentResult(success=False, response=str(e))
 
-    async def _fetch_resource_content(self, file_id: str, resource_type: str = 'pdf') -> str:
+    async def _fetch_resource_content(self, file_id: str, resource_type: str = 'pdf', bucket_id: Optional[str] = None) -> str:
         """
         SMART DOWNLOADER:
         - Reads Start (Syllabus) AND End (Schedule) of PDFs.
@@ -423,7 +456,7 @@ OUTPUT FORMAT:
         except ImportError: return "[pypdf missing]"
 
         try:
-            file_bytes = self.db.get_file_content(file_id)
+            file_bytes = self.db.get_file_content(file_id, bucket_id=bucket_id)
             if not file_bytes: return "[Empty File]"
             
             text = ""

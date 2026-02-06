@@ -232,7 +232,9 @@ Analyze this situation and determine the best course of action.
             reward = 100 if result.success else -50
             
             # Get database ID safely
-            db_id = getattr(self.db.db, '_database_id', None) or 'default'
+            db_id = self.db.APPWRITE_DATABASE_ID
+            if not db_id:
+                db_id = 'kaironex-v2'  # Fallback to known ID
             
             self.db.db.create_row(
                 db_id,
