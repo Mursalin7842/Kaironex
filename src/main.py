@@ -103,7 +103,10 @@ def main(context):
         
         # Ingest the resource first (Study Brain)
         payload['type'] = 'resource_ingestion'
-        study_result = run_study_agent(db, payload, context)
+        # DISABLING PER-FILE TRIGGER to avoid double-cost. 
+        # The Schedule Agent will process these files in batch when user clicks "Finish".
+        # study_result = run_study_agent(db, payload, context)
+        study_result = {"success": True, "message": "Ingestion skipped for batch processing."}
         
         # Note: We rely on the Study Agent to process the file.
         # We do NOT trigger Campaign Agent automatically here to prevent:
