@@ -180,7 +180,7 @@ OUTPUT FORMAT:
 
                 if file_id and not file_id.startswith('link_'):
                     try:
-                        content = await self._fetch_resource_content(file_id, r.get('type', 'pdf'), bucket_id=explicit_bucket)
+                        content = await self._fetch_resource_content(file_id, r.get('type', 'pdf'), bucket_id=explicit_bucket, file_name=r.get('title'))
                         
                         # Strict Check: Abort if file is missing or empty
                         if content.startswith("[Error") or content.startswith("[Empty"):
@@ -446,17 +446,27 @@ OUTPUT FORMAT:
         except Exception as e:
             return AgentResult(success=False, response=str(e))
 
-    async def _fetch_resource_content(self, file_id: str, resource_type: str = 'pdf', bucket_id: Optional[str] = None) -> str:
+    async def _fetch_resource_content(self, file_id: str, resource_type: str = 'pdf', bucket_id: Optional[str] = None, file_name: Optional[str] = None) -> str:
         """
         SMART DOWNLOADER:
         - Reads Start (Syllabus) AND End (Schedule) of PDFs.
         - Detects scanned files.
+        - Self-healing: Finds real file ID if DB has wrong ID.
         """
         try: import pypdf
         except ImportError: return "[pypdf missing]"
 
         try:
+            # 1. Try Direct ID Download
             file_bytes = self.db.get_file_content(file_id, bucket_id=bucket_id)
+            
+            # 2. Fallback: Search by Name (Self-Healing)
+            if not file_bytes and bucket_id and file_name:
+                print(f"⚠️ Direct download failed for {file_id}. Searching for '{file_name}'...")
+                real_id = self.db.find_real_file_id(bucket_id, file_name)
+                if real_id:
+                    file_bytes = self.db.get_file_content(real_id, bucket_id=bucket_id)
+            
             if not file_bytes: return "[Empty File]"
             
             text = ""

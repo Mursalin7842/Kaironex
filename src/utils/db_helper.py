@@ -436,6 +436,33 @@ class KairoDB:
             print(f"❌ Resource Summary Update Error: {e}")
             return False
 
+    
+    def find_real_file_id(self, bucket_id, file_name):
+        """
+        Fallback: Find the ACTUAL file ID by searching for the filename.
+        Useful if the DB has a mismatched/custom ID.
+        """
+        try:
+            # List files searching for the name
+            # NOTE: Removed 'limit' arg as it might be invalid for this SDK version.
+            # Using search only.
+            result = self.storage.list_files(
+                bucket_id=bucket_id,
+                search=file_name
+            )
+            
+            print(f"🔎 Search for '{file_name}' returned {result.get('total')} results.")
+            
+            if result['total'] > 0:
+                real_id = result['files'][0]['$id']
+                print(f"✅ FOUND Real File ID: {real_id}")
+                return real_id
+            return None
+            return None
+        except Exception as e:
+            print(f"⚠️ File Search Error: {e}")
+            return None
+
     def get_file_content(self, file_id, bucket_id=None):
         """Downloads file content as bytes."""
         try:
