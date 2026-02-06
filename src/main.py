@@ -27,21 +27,14 @@ from .agents.radius_agent import run_radius_agent
 from .config import validate_config
 
 
-def main(context):
+async def main(context):
     """
     Main entry point for Appwrite Functions.
     Routes requests to appropriate agent based on trigger event.
     """
-    import asyncio
-    
-    # Run the async main loop
-    # If the runtime calls 'main' synchronously but provides a loop in background,
-    # we should try to return a coroutine if the runtime supports it, or run sync.
-    # Given the error "loop already running", the runtime likely calls main() and expects a return,
-    # OR calls main() which is expected to be async.
-    # The traceback showed: "output = await asyncio.wait_for(userModule.main(context)...)"
-    # This implies main can be a coroutine.
-    return _async_main(context)
+    # The runtime expects an async function if we want to await internal calls.
+    # By making this async, the runtime's "await userModule.main(context)" will work correctly.
+    return await _async_main(context)
 
 async def _async_main(context):
     # Validate configuration
