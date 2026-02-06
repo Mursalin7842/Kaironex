@@ -1,6 +1,7 @@
 import os
 import json
 import datetime
+from typing import Any
 from appwrite.client import Client
 from appwrite.services.tables_db import TablesDB
 from appwrite.services.storage import Storage
@@ -41,7 +42,7 @@ class KairoDB:
                 queries=[Query.equal('userId', user_id)] 
             )
             
-            data = {
+            data: dict[str, Any] = {
                 'last_active': datetime.datetime.now().isoformat(),
                 'last_trigger_source': source_details[:999] if source_details else ''
             }
@@ -60,7 +61,7 @@ class KairoDB:
                 print(f"💾 Agent Memory Updated for {user_id}")
             else:
                 data['userId'] = user_id
-                data['pressure_index'] = '50'
+                data['pressure_index'] = 50
                 self.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, 'unique()', data)
                 print(f"💾 Agent Memory Created for {user_id}")
                 
@@ -82,14 +83,17 @@ class KairoDB:
                 queries=[Query.equal('userId', user_id)] 
             )
             
-            data = {'last_active': datetime.datetime.now().isoformat()}
+            data: dict[str, Any] = {'last_active': datetime.datetime.now().isoformat()}
             
             if thought_sig_dict:
                 data['current_thought_signature'] = json.dumps(thought_sig_dict)[:999999]
             if active_agents:
                 data['active_agents'] = active_agents[:255]
             if pressure_index is not None:
-                data['pressure_index'] = pressure_index
+                try:
+                    data['pressure_index'] = int(pressure_index)
+                except:
+                    data['pressure_index'] = 50
             if session_id:
                 data['session_id'] = session_id[:255]
             if reasoning_mode:
@@ -101,7 +105,7 @@ class KairoDB:
             else:
                 data['userId'] = user_id
                 if 'pressure_index' not in data:
-                    data['pressure_index'] = '50'
+                    data['pressure_index'] = 50
                 self.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, 'unique()', data)
                 
             print(f"💾 Agent Memory Full Update for {user_id}")
