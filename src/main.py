@@ -101,17 +101,18 @@ def main(context):
         # Extract the resource response from study_result
         # study_result is a Response object, we need to get its data
         
-        # NOW check if this completes the "Profile + Files" combo
-        user_doc = db.get_user_doc(user_id)
-        if user_doc and user_doc.get('studentprofile_json'):
-            context.log("✅ Files received + Profile ready. Triggering Campaign Agent for Full Initialization.")
-            campaign_result = run_campaign_agent(db, payload, context)
-            # Return study result which has the resource_response
-            # Campaign runs for side effects (initialization)
-            return study_result
-        else:
-            context.log("⏳ Files received, but waiting for Student Profile.")
-            return study_result
+        # Ingest the resource first (Study Brain)
+        payload['type'] = 'resource_ingestion'
+        study_result = run_study_agent(db, payload, context)
+        
+        # Note: We rely on the Study Agent to process the file.
+        # We do NOT trigger Campaign Agent automatically here to prevent:
+        # 1. Race conditions on multiple file uploads
+        # 2. Redundant token usage (CampaignAgent has no 'resource_ingestion' handler)
+        # 3. Accidental data resets logic
+        
+        context.log(f"✅ Resource processing initiated for: {title}")
+        return study_result
 
     # 3. OTHER STATE UPDATES
     if 'study_logs' in trigger_event or collection_id == 'study_logs':

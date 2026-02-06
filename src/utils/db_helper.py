@@ -571,25 +571,32 @@ class KairoDB:
     def clear_future_schedule(self, user_id):
         """Clear upcoming schedule tasks (e.g. before regenerating)."""
         try:
-            # 1. List future tasks
-            now_iso = datetime.datetime.now().isoformat()
-            results = self.db.list_rows(
-                database_id=APPWRITE_DATABASE_ID,
-                table_id=SCHEDULE_COL,
-                queries=[
-                    self.Query.equal('userId', user_id),
-                    self.Query.greater_than('startTime', now_iso),
-                    self.Query.limit(100) # Appwrite limit
-                ]
-            )
-            
-            # 2. Delete them
-            count = 0
-            for row in results.get('rows', []):
-                self.db.delete_row(APPWRITE_DATABASE_ID, SCHEDULE_COL, row['$id'])
-                count += 1
+            # Loop to clear all pages (Appwrite limits to 100)
+            total_deleted = 0
+            while True:
+                now_iso = datetime.datetime.now().isoformat()
+                results = self.db.list_rows(
+                    database_id=APPWRITE_DATABASE_ID,
+                    table_id=SCHEDULE_COL,
+                    queries=[
+                        self.Query.equal('userId', user_id),
+                        self.Query.greater_than('startTime', now_iso),
+                        self.Query.limit(100)
+                    ]
+                )
                 
-            print(f"🧹 Cleared {count} future tasks for {user_id}")
+                rows = results.get('rows', [])
+                if not rows:
+                    break
+                    
+                for row in rows:
+                    try:
+                        self.db.delete_row(APPWRITE_DATABASE_ID, SCHEDULE_COL, row['$id'])
+                        total_deleted += 1
+                    except:
+                        pass
+            
+            print(f"🧹 Cleared {total_deleted} future tasks for {user_id}")
             return True
         except Exception as e:
             print(f"❌ Clear Schedule Error: {e}")

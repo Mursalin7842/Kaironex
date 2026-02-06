@@ -718,13 +718,18 @@ Keep the summary DETAILED (approx 300 words) as this will be saved as the perman
                 pass
 
         # 2. Fetch Resources (Syllabus Material)
-        all_resources = self.db.get_user_resources(user_id, limit=50)
+        all_resources = self.db.get_user_resources(user_id, limit=30)
         resource_text = ""
         known_subjects = set()
         for r in all_resources:
             title = r.get('title', 'Untitled')
             subject = r.get('subject', 'General')
-            resource_text += f"- [{subject}] {title}\n"
+            summary = r.get('summaryText', '')
+            
+            resource_text += f"\n- [{subject}] {title}\n"
+            if summary:
+                resource_text += f"  Summary: {summary[:1000]}...\n" # Include actual content!
+                
             known_subjects.add(subject)
             
         if not resource_text:
@@ -882,9 +887,18 @@ Keep the summary DETAILED (approx 300 words) as this will be saved as the perman
             
             # Save
             count = 0
-            for t in final_tasks:
-                if self.db.create_schedule_task(t): count += 1
+            total_tasks = len(final_tasks)
+            print(f"💾 Inserting {total_tasks} schedule blocks into Database...")
             
+            for i, t in enumerate(final_tasks):
+                if self.db.create_schedule_task(t): 
+                    count += 1
+                
+                # Log progress every 25 item
+                if count % 25 == 0:
+                    print(f"   Saved {count}/{total_tasks}...")
+            
+            print(f"✅ Schedule Saved: {count}/{total_tasks} tasks.")
             return AgentResult(success=True, response=f"Generated UniFlow Plan: {count} blocks.", actions_taken=[f"created_{count}_tasks"])
 
         except Exception as e:
