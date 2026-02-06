@@ -20,10 +20,10 @@ from typing import Dict, Any, Optional
 
 from .utils.db_helper import KairoDB
 from .agents.main_brain import run_supervisor
-from .agents.study_brain import run_study_agent
-from .agents.vitality_brain import run_vitality_agent
-from .agents.campaign_brain import run_campaign_agent
-from .agents.radius_brain import run_radius_agent
+from .agents.study_agent import run_study_agent
+from .agents.vitality_agent import run_vitality_agent
+from .agents.campaign_agent import run_campaign_agent
+from .agents.radius_agent import run_radius_agent
 from .config import validate_config
 
 
