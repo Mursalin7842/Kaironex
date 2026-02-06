@@ -749,12 +749,10 @@ Format:
 
 
 # Factory function for compatibility with existing code
-def run_campaign_agent(db_helper, payload, context):
+# Async Factory function
+async def run_campaign_agent(db_helper, payload, context):
     """
-    Legacy compatibility wrapper.
-    
-    This maintains backward compatibility with the existing
-    Appwrite function interface while using the new agent architecture.
+    Async compatibility wrapper.
     """
     import asyncio
     from ..core.bicameral_engine import BicameralEngine
@@ -774,15 +772,7 @@ def run_campaign_agent(db_helper, payload, context):
     
     trigger_event = payload.get('type', 'unknown')
     
-    # Run async in sync context
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    
-    result = loop.run_until_complete(
-        agent.run(user_id, payload, trigger_event)
-    )
+    # Run async directly
+    result = await agent.run(user_id, payload, trigger_event)
     
     return context.res.json(result.to_dict())

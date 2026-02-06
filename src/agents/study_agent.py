@@ -687,8 +687,8 @@ Be specific and actionable.
         from datetime import datetime
         return datetime.now().isoformat()
 
-# Legacy compatibility wrapper
-def run_study_agent(db_helper, payload, context):
+# Async entry point (God Mode)
+async def run_study_agent(db_helper, payload, context):
     import asyncio
     from ..core.bicameral_engine import BicameralEngine
     from ..core.thought_manager import ThoughtManager
@@ -700,11 +700,6 @@ def run_study_agent(db_helper, payload, context):
     user_id = payload.get('userId')
     trigger_event = payload.get('status', payload.get('type', 'focus_update'))
     
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-    result = loop.run_until_complete(agent.run(user_id, payload, trigger_event))
+    # Direct await - no loop creation
+    result = await agent.run(user_id, payload, trigger_event)
     return context.res.json(result.to_dict())

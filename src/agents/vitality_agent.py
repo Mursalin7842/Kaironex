@@ -575,9 +575,9 @@ Brief and supportive. No financial advice, just tracking.
         return result
 
 
-# Legacy compatibility wrapper
-def run_vitality_agent(db_helper, payload, context):
-    """Legacy compatibility wrapper for Appwrite function interface."""
+# Async compatibility wrapper
+async def run_vitality_agent(db_helper, payload, context):
+    """Async compatibility wrapper for Appwrite function interface."""
     import asyncio
     from ..core.bicameral_engine import BicameralEngine
     from ..core.thought_manager import ThoughtManager
@@ -593,14 +593,6 @@ def run_vitality_agent(db_helper, payload, context):
     
     trigger_event = payload.get('type', 'energy_check')
     
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    
-    result = loop.run_until_complete(
-        agent.run(user_id, payload, trigger_event)
-    )
+    result = await agent.run(user_id, payload, trigger_event)
     
     return context.res.json(result.to_dict())
