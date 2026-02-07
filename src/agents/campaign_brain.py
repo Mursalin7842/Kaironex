@@ -276,6 +276,15 @@ Return ONLY valid JSON:
         else:
             result = json.loads(content)
         
+        # Save to resume history
+        db_helper.update_campaign_state(user_id, {
+            "last_ats_analysis": {
+                "score": result.get('ats_score', 0),
+                "job_description_preview": job_description[:200],
+                "interview_ready": result.get('interview_ready', False)
+            }
+        })
+        
         # Create thought signature
         _create_thought_signature(
             user_id, "campaign", 

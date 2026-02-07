@@ -575,7 +575,7 @@ class KairoDB:
     # =========================================================================
     def update_campaign_state(self, user_id, campaign_data):
         """
-        Updates the campaign_state table (Skill Tree, Quest Board, Armory).
+        Updates the campaign_state table (Skill Tree, Quest Board, Armory, History).
         """
         try:
             # 1. Check if row exists
@@ -595,6 +595,27 @@ class KairoDB:
                 data['the_armory_json'] = json.dumps(campaign_data['armory'])[:999999]
             if 'simulacrum' in campaign_data:
                 data['simulacrum_data_json'] = json.dumps(campaign_data['simulacrum'])[:999999]
+            if 'resume_history' in campaign_data:
+                data['resume_history'] = json.dumps(campaign_data['resume_history'])[:49999]
+            if 'interview_history' in campaign_data:
+                data['interview_history'] = json.dumps(campaign_data['interview_history'])[:49999]
+            # Also support direct interview_design and ats_analysis storage
+            if 'last_interview_design' in campaign_data:
+                # Append to interview history
+                existing = self._get_campaign_history(user_id, 'interview_history')
+                existing.append({
+                    'timestamp': datetime.datetime.now().isoformat(),
+                    'design': campaign_data['last_interview_design']
+                })
+                data['interview_history'] = json.dumps(existing[-10:])[:49999]  # Keep last 10
+            if 'last_ats_analysis' in campaign_data:
+                # Append to resume history
+                existing = self._get_campaign_history(user_id, 'resume_history')
+                existing.append({
+                    'timestamp': datetime.datetime.now().isoformat(),
+                    'analysis': campaign_data['last_ats_analysis']
+                })
+                data['resume_history'] = json.dumps(existing[-10:])[:49999]  # Keep last 10
                 
             # 3. Update or Create
             if results['total'] > 0:
@@ -609,6 +630,21 @@ class KairoDB:
         except Exception as e:
             print(f"❌ Campaign State Error: {e}")
             return False
+
+    def _get_campaign_history(self, user_id, field):
+        """Helper to get existing history array."""
+        try:
+            results = self.db.list_rows(
+                database_id=self.APPWRITE_DATABASE_ID,
+                table_id=CAMPAIGN_STATE_COL,
+                queries=[self.Query.equal('userId', user_id)]
+            )
+            if results['total'] > 0:
+                raw = results['rows'][0].get(field) or '[]'
+                return json.loads(raw)
+        except:
+            pass
+        return []
 
     def get_campaign_state(self, user_id):
         """Fetch full campaign state."""
@@ -625,7 +661,9 @@ class KairoDB:
                     'skill_tree': json.loads(row.get('skill_tree_json') or '{}'),
                     'quest_board': json.loads(row.get('quest_board_json') or '[]'),
                     'armory': json.loads(row.get('the_armory_json') or '{}'),
-                    'simulacrum': json.loads(row.get('simulacrum_data_json') or '{}')
+                    'simulacrum': json.loads(row.get('simulacrum_data_json') or '{}'),
+                    'resume_history': json.loads(row.get('resume_history') or '[]'),
+                    'interview_history': json.loads(row.get('interview_history') or '[]')
                 }
             return {}
         except Exception as e:
