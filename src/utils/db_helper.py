@@ -21,6 +21,7 @@ class KairoDB:
         # Expose config for agents
         self.APPWRITE_DATABASE_ID = APPWRITE_DATABASE_ID
         self.THOUGHT_SIGNATURES_COL = THOUGHT_SIGNATURES_COL
+        self.STORAGE_BUCKET_ID = STORAGE_BUCKET_ID
         self.Query = Query
 
     # =========================================================================
@@ -465,15 +466,16 @@ class KairoDB:
     
     def find_real_file_id(self, bucket_id, file_name):
         """
-        Fallback: Find the ACTUAL file ID by searching for the filename.
         Useful if the DB has a mismatched/custom ID.
         """
         try:
+            target_bucket = bucket_id or self.STORAGE_BUCKET_ID
+            
             # List files searching for the name
             # NOTE: Removed 'limit' arg as it might be invalid for this SDK version.
             # Using search only.
             result = self.storage.list_files(
-                bucket_id=bucket_id,
+                bucket_id=target_bucket,
                 search=file_name
             )
             

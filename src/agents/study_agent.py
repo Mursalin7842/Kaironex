@@ -19,6 +19,7 @@ import re
 import uuid
 import asyncio
 from datetime import datetime, timedelta
+import pypdf
 
 from .base_agent import BaseAgent, AgentConfig, AgentResult
 from ..core.bicameral_engine import ReasoningMode, ReasoningRequest
@@ -71,7 +72,7 @@ class StudyAgent(BaseAgent):
         current_year = datetime.now().year
         prompt = f"""
         TASK: Extract Academic Timeline.
-        CONTEXT: {context_text[:20000]}
+        CONTEXT: {context_text}
         YEAR: {current_year}
         OUTPUT JSON: {{ "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "exam_weeks": [{{ "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" }}] }}
         """
@@ -95,7 +96,7 @@ class StudyAgent(BaseAgent):
         prompt = f"""
         TASK: Extract blocked time slots.
         INPUTS: {json.dumps(raw_constraints)}
-        CONTEXT: {resource_text[:15000]}
+        CONTEXT: {resource_text}
         INSTRUCTIONS: Identify Classes (find Room #), Work, Gym. Add Commute buffers.
         OUTPUT JSON LIST: [ {{ "day_offset": 0, "startTime": "09:00", "endTime": "10:30", "title": "Class: CS455", "location": "Room 304", "type": "blocked" }} ]
         """
@@ -118,14 +119,49 @@ class StudyAgent(BaseAgent):
         all_resources = self.db.get_user_resources(user_id)
         
         full_context = ""
+        full_context = ""
         for r in all_resources:
-            mined = r.get('mined_data')
-            summary = r.get('summaryText')
-            # Fallback for empty data
-            data = mined if mined else (summary if summary else "")
-            full_context += f"\n--- {r.get('title', 'Untitled')} ({r.get('resource_type', 'DOC')}) ---\n{data[:8000]}"
+            # 1. Try DB Summary first
+            data = r.get('summaryText', '') or r.get('mined_data', '')
+            
+            # 2. JIT Extraction for Fresh Files
+            if not data:
+                print(f"DEBUG: JIT Extraction for {r.get('title')}")
+                try:
+                    # Try explicit ID first
+                    file_id = r.get('fileId') or r.get('resourceId')
+                    file_bytes = self.db.get_file_content(file_id)
+                    
+                    # Fallback: Search by filename
+                    if not file_bytes:
+                        print(f"DEBUG: ID lookup failed. Searching for '{r.get('title')}'...")
+                        real_id = self.db.find_real_file_id(self.db.STORAGE_BUCKET_ID, r.get('title'))
+                        if real_id:
+                            file_bytes = self.db.get_file_content(real_id)
+                    
+                    if file_bytes:
+                        pdf_file = io.BytesIO(file_bytes)
+                        reader = pypdf.PdfReader(pdf_file)
+                        extracted = ""
+                        for page in reader.pages:
+                            extracted += page.extract_text() + "\n"
+                        
+                        if extracted.strip():
+                            data = extracted
+                            print(f"DEBUG: Extracted {len(data)} chars from PDF.")
+                except Exception as e:
+                    print(f"⚠️ JIT Extract Error: {e}")
 
-        if not full_context: full_context = "Standard Curriculum."
+            full_context += f"\n--- {r.get('title', 'Untitled')} ({r.get('resource_type', 'DOC')}) ---\n{data}"
+
+        # --- CRITICAL: STOP IF NO DATA ---
+        if not full_context.strip():
+            print("🛑 ABORT: No content found in resources.")
+            return AgentResult(success=False, response="No readable content found in your resources. Please upload PDF files.", actions_taken=["aborted_no_content"])
+        
+        if len(full_context) < 50: # "Standard Curriculum." is 20 chars
+             print("🛑 ABORT: Content too short.")
+             return AgentResult(success=False, response="Content too short to generate a schedule.", actions_taken=["aborted_low_content"])
 
         # 2. ESTABLISH TIMELINE & CONSTRAINTS
         timeline = await self._extract_semester_timeline(user_id, full_context)
@@ -167,8 +203,11 @@ class StudyAgent(BaseAgent):
 
         # 4. DIRECTIVE PROMPT
         prompt = f"""
-        ACT AS: The Semester Director.
+        ACT AS: The Senior Academic Director.
         MISSION: Create a detailed plan from {current_date.strftime("%Y-%m-%d")} to {timeline.get('end_date', 'End of Sem')}.
+        
+        STUDENT PROFILE (FULL):
+        {json.dumps(sp, indent=2)}
         
         DETECTED SUBJECTS: {subject_str}
         ACADEMIC CONTEXT: Week {academic_week_offset + 1}.
@@ -181,8 +220,20 @@ class StudyAgent(BaseAgent):
         If specific topics are missing for {subject_str}, YOU MUST INFER THEM using standard university curriculums.
         Example: If 'CS450' (ML) is detected but no PDF, schedule 'Linear Regression' for Week 1, 'Neural Nets' for Week 5.
         
+        [CAPACITY DRIVEN SCHEDULING]
+        1. **User Capacity**: STRICTLY respect the 'daily focus capacity' and study preferences found in the STUDENT PROFILE.
+        2. **Variable Blocks**: Create session lengths (30m to 2h) that match the content density and user's attention span.
+        3. **Full Coverage**: Ensure the plan covers the ENTIRE period from {current_date.strftime("%Y-%m-%d")} to {timeline.get('end_date')}.
+        
+        [HUMAN LOGISTICS & ENERGY]
+        1. **Decompression Gap**: You MUST leave a **1.5 to 2 HOUR** gap after the last class of the day. Students need to commute, eat, hang out, or take a walk. DO NOT schedule study immediately after class.
+        2. **Anti-Burnout**: If the student has >4 hours of classes, schedule only "Light Review" or "Routine" tasks that evening.
+        3. **Sleep & Meals**: DO NOT schedule any tasks between 23:00 (11 PM) and 08:00 (8 AM) unless the user profile explicitly says "Night Owl". Ensure 1-hour gaps for Lunch (12-2pm window) and Dinner (7-9pm window).
+        
         DIRECTIVES:
-        1. **Content**: 'topics' field must be >100 words of specific instructions (Readings, Problems).
+        1. **Content Format**: 'topics' MUST be a **Markdown List**, not a paragraph.
+           - Bad: "Read chapter 4 and do questions."
+           - Good: "- Read Chapter 4 (pp. 100-120)\n- Solve Practice Problems 1-5\n- Review Lecture Notes"
         2. **Priority**: 10=Exams, 8=Deep Work, 5=Routine.
         3. **Location**: Use Room Numbers for Classes, 'Library' for Deep Work.
         

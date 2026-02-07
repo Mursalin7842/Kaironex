@@ -37,7 +37,7 @@ from google.genai import types
 # RATE LIMIT CONFIGURATION
 # =============================================================================
 RPM_LIMIT = 5       # Requests per minute
-RPD_LIMIT = 20      # Requests per day
+RPD_LIMIT = 40      # Requests per day
 MIN_DELAY = 12.5    # Seconds between requests (60/5 = 12s, add buffer)
 
 # Cache file for persistence
