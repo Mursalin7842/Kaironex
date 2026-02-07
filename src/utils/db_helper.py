@@ -436,6 +436,32 @@ class KairoDB:
             print(f"❌ Resource Summary Update Error: {e}")
             return False
 
+    def update_resource_metadata(self, resource_id, metadata):
+        """
+        L7: Update resource with mined semantic data.
+        Maps 'mined_data' -> 'summaryText' to fit existing schema.
+        Maps 'resource_type' -> 'type' (if column exists, otherwise ignored/handled by DB).
+        """
+        try:
+            # Schema Mapping
+            update_data = {
+                'summaryText': metadata.get('mined_data', '')[:999999]
+            }
+            if 'resource_type' in metadata:
+                update_data['type'] = metadata['resource_type']
+            
+            self.db.update_row(
+                APPWRITE_DATABASE_ID,
+                RESOURCES_COL,
+                resource_id,
+                update_data
+            )
+            print(f"✅ Resource Metadata Updated: {resource_id} ({metadata.get('resource_type')})")
+            return True
+        except Exception as e:
+            print(f"❌ Resource Metadata Update Error: {e}")
+            return False
+
     
     def find_real_file_id(self, bucket_id, file_name):
         """
@@ -581,6 +607,28 @@ class KairoDB:
         except Exception as e:
             print(f"❌ Create Task Error: {e}")
             return False
+
+    def batch_create_schedule_tasks(self, tasks: list) -> int:
+        """
+        Creates multiple tasks in parallel to avoid timeouts.
+        Returns number of successful creations.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        success_count = 0
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            # Submit all tasks
+            future_to_task = {executor.submit(self.create_schedule_task, t): t for t in tasks}
+            
+            for future in as_completed(future_to_task):
+                try:
+                    if future.result():
+                        success_count += 1
+                except Exception as e:
+                    print(f"⚠️ Batch Insert Error: {e}")
+        
+        print(f"✅ Batch Complete: {success_count}/{len(tasks)} created.")
+        return success_count
 
     def get_schedule(self, user_id, limit=1000):
         """Get user's schedule."""
