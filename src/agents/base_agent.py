@@ -28,7 +28,6 @@ from ..core.thought_manager import ThoughtManager
 from ..core.state_machine import AgentStateMachine, AgentState, StateContext
 from ..core.event_bus import EventBus, Event, EventType, emit_agent_started, emit_agent_completed
 from ..utils.db_helper import KairoDB
-from appwrite.id import ID
 
 
 @dataclass
@@ -240,7 +239,7 @@ Analyze this situation and determine the best course of action.
             self.db.db.create_row(
                 db_id,
                 'policy_episodes',
-                ID.unique(),
+                'unique()',
                 {
                     'episodeId': f"ep_{uuid.uuid4().hex[:12]}",
                     'userId': context.user_id,

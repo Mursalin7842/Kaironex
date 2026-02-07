@@ -5,7 +5,7 @@ from typing import Any
 from appwrite.client import Client
 from appwrite.services.tables_db import TablesDB
 from appwrite.services.storage import Storage
-from appwrite.id import ID
+
 from appwrite.query import Query
 from ..config import *
 
@@ -64,7 +64,7 @@ class KairoDB:
             else:
                 data['userId'] = user_id
                 data['pressure_index'] = 50
-                self.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, ID.unique(), data)
+                self.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, 'unique()', data)
                 print(f"💾 Agent Memory Created for {user_id}")
                 
         except Exception as e:
@@ -108,7 +108,7 @@ class KairoDB:
                 data['userId'] = user_id
                 if 'pressure_index' not in data:
                     data['pressure_index'] = 50
-                self.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, ID.unique(), data)
+                self.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, 'unique()', data)
                 
             print(f"💾 Agent Memory Full Update for {user_id}")
         except Exception as e:
@@ -142,7 +142,7 @@ class KairoDB:
                 'created_at': thought_data.get('timestamp', datetime.datetime.now().isoformat())
             }
             
-            self.db.create_row(APPWRITE_DATABASE_ID, THOUGHT_SIGNATURES_COL, ID.unique(), row_data)
+            self.db.create_row(APPWRITE_DATABASE_ID, THOUGHT_SIGNATURES_COL, 'unique()', row_data)
             print(f"🧠 Thought Signature Created: {thought_data.get('thought_id', 'unknown')}")
             return True
         except Exception as e:
@@ -192,7 +192,7 @@ class KairoDB:
                 'estimated_completion': session_data.get('estimated_completion', '')
             }
             
-            self.db.create_row(APPWRITE_DATABASE_ID, MARATHON_SESSIONS_COL, ID.unique(), row_data)
+            self.db.create_row(APPWRITE_DATABASE_ID, MARATHON_SESSIONS_COL, 'unique()', row_data)
             print(f"🏃 Marathon Session Created: {session_data.get('session_id', 'unknown')}")
             return True
         except Exception as e:
@@ -284,7 +284,7 @@ class KairoDB:
                 'timestamp': datetime.datetime.now().isoformat()
             }
             
-            self.db.create_row(APPWRITE_DATABASE_ID, POLICY_EPISODES_COL, ID.unique(), row_data)
+            self.db.create_row(APPWRITE_DATABASE_ID, POLICY_EPISODES_COL, 'unique()', row_data)
             print(f"📊 Policy Episode Created for {episode_data.get('user_id', 'unknown')}")
             return True
         except Exception as e:
@@ -326,7 +326,7 @@ class KairoDB:
                 'achieved_context': plan_data.get('achieved_context', '')[:50000],
                 'missed_context': plan_data.get('missed_context', '')[:50000]
             }
-            self.db.create_row(APPWRITE_DATABASE_ID, MONTHLY_PLANS_COL, ID.unique(), row_data)
+            self.db.create_row(APPWRITE_DATABASE_ID, MONTHLY_PLANS_COL, 'unique()', row_data)
             print(f"📅 Monthly Plan Created: Month {plan_data.get('month_index')} for {user_id}")
             return True
         except Exception as e:
@@ -388,10 +388,8 @@ class KairoDB:
     def create_intervention(self, user_id, trigger, message, status="PENDING", strategy="NEUTRAL"):
         """Writes to 'interventions' table. This is how the app sees AI responses."""
         try:
-            import uuid
-            intervention_id = f"int_{uuid.uuid4().hex[:12]}"
-            self.db.create_row(APPWRITE_DATABASE_ID, INTERVENTIONS_COL, ID.unique(), {
-                'interventionId': intervention_id, 
+            self.db.create_row(APPWRITE_DATABASE_ID, INTERVENTIONS_COL, 'unique()', {
+                'interventionId': 'unique()', 
                 'userId': user_id,
                 'trigger_event': trigger[:999],
                 'ai_message': message,
@@ -577,7 +575,7 @@ class KairoDB:
     # =========================================================================
     def update_campaign_state(self, user_id, campaign_data):
         """
-        Updates the campaign_state table (Skill Tree, Quest Board, Armory, History).
+        Updates the campaign_state table (Skill Tree, Quest Board, Armory).
         """
         try:
             # 1. Check if row exists
@@ -597,27 +595,6 @@ class KairoDB:
                 data['the_armory_json'] = json.dumps(campaign_data['armory'])[:999999]
             if 'simulacrum' in campaign_data:
                 data['simulacrum_data_json'] = json.dumps(campaign_data['simulacrum'])[:999999]
-            if 'resume_history' in campaign_data:
-                data['resume_history'] = json.dumps(campaign_data['resume_history'])[:49999]
-            if 'interview_history' in campaign_data:
-                data['interview_history'] = json.dumps(campaign_data['interview_history'])[:49999]
-            # Also support direct interview_design and ats_analysis storage
-            if 'last_interview_design' in campaign_data:
-                # Append to interview history
-                existing = self._get_campaign_history(user_id, 'interview_history')
-                existing.append({
-                    'timestamp': datetime.datetime.now().isoformat(),
-                    'design': campaign_data['last_interview_design']
-                })
-                data['interview_history'] = json.dumps(existing[-10:])[:49999]  # Keep last 10
-            if 'last_ats_analysis' in campaign_data:
-                # Append to resume history
-                existing = self._get_campaign_history(user_id, 'resume_history')
-                existing.append({
-                    'timestamp': datetime.datetime.now().isoformat(),
-                    'analysis': campaign_data['last_ats_analysis']
-                })
-                data['resume_history'] = json.dumps(existing[-10:])[:49999]  # Keep last 10
                 
             # 3. Update or Create
             if results['total'] > 0:
@@ -625,28 +602,13 @@ class KairoDB:
                 self.db.update_row(self.APPWRITE_DATABASE_ID, CAMPAIGN_STATE_COL, doc_id, data)
                 print(f"🏰 Campaign State Updated for {user_id}")
             else:
-                self.db.create_row(self.APPWRITE_DATABASE_ID, CAMPAIGN_STATE_COL, ID.unique(), data)
+                self.db.create_row(self.APPWRITE_DATABASE_ID, CAMPAIGN_STATE_COL, 'unique()', data)
                 print(f"🏰 Campaign State Created for {user_id}")
                 
             return True
         except Exception as e:
             print(f"❌ Campaign State Error: {e}")
             return False
-
-    def _get_campaign_history(self, user_id, field):
-        """Helper to get existing history array."""
-        try:
-            results = self.db.list_rows(
-                database_id=self.APPWRITE_DATABASE_ID,
-                table_id=CAMPAIGN_STATE_COL,
-                queries=[self.Query.equal('userId', user_id)]
-            )
-            if results['total'] > 0:
-                raw = results['rows'][0].get(field) or '[]'
-                return json.loads(raw)
-        except:
-            pass
-        return []
 
     def get_campaign_state(self, user_id):
         """Fetch full campaign state."""
@@ -663,9 +625,7 @@ class KairoDB:
                     'skill_tree': json.loads(row.get('skill_tree_json') or '{}'),
                     'quest_board': json.loads(row.get('quest_board_json') or '[]'),
                     'armory': json.loads(row.get('the_armory_json') or '{}'),
-                    'simulacrum': json.loads(row.get('simulacrum_data_json') or '{}'),
-                    'resume_history': json.loads(row.get('resume_history') or '[]'),
-                    'interview_history': json.loads(row.get('interview_history') or '[]')
+                    'simulacrum': json.loads(row.get('simulacrum_data_json') or '{}')
                 }
             return {}
         except Exception as e:
@@ -728,7 +688,7 @@ class KairoDB:
             self.db.create_row(
                 APPWRITE_DATABASE_ID, 
                 SCHEDULE_COL, 
-                ID.unique(), 
+                'unique()', 
                 task_data
             )
             # print(f"📅 Task Created: {task_data['title']}") # Reduce verbosity
