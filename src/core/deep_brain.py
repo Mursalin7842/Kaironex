@@ -24,6 +24,7 @@ from enum import Enum
 
 from google import genai
 from google.genai import types
+from appwrite.id import ID
 
 from ..config import (
     GEMINI_API_KEY,
@@ -292,7 +293,7 @@ class DeepBrain:
             self.db.db.create_row(
                 APPWRITE_DATABASE_ID,
                 THOUGHT_SIGNATURES_COL,
-                'unique()',
+                ID.unique(),
                 thought.to_dict()
             )
         except Exception as e:
@@ -417,7 +418,7 @@ Respond in JSON format:
             self.db.db.create_row(
                 APPWRITE_DATABASE_ID,
                 MARATHON_SESSIONS_COL,
-                'unique()',
+                ID.unique(),
                 session.to_dict()
             )
             print(f"💾 Marathon saved: {session.session_id}")

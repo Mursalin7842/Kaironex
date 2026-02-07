@@ -5,7 +5,7 @@ from typing import Any
 from appwrite.client import Client
 from appwrite.services.tables_db import TablesDB
 from appwrite.services.storage import Storage
-
+from appwrite.id import ID
 from appwrite.query import Query
 from ..config import *
 
@@ -64,7 +64,7 @@ class KairoDB:
             else:
                 data['userId'] = user_id
                 data['pressure_index'] = 50
-                self.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, 'unique()', data)
+                self.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, ID.unique(), data)
                 print(f"💾 Agent Memory Created for {user_id}")
                 
         except Exception as e:
@@ -108,7 +108,7 @@ class KairoDB:
                 data['userId'] = user_id
                 if 'pressure_index' not in data:
                     data['pressure_index'] = 50
-                self.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, 'unique()', data)
+                self.db.create_row(APPWRITE_DATABASE_ID, AGENT_MEMORY_COL, ID.unique(), data)
                 
             print(f"💾 Agent Memory Full Update for {user_id}")
         except Exception as e:
@@ -142,7 +142,7 @@ class KairoDB:
                 'created_at': thought_data.get('timestamp', datetime.datetime.now().isoformat())
             }
             
-            self.db.create_row(APPWRITE_DATABASE_ID, THOUGHT_SIGNATURES_COL, 'unique()', row_data)
+            self.db.create_row(APPWRITE_DATABASE_ID, THOUGHT_SIGNATURES_COL, ID.unique(), row_data)
             print(f"🧠 Thought Signature Created: {thought_data.get('thought_id', 'unknown')}")
             return True
         except Exception as e:
@@ -192,7 +192,7 @@ class KairoDB:
                 'estimated_completion': session_data.get('estimated_completion', '')
             }
             
-            self.db.create_row(APPWRITE_DATABASE_ID, MARATHON_SESSIONS_COL, 'unique()', row_data)
+            self.db.create_row(APPWRITE_DATABASE_ID, MARATHON_SESSIONS_COL, ID.unique(), row_data)
             print(f"🏃 Marathon Session Created: {session_data.get('session_id', 'unknown')}")
             return True
         except Exception as e:
@@ -284,7 +284,7 @@ class KairoDB:
                 'timestamp': datetime.datetime.now().isoformat()
             }
             
-            self.db.create_row(APPWRITE_DATABASE_ID, POLICY_EPISODES_COL, 'unique()', row_data)
+            self.db.create_row(APPWRITE_DATABASE_ID, POLICY_EPISODES_COL, ID.unique(), row_data)
             print(f"📊 Policy Episode Created for {episode_data.get('user_id', 'unknown')}")
             return True
         except Exception as e:
@@ -326,7 +326,7 @@ class KairoDB:
                 'achieved_context': plan_data.get('achieved_context', '')[:50000],
                 'missed_context': plan_data.get('missed_context', '')[:50000]
             }
-            self.db.create_row(APPWRITE_DATABASE_ID, MONTHLY_PLANS_COL, 'unique()', row_data)
+            self.db.create_row(APPWRITE_DATABASE_ID, MONTHLY_PLANS_COL, ID.unique(), row_data)
             print(f"📅 Monthly Plan Created: Month {plan_data.get('month_index')} for {user_id}")
             return True
         except Exception as e:
@@ -388,8 +388,10 @@ class KairoDB:
     def create_intervention(self, user_id, trigger, message, status="PENDING", strategy="NEUTRAL"):
         """Writes to 'interventions' table. This is how the app sees AI responses."""
         try:
-            self.db.create_row(APPWRITE_DATABASE_ID, INTERVENTIONS_COL, 'unique()', {
-                'interventionId': 'unique()', 
+            import uuid
+            intervention_id = f"int_{uuid.uuid4().hex[:12]}"
+            self.db.create_row(APPWRITE_DATABASE_ID, INTERVENTIONS_COL, ID.unique(), {
+                'interventionId': intervention_id, 
                 'userId': user_id,
                 'trigger_event': trigger[:999],
                 'ai_message': message,
@@ -623,7 +625,7 @@ class KairoDB:
                 self.db.update_row(self.APPWRITE_DATABASE_ID, CAMPAIGN_STATE_COL, doc_id, data)
                 print(f"🏰 Campaign State Updated for {user_id}")
             else:
-                self.db.create_row(self.APPWRITE_DATABASE_ID, CAMPAIGN_STATE_COL, 'unique()', data)
+                self.db.create_row(self.APPWRITE_DATABASE_ID, CAMPAIGN_STATE_COL, ID.unique(), data)
                 print(f"🏰 Campaign State Created for {user_id}")
                 
             return True
@@ -726,7 +728,7 @@ class KairoDB:
             self.db.create_row(
                 APPWRITE_DATABASE_ID, 
                 SCHEDULE_COL, 
-                'unique()', 
+                ID.unique(), 
                 task_data
             )
             # print(f"📅 Task Created: {task_data['title']}") # Reduce verbosity
