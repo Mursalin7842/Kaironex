@@ -21,6 +21,7 @@ class KairoDB:
         # Expose config for agents
         self.APPWRITE_DATABASE_ID = APPWRITE_DATABASE_ID
         self.THOUGHT_SIGNATURES_COL = THOUGHT_SIGNATURES_COL
+        self.MONTHLY_PLANS_COL = MONTHLY_PLANS_COL
         self.STORAGE_BUCKET_ID = STORAGE_BUCKET_ID
         self.Query = Query
 
@@ -310,13 +311,82 @@ class KairoDB:
             return []
 
     # =========================================================================
+    # MONTHLY PLANS - Hierarchical Semester Strategy
+    # =========================================================================
+    def create_monthly_plan(self, user_id: str, plan_data: dict) -> bool:
+        """Create a monthly plan row for the hierarchical planning system."""
+        try:
+            row_data = {
+                'userId': user_id,
+                'month_index': int(plan_data.get('month_index', 1)),
+                'start_date': plan_data.get('start_date'),
+                'end_date': plan_data.get('end_date'),
+                'status': plan_data.get('status', 'pending'),
+                'goals_context': plan_data.get('goals_context', '')[:100000],
+                'achieved_context': plan_data.get('achieved_context', '')[:50000],
+                'missed_context': plan_data.get('missed_context', '')[:50000]
+            }
+            self.db.create_row(APPWRITE_DATABASE_ID, MONTHLY_PLANS_COL, 'unique()', row_data)
+            print(f"📅 Monthly Plan Created: Month {plan_data.get('month_index')} for {user_id}")
+            return True
+        except Exception as e:
+            print(f"❌ Create Monthly Plan Error: {e}")
+            return False
+
+    def get_monthly_plans(self, user_id: str) -> list:
+        """Get all monthly plans for a user, ordered by month_index."""
+        try:
+            results = self.db.list_rows(
+                database_id=APPWRITE_DATABASE_ID,
+                table_id=MONTHLY_PLANS_COL,
+                queries=[
+                    Query.equal('userId', user_id),
+                    Query.order_asc('month_index'),
+                    Query.limit(12)
+                ]
+            )
+            return results.get('rows', [])
+        except Exception as e:
+            print(f"❌ Get Monthly Plans Error: {e}")
+            return []
+
+    def update_monthly_plan(self, plan_id: str, updates: dict) -> bool:
+        """Update a monthly plan with achieved/missed context."""
+        try:
+            update_data = {}
+            if 'status' in updates:
+                update_data['status'] = updates['status']
+            if 'goals_context' in updates:
+                update_data['goals_context'] = updates['goals_context'][:100000]
+            if 'achieved_context' in updates:
+                update_data['achieved_context'] = updates['achieved_context'][:50000]
+            if 'missed_context' in updates:
+                update_data['missed_context'] = updates['missed_context'][:50000]
+            
+            self.db.update_row(APPWRITE_DATABASE_ID, MONTHLY_PLANS_COL, plan_id, update_data)
+            print(f"📅 Monthly Plan Updated: {plan_id}")
+            return True
+        except Exception as e:
+            print(f"❌ Update Monthly Plan Error: {e}")
+            return False
+
+    def clear_monthly_plans(self, user_id: str) -> bool:
+        """Clear all monthly plans for a user (before regenerating)."""
+        try:
+            plans = self.get_monthly_plans(user_id)
+            for plan in plans:
+                self.db.delete_row(APPWRITE_DATABASE_ID, MONTHLY_PLANS_COL, plan['$id'])
+            print(f"🧹 Cleared {len(plans)} monthly plans for {user_id}")
+            return True
+        except Exception as e:
+            print(f"❌ Clear Monthly Plans Error: {e}")
+            return False
+
+    # =========================================================================
     # INTERVENTIONS - AI Messages to User
     # =========================================================================
     def create_intervention(self, user_id, trigger, message, status="PENDING", strategy="NEUTRAL"):
-        """
-        Writes to 'interventions' table.
-        THIS IS HOW THE APP SEES AI RESPONSES!
-        """
+        """Writes to 'interventions' table. This is how the app sees AI responses."""
         try:
             self.db.create_row(APPWRITE_DATABASE_ID, INTERVENTIONS_COL, 'unique()', {
                 'interventionId': 'unique()', 

@@ -73,6 +73,7 @@ RESOURCES_COL = 'resources'
 # Marathon & Thought System
 MARATHON_SESSIONS_COL = 'marathon_sessions'
 THOUGHT_SIGNATURES_COL = 'thought_signatures'
+MONTHLY_PLANS_COL = 'monthly_plans'
 
 # Student Adaptation
 STUDENT_PROFILES_COL = 'student_profiles'
