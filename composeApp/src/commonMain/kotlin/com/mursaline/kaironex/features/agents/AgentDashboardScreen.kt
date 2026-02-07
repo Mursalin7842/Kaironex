@@ -70,7 +70,7 @@ object AgentDashboardScreen : Screen {
                 val newItem = ActivityItem(
                     timestamp = event.timestamp.takeIf { it.isNotEmpty() } ?: "Now",
                     action = event.eventType,
-                    detail = event.data.toString().take(50),
+                    detail = event.data.toString(),
                     type = when(event.eventType) {
                         "detection" -> ActivityType.DETECT
                         "action" -> ActivityType.ACTION

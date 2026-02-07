@@ -24,6 +24,9 @@ import com.mursaline.kaironex.features.zones.LifeTrack
 import com.mursaline.kaironex.features.zones.ZoneDetailScreen
 import com.mursaline.kaironex.ui.theme.KaironexColors
 import com.mursaline.kaironex.core.stats.*
+import cafe.adriel.voyager.koin.koinScreenModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 /**
  * ============================================================
@@ -54,78 +57,96 @@ object LifeSupportAgentsScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val stats = StatsProvider.getMoreStats()
+        // Inject ViewModel (Make sure to register in Koin module if needed, or just instantiate for now if strictly DI not set up for this specific VM yet)
+        // assuming koinScreenModel is available.
+        // If Koin fails, use remember for now: val viewModel = remember { AgentsViewModel() }
+        // Inject ViewModel
+        val viewModel = koinScreenModel<AgentsViewModel>()
+        
+        val stats by viewModel.stats.collectAsState()
+        val isLoading by viewModel.isLoading.collectAsState()
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(KaironexColors.CloudGray)
         ) {
-            // Top App Bar
-            TopAppBar(
-                title = {
-                    Text(
-                        "Life Command Center",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navigator.pop() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = KaironexColors.CanvasWhite
-                )
-            )
-
-            // Life Stability Score Header
-            LifeStabilityHeader(stats.lifeStability)
-
-            // Agent Cards
-            LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            Column(
+                modifier = Modifier.fillMaxSize()
             ) {
-                // System Meta Stats
-                item {
-                    SystemMetaCard(stats.systemMeta)
-                }
-
-                // Campaign Agent
-                item {
-                    CampaignAgentCard(
-                        stats = stats.campaign,
-                        onClick = { navigator.push(ZoneDetailScreen(LifeTrack.Campaign)) }
+                // Top App Bar
+                TopAppBar(
+                    title = {
+                        Text(
+                            "Life Command Center",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { navigator.pop() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = KaironexColors.CanvasWhite
                     )
-                }
+                )
 
-                // Vitality Agent
-                item {
-                    VitalityAgentCard(
-                        stats = stats.vitality,
-                        onClick = { navigator.push(ZoneDetailScreen(LifeTrack.Vitality)) }
-                    )
-                }
+                // Removed Loading Animation as requested
+                // Use empty stats if null to show structure immediately
+                val validStats = stats ?: com.mursaline.kaironex.core.stats.MoreStats.EMPTY
 
-                // Radius Agent
-                item {
-                    RadiusAgentCard(
-                        stats = stats.radius,
-                        onClick = { navigator.push(ZoneDetailScreen(LifeTrack.Radius)) }
-                    )
-                }
+                // Life Stability Score Header (Safe render)
+                LifeStabilityHeader(validStats.lifeStability)
 
-                // Brain Dashboard (Judge Mode)
-                item {
-                    BrainDashboardCard(
-                        onClick = { navigator.push(AgentDashboardScreen) }
-                    )
-                }
+                // Agent Cards
+                LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // System Meta Stats
+                            item {
+                                SystemMetaCard(validStats.systemMeta)
+                            }
 
-                item {
-                    Spacer(Modifier.height(100.dp))
-                }
+                            // Campaign Agent
+                            item {
+                                CampaignAgentCard(
+                                    stats = validStats.campaign,
+                                    onClick = { navigator.push(ZoneDetailScreen(LifeTrack.Campaign)) }
+                                )
+                            }
+
+                            // Vitality Agent
+                            item {
+                                VitalityAgentCard(
+                                    stats = validStats.vitality,
+                                    onClick = { navigator.push(ZoneDetailScreen(LifeTrack.Vitality)) }
+                                )
+                            }
+
+                            // Radius Agent
+                            item {
+                                RadiusAgentCard(
+                                    stats = validStats.radius,
+                                    onClick = { navigator.push(ZoneDetailScreen(LifeTrack.Radius)) }
+                                )
+                            }
+                            
+                            // Brain Dashboard
+                             item {
+                                BrainDashboardCard(
+                                    onClick = { navigator.push(AgentDashboardScreen) }
+                                )
+                            }
+
+                            item {
+                                Spacer(Modifier.height(100.dp))
+                            }
+                            item {
+                                Spacer(Modifier.height(100.dp))
+                            }
+                        }
             }
         }
     }

@@ -104,6 +104,28 @@ data class Deadline(
     val urgencyLevel: UrgencyLevel
 )
 
+/**
+ * 🛰️ V3.0 NEW: Campaign Strategy Metadata (From Study Agent)
+ */
+data class CampaignMeta(
+    val strategyMode: String,           // e.g. "RUTHLESS OPTIMIZATION"
+    val currentPhase: String,           // e.g. "Foundation Phase"
+    val daysInPhase: Int,               // Days elapsed in current phase
+    val motivationAnchor: String,       // "Academic Success"
+    val visaPressure: String            // "CRITICAL" or "Local"
+)
+
+/**
+ * 🧠 V3.0 NEW: Active Study Session Data
+ */
+data class StudySession(
+    val isActive: Boolean,
+    val topic: String,
+    val currentFocus: Int,
+    val durationMinutes: Int,
+    val plannedDuration: Int
+)
+
 @Suppress("unused")
 enum class UrgencyLevel(val color: Long) {
     LOW(0xFF4CAF50),
@@ -193,8 +215,23 @@ data class HomeStats(
     val habits: HabitStats,
     val mentalState: MentalStateStats,
     val pressure: PressureStats,
-    val direction: DirectionStats
-)
+    val direction: DirectionStats,
+    val campaignMeta: CampaignMeta? = null,
+    val studySession: StudySession? = null
+) {
+    companion object {
+        val EMPTY = HomeStats(
+            cognitive = CognitiveStats(0, TrendDirection.STABLE, 0, 0, 0, CognitiveLoadLevel.LIGHT, FatigueLevel.LOW, 0f, 0f),
+            learning = LearningStats(emptyMap(), 0f, 0f, 0, 0, emptyList(), TrendDirection.STABLE),
+            habits = HabitStats(0, 0, 0, 0, 0, 0f, null),
+            mentalState = MentalStateStats(0, TrendDirection.STABLE, RiskLevel.LOW, TrendDirection.STABLE, StudyMode.LIGHT, "Calibrating..."),
+            pressure = PressureStats(0, TrendDirection.STABLE, RiskLevel.LOW, 0f, 0f, 0f, CrisisProximity(null,null,null,null), 0f),
+            direction = DirectionStats(0f, 0f, 0f, 0, TrajectoryStatus.STABLE, 0),
+            campaignMeta = null,
+            studySession = null
+        )
+    }
+}
 
 // ========================================
 // 🧭 MORE SCREEN STATS (Life Support)
@@ -331,4 +368,72 @@ data class MoreStats(
     val vitality: VitalityStats,
     val radius: RadiusStats,
     val systemMeta: SystemMetaStats
-)
+) {
+    companion object {
+        val EMPTY = MoreStats(
+            lifeStability = LifeStabilityScore(
+                overallScore = 0,
+                campaignContribution = 0f,
+                vitalityContribution = 0f,
+                radiusContribution = 0f,
+                trend = TrendDirection.STABLE
+            ),
+            campaign = CampaignStats(
+                applicationsSent = 0,
+                interviewsScheduled = 0,
+                interviewSuccessRate = 0f,
+                skillsProgress = 0f,
+                codingPracticeMinutes = 0,
+                resumeStrengthScore = 0,
+                hiringProbability = 0f,
+                marketFitScore = 0f,
+                employerResponseRate = 0f,
+                interviewConfidence = 0,
+                faangReadinessScore = 0,
+                agentStatus = AgentStatus.STABLE,
+                riskAlerts = emptyList(),
+                isCalibrated = false
+            ),
+            vitality = VitalityStats(
+                budgetRunwayDays = 0,
+                monthlyBurnRate = 0f,
+                savingsProgress = 0f,
+                emergencyFundPercent = 0f,
+                mealsPlanned = 0,
+                mealsSkipped = 0,
+                nutritionAdequacy = 0f,
+                groceryEfficiency = 0f,
+                sleepQualityScore = 0,
+                energyLevelToday = 0,
+                fatigueIndex = FatigueLevel.LOW,
+                focusBodyCorrelation = 0f,
+                burnoutRisk = RiskLevel.LOW,
+                agentStatus = AgentStatus.STABLE,
+                riskAlerts = emptyList()
+            ),
+            radius = RadiusStats(
+                visaDaysRemaining = null,
+                housingStabilityScore = 0,
+                utilityReadiness = 0f,
+                socialInteractionCount = 0,
+                languageFluencyScore = 0,
+                culturalComfort = 0f,
+                scamRiskAlerts = 0,
+                safeZoneAwareness = 0f,
+                localKnowledgeScore = 0,
+                agentStatus = AgentStatus.STABLE,
+                riskAlerts = emptyList()
+            ),
+            systemMeta = SystemMetaStats(
+                studentOperatingCapacity = 0,
+                lifeToStudyInterference = 0f,
+                studyCapacityRemaining = 0f,
+                aiAssistEffectiveness = AIEffectiveness(0f, 0f, 0f),
+                behaviorConsistencyScore = 0,
+                disciplineReliabilityIndex = 0,
+                selfControlStrength = 0,
+                decisionQualityScore = 0
+            ) 
+        )
+    }
+}

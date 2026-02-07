@@ -81,7 +81,7 @@ class BrainApiClient(
     ): QuickPromptResponse? {
         // Use Appwrite Function for quick prompt too
         val data = mapOf("prompt" to prompt, "agent" to agent, "mode" to mode)
-        val triggerResp = executeBrainFunction(userId, "quick", "quick_prompt", data)
+        val triggerResp = executeBrainFunction(userId, "quick", "quick_prompt", data, isAsync = false)
         
         // Map TriggerResponse back to QuickPromptResponse mock/derived (or update backend to return QuickPromptResponse)
         // For now, assuming backend returns standard structure in response message
@@ -107,14 +107,15 @@ class BrainApiClient(
         userId: String,
         endpoint: String, // e.g. "campaign", "vitality"
         eventType: String,
-        data: Map<String, Any>
+        data: Map<String, Any>,
+        isAsync: Boolean = true
     ): TriggerResponse? {
         val functionId = com.mursaline.kaironex.core.AppConfig.Appwrite.FUNCTION_ID
         val project = com.mursaline.kaironex.core.AppConfig.Appwrite.PROJECT_ID
         val key = com.mursaline.kaironex.core.AppConfig.Appwrite.API_KEY
         val url = "${com.mursaline.kaironex.core.AppConfig.Appwrite.ENDPOINT}/functions/$functionId/executions"
 
-        // Manual JSON construction to avoid "Serializer for class 'Any' is not found"
+        // Manual JSON construction
         val dataJson = buildJsonObject {
             data.forEach { (k, v) ->
                 when (v) {
@@ -136,7 +137,7 @@ class BrainApiClient(
 
         val requestBody = buildJsonObject {
             put("body", payloadJson.toString())
-            put("async", false) // Wait for response
+            put("async", isAsync)
         }
 
         return try {
@@ -152,6 +153,12 @@ class BrainApiClient(
                 val status = execBodyStr["status"]?.jsonPrimitive?.contentOrNull
                 val responseBodyStr = execBodyStr["responseBody"]?.jsonPrimitive?.contentOrNull
                 
+                // For ASYNC calls, 'processing', 'waiting', or 'scheduled' are good statuses
+                if (isAsync && status in listOf("processing", "waiting", "scheduled")) {
+                     return TriggerResponse("success", "Brain activation started (Async)")
+                }
+
+                // For SYNC calls, we need 'completed' and a body
                 if (status == "completed" && responseBodyStr != null) {
                     try {
                         json.decodeFromString<TriggerResponse>(responseBodyStr)
@@ -179,28 +186,28 @@ class BrainApiClient(
         eventType: String,
         data: Map<String, Any> = emptyMap()
     ): TriggerResponse? {
-        return executeBrainFunction(userId, "trigger", eventType, data)
+        return executeBrainFunction(userId, "trigger", eventType, data, isAsync = true)
     }
 
     /**
      * Trigger campaign agent specifically.
      */
     suspend fun triggerCampaign(userId: String, eventType: String, data: Map<String, String> = emptyMap()): TriggerResponse? {
-        return executeBrainFunction(userId, "campaign", eventType, data)
+        return executeBrainFunction(userId, "campaign", eventType, data, isAsync = true)
     }
 
     /**
      * Trigger vitality agent specifically.
      */
     suspend fun triggerVitality(userId: String, eventType: String, data: Map<String, String> = emptyMap()): TriggerResponse? {
-        return executeBrainFunction(userId, "vitality", eventType, data)
+        return executeBrainFunction(userId, "vitality", eventType, data, isAsync = true)
     }
 
     /**
      * Trigger radius agent specifically.
      */
     suspend fun triggerRadius(userId: String, eventType: String, data: Map<String, String> = emptyMap()): TriggerResponse? {
-        return executeBrainFunction(userId, "radius", eventType, data)
+        return executeBrainFunction(userId, "radius", eventType, data, isAsync = true)
     }
 
     // =========================================================================

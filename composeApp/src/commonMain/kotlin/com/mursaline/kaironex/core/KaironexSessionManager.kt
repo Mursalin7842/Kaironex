@@ -73,14 +73,20 @@ class KaironexSessionManager(
             }
         }
 
-        // Initial data sync
+        // Eager Parallel Data Loading (Instant Startup)
         scope.launch {
             try {
-                statsRepository?.initializeUserTables() // Ensure all tables exist (Idempotent)
-                statsRepository?.refreshAll()
-                println("✅ Initial data sync complete")
+                // Ensure tables exist (fast check)
+                val initJob = launch { statsRepository?.initializeUserTables() }
+                
+                // Fetch User & Campaign Data in Parallel
+                // AppwriteStatsRepository handles caching, so these act as "warm-up"
+                val profileJob = launch { statsRepository?.refreshAll(forceRefresh = true) } 
+                
+                joinAll(initJob, profileJob)
+                println("✅ [Instant Load] Full profile & campaign data ready")
             } catch (e: Exception) {
-                println("⚠️ Initial sync failed: ${e.message}")
+                println("⚠️ [Instant Load] Partial failure: ${e.message}")
             }
         }
 

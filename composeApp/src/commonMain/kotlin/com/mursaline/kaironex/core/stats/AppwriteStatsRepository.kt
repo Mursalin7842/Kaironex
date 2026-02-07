@@ -99,9 +99,9 @@ class AppwriteStatsRepository(
                              try {
                                  val list = json.parseToJsonElement(reasoning).jsonArray
                                  list.lastOrNull()?.jsonPrimitive?.content ?: "..."
-                             } catch(e:Exception) { reasoning.take(150) }
+                             } catch(e:Exception) { reasoning.take(10000) }
                         } else {
-                             reasoning.take(150)
+                             reasoning.take(10000)
                         }
                     }
 
@@ -124,7 +124,7 @@ class AppwriteStatsRepository(
     private val _userState = MutableStateFlow<UserStateResponse?>(null)
     val userState: StateFlow<UserStateResponse?> = _userState.asStateFlow()
 
-    private val _homeStats = MutableStateFlow(StatsProvider.getHomeStats())
+    private val _homeStats = MutableStateFlow(HomeStats.EMPTY)
     val homeStats: StateFlow<HomeStats> = _homeStats.asStateFlow()
 
     private val _moreStats = MutableStateFlow(StatsProvider.getMoreStats())
@@ -144,10 +144,13 @@ class AppwriteStatsRepository(
     private val _profile = MutableStateFlow(StudentProfile())
     val profile: StateFlow<StudentProfile> = _profile.asStateFlow()
 
+    private var _isCampaignLoaded = false
+
+
     /**
      * Refresh all stats from backend.
      */
-    suspend fun refreshAll() {
+    suspend fun refreshAll(forceRefresh: Boolean = false) {
         _isLoading.value = true
 
         try {
@@ -160,7 +163,7 @@ class AppwriteStatsRepository(
             }
             
             // 2. Fetch Campaign State (Separate Collection)
-            fetchCampaignState()
+            fetchCampaignState(forceRefresh)
 
             _lastSyncTime.value = System.currentTimeMillis()
         } catch (e: Exception) {
@@ -432,7 +435,7 @@ class AppwriteStatsRepository(
             val stateJson = state.state
 
             // Extract pressure index from state
-            val pressureIndex = stateJson["pressure_index"]?.toIntOrNull() ?: 45
+            val pressureIndex = stateJson["pressure_index"]?.toIntOrNull() ?: 0
 
             // Parse vitality for mental state
             val vitalityJson = stateJson["vitality"]?.let {
@@ -476,7 +479,7 @@ class AppwriteStatsRepository(
             val stateJson = state.state
 
             // Extract contributions
-            val pressureIndex = stateJson["pressure_index"]?.toIntOrNull() ?: 45
+            val pressureIndex = stateJson["pressure_index"]?.toIntOrNull() ?: 0
 
             // Parse each zone state
             val vitalityJson = stateJson["vitality"]?.let {
@@ -624,7 +627,10 @@ class AppwriteStatsRepository(
     /**
      * Fetch dedicated Campaign State (Skill Tree, Quest Board, Armory).
      */
-    private suspend fun fetchCampaignState() {
+    suspend fun fetchCampaignState(forceRefresh: Boolean = false) {
+        // Cache Check: If loaded and not forcing, return immediately
+        if (_isCampaignLoaded && !forceRefresh) return
+
         try {
             val collectionId = "campaign_state"
             
@@ -640,6 +646,7 @@ class AppwriteStatsRepository(
 
             if (directResponse.status.value == 200) {
                 parseCampaignDocument(directResponse.bodyAsText())
+                _isCampaignLoaded = true
                 return
             }
 
@@ -662,6 +669,7 @@ class AppwriteStatsRepository(
                 
                 documents?.firstOrNull()?.let { doc ->
                     parseCampaignDocument(doc.toString())
+                    _isCampaignLoaded = true
                 }
             } else {
                 val errorBody = response.bodyAsText()

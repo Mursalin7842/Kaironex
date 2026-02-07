@@ -1,6 +1,7 @@
 package com.mursaline.kaironex.features.study
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,12 +16,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.style.TextAlign
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.mursaline.kaironex.ui.components.KxCard
 import com.mursaline.kaironex.ui.components.KxCardVariant
 import com.mursaline.kaironex.ui.theme.KaironexColors
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
+import cafe.adriel.voyager.koin.koinScreenModel
+import io.github.vinceglb.filekit.core.PickerMode
+import io.github.vinceglb.filekit.core.PickerType
+import com.mursaline.kaironex.features.dashboard.components.*
+import com.mursaline.kaironex.features.study.ScheduleRepository.ScheduleTask as DomainTask
 
 /**
  * Study Sessions Screen
@@ -41,70 +52,82 @@ object StudySessionsScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val viewModel = koinScreenModel<StudyViewModel>()
+        
         var selectedTab by remember { mutableStateOf(0) }
+        val schedule by viewModel.schedule.collectAsState()
+        val isGenerating by viewModel.isGenerating.collectAsState()
+        val isLoading by viewModel.isLoading.collectAsState() // Observe loading state
+        val resources by viewModel.resources.collectAsState()
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(KaironexColors.CloudGray)
-        ) {
-            // Top App Bar
-            TopAppBar(
-                title = {
-                    Text(
-                        "Study Room",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navigator.pop() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { /* TODO: Add new session */ }) {
-                        Icon(Icons.Default.Add, "Add Session")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = KaironexColors.CanvasWhite
-                )
-            )
-
-            // Tab Row
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = KaironexColors.CanvasWhite,
-                contentColor = KaironexColors.ElectricBlue
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(KaironexColors.CloudGray)
             ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("Current") }
+                // Top App Bar
+                TopAppBar(
+                    title = { Text("Study Room", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = { navigator.pop() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        }
+                    },
+                    actions = {
+                        // Refresh Button
+                        IconButton(onClick = { 
+                            val topResources = resources.take(5).map { it.id }
+                            if (topResources.isNotEmpty()) {
+                                viewModel.generateSchedule(topResources, 15)
+                            } else {
+                                viewModel.loadSchedule() // Just refresh if no resources
+                            }
+                        }) {
+                            Icon(Icons.Default.Refresh, "Refresh")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = KaironexColors.CanvasWhite)
                 )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("Upcoming") }
-                )
-                Tab(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    text = { Text("Previous") }
-                )
-            }
 
-            // Content based on selected tab
-            when (selectedTab) {
-                0 -> CurrentSessionContent(
-                    onStartSession = { navigator.push(StudyRoomScreen) }
-                )
-                1 -> UpcomingSessionsContent()
-                2 -> PreviousSessionsContent()
+                // Tab Row
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = KaironexColors.CanvasWhite,
+                    contentColor = KaironexColors.ElectricBlue
+                ) {
+                    Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Current") })
+                    Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Upcoming") })
+                    Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Previous") })
+                }
+
+                // Content
+                if (isLoading || isGenerating) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = KaironexColors.ElectricBlue)
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                if (isGenerating) "Designing Strategy..." else "Syncing Profile...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = KaironexColors.SlateGray
+                            )
+                        }
+                    }
+                } else {
+                    when (selectedTab) {
+                        0 -> CurrentSessionContent(onStartSession = { navigator.push(StudyRoomScreen) })
+                        1 -> UpcomingSessionsContent(schedule.filter { it.status.lowercase() != "completed" })
+                        2 -> PreviousSessionsContent(schedule.filter { it.status.lowercase() == "completed" })
+                    }
+                }
             }
         }
     }
 }
+
+
+
 
 @Composable
 private fun CurrentSessionContent(onStartSession: () -> Unit) {
@@ -269,20 +292,57 @@ private fun QuickStartChip(duration: String, label: String, modifier: Modifier =
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun UpcomingSessionsContent() {
-    val upcomingSessions = listOf(
-        StudySession("1", "Physics", "Quantum Mechanics", "Today, 3:00 PM", 50),
-        StudySession("2", "Chemistry", "Organic Reactions", "Tomorrow, 10:00 AM", 45),
-        StudySession("3", "Math", "Linear Algebra", "Tomorrow, 2:00 PM", 60)
-    )
-
+private fun UpcomingSessionsContent(schedule: List<ScheduleRepository.ScheduleTask>) {
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        items(upcomingSessions) { session ->
-            SessionCard(session, isUpcoming = true)
+        if (schedule.isEmpty()) {
+            item {
+                Text(
+                    "No upcoming sessions. Tap refresh to generate a plan.",
+                    modifier = Modifier.padding(16.dp),
+                    color = KaironexColors.SlateGray
+                )
+            }
+        } else {
+            // Group by Date
+            val grouped = schedule.groupBy { task ->
+                try {
+                    task.startTime.take(10) // YYYY-MM-DD
+                } catch (e: Exception) {
+                    "Unknown Date"
+                }
+            }
+
+            grouped.forEach { (date, tasks) ->
+                stickyHeader {
+                    Surface(
+                        color = KaironexColors.CloudGray,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = formatDateHeader(date),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = KaironexColors.InkBlack,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                }
+
+                items(tasks) { task ->
+                    val uiTask = task.toUiTask()
+                    ScheduledTaskItem(
+                        task = uiTask,
+                        isMobile = true, 
+                        isDetailed = true, // Enable detailed view for Study Room
+                        onClick = { /* Detail view */ }
+                    )
+                }
+            }
         }
 
         item {
@@ -291,20 +351,68 @@ private fun UpcomingSessionsContent() {
     }
 }
 
-@Composable
-private fun PreviousSessionsContent() {
-    val previousSessions = listOf(
-        StudySession("1", "Calculus II", "Derivatives", "Yesterday", 50, completed = true),
-        StudySession("2", "History", "World War II", "2 days ago", 45, completed = true),
-        StudySession("3", "Biology", "Cell Division", "3 days ago", 30, completed = false)
-    )
+// Mapper extension
+private fun DomainTask.toUiTask(): ScheduledTask {
+    // Parse start/end to nice 12h
+    val sTime = formatTime(this.startTime)
+    val eTime = formatTime(this.endTime)
+    
+    // Determine status enum
+    val statusEnum = when(this.status.lowercase()) {
+        "completed" -> TaskStatus.COMPLETED
+        "active" -> TaskStatus.IN_PROGRESS
+        "skipped" -> TaskStatus.OVERDUE
+        else -> TaskStatus.UPCOMING
+    }
+    
+    // Determine priority enum
+    val priorityEnum = when(this.priority) {
+        in 8..10 -> TaskPriority.CRITICAL
+        in 5..7 -> TaskPriority.HIGH
+        else -> TaskPriority.NORMAL
+    }
 
+    return ScheduledTask(
+        id = this.id,
+        title = this.title,
+        subject = this.type.replaceFirstChar { it.titlecase() },
+        startTime = sTime,
+        endTime = eTime,
+        duration = "60m", 
+        status = statusEnum,
+        priority = priorityEnum,
+        topics = this.topics,
+        isFlexible = this.isFlexible,
+        linkedDeadline = this.linkedDeadline
+    )
+}
+
+@Composable
+private fun PreviousSessionsContent(completedTasks: List<ScheduleRepository.ScheduleTask>) {
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(previousSessions) { session ->
-            SessionCard(session, isUpcoming = false)
+        if (completedTasks.isEmpty()) {
+            item {
+                Text(
+                    "No completed sessions found.",
+                    modifier = Modifier.padding(16.dp),
+                    color = KaironexColors.SlateGray,
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            items(completedTasks) { task ->
+                val uiTask = task.toUiTask()
+                ScheduledTaskItem(
+                    task = uiTask, 
+                    isMobile=true, 
+                    isDetailed = true,
+                    onClick={}
+                )
+            }
         }
 
         item {
@@ -313,69 +421,193 @@ private fun PreviousSessionsContent() {
     }
 }
 
+// Helper: Format YYYY-MM-DD to readable (e.g., "Mon, Oct 25")
+private fun formatDateHeader(dateStr: String): String {
+    if (dateStr == "Unknown Date") return dateStr
+    // Try simple parsing
+    return try {
+        // Just return ISO for now or prettify if using java.time (not avail in KMM common easily without lib)
+        // For simplicity in CommonMain, we stick to the ISO string or simple split
+        dateStr
+    } catch(e: Exception) { dateStr }
+}
+
+// Helper: Extract HH:MM AM/PM from ISO string
+private fun formatTime(isoString: String): String {
+    return try {
+        // Simple manual parsing for 12H since standard formatter isn't in commonMain
+        // ISO: 2023-10-25T14:30:00.000+00:00
+        val timePart = isoString.substringAfter("T").substringBefore(".") // 14:30:00
+        val parts = timePart.split(":")
+        val hour = parts[0].toInt()
+        val min = parts[1]
+        
+        val amPm = if (hour >= 12) "PM" else "AM"
+        val hour12 = if (hour > 12) hour - 12 else if (hour == 0) 12 else hour
+        
+        "$hour12:$min $amPm"
+    } catch (e: Exception) { "--:--" }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SessionCard(session: StudySession, isUpcoming: Boolean) {
     KxCard(
         variant = KxCardVariant.Flat,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Subject icon
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = if (isUpcoming) KaironexColors.ElectricBlue.copy(alpha = 0.1f)
-                       else KaironexColors.SlateGray.copy(alpha = 0.1f)
-            ) {
-                Box(
-                    modifier = Modifier.size(48.dp),
-                    contentAlignment = Alignment.Center
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Row 1: Icon, Title, Time
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Priority Badge (Replacing Icon)
+                Surface(
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    color = getPriorityColor(session.priority),
+                    modifier = Modifier.size(40.dp)
                 ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            "${session.priority}",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                }
+
+                Spacer(Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        if (isUpcoming) "📅" else if (session.completed) "✅" else "⏸️",
-                        style = MaterialTheme.typography.titleMedium
+                        session.subject,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = KaironexColors.InkBlack
                     )
+                    // Linked Deadline if exists
+                    if (!session.linkedDeadline.isNullOrBlank()) {
+                         Row(verticalAlignment = Alignment.CenterVertically) {
+                             Icon(Icons.Default.Event, null, tint = KaironexColors.ErrorRed, modifier = Modifier.size(12.dp))
+                             Spacer(Modifier.width(4.dp))
+                             Text(
+                                "Deadline: ${formatDateHeader(session.linkedDeadline.take(10))}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = KaironexColors.ErrorRed
+                            )
+                         }
+                    } else {
+                         Text(
+                            session.type.capitalize(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = KaironexColors.SlateGray
+                        )
+                    }
+                }
+
+                // Time Column
+                Column(horizontalAlignment = Alignment.End) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                         Icon(Icons.Default.Schedule, null, tint = KaironexColors.ElectricBlue, modifier = Modifier.size(14.dp))
+                         Spacer(Modifier.width(4.dp))
+                         Text(
+                            session.timeRange, 
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = KaironexColors.ElectricBlue
+                        )
+                    }
                 }
             }
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
+            
+            // Topics & Details
+            Spacer(Modifier.height(12.dp))
+            
+            // Topics
+            if (!session.topics.isNullOrBlank()) {
                 Text(
-                    session.subject,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = KaironexColors.InkBlack
+                    "Topics: ${session.topics}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = KaironexColors.InkBlack,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(KaironexColors.CloudGray.copy(alpha=0.5f), RoundedCornerShape(8.dp))
+                        .padding(8.dp)
                 )
-                Text(
-                    session.topic,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = KaironexColors.SlateGray
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    session.time,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isUpcoming) KaironexColors.ElectricBlue else KaironexColors.SlateGray
-                )
+                Spacer(Modifier.height(8.dp))
             }
-
-            Text(
-                "${session.duration} min",
-                style = MaterialTheme.typography.labelMedium,
-                color = KaironexColors.SlateGray
-            )
+            
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                StatusChip(session.status)
+                
+                if (session.isFlexible) {
+                    DetailChip("Flexible", KaironexColors.SuccessGreen, Icons.Default.Autorenew)
+                } else {
+                    DetailChip("Fixed", KaironexColors.SlateGray, Icons.Default.Lock)
+                }
+            }
         }
     }
 }
 
+@Composable
+fun StatusChip(status: String) {
+    val (color, label) = when(status.lowercase()) {
+        "completed" -> KaironexColors.SuccessGreen to "Done"
+        "pending" -> KaironexColors.SlateGray to "Pending"
+        "skipped" -> KaironexColors.ErrorRed to "Skipped"
+        "active" -> KaironexColors.ElectricBlue to "Active"
+        else -> KaironexColors.SlateGray to status.capitalize()
+    }
+    
+    Surface(
+        color = color.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        Text(
+            label,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun DetailChip(text: String, color: Color, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.background(color.copy(alpha = 0.05f), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(12.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(text, style = MaterialTheme.typography.labelSmall, color = color)
+    }
+}
+
+fun getPriorityColor(priority: Int): Color {
+    return when(priority) {
+        in 8..10 -> KaironexColors.ErrorRed
+        in 5..7 -> KaironexColors.EventsOrange
+        else -> KaironexColors.SuccessGreen
+    }
+}
+
+private fun String.capitalize() = replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+
 private data class StudySession(
     val id: String,
     val subject: String,
-    val topic: String,
-    val time: String,
+    val topic: String?,
+    val timeRange: String,
     val duration: Int,
-    val completed: Boolean = false
+    val status: String,
+    val type: String,
+    val isFlexible: Boolean,
+    val priority: Int,
+    val topics: String,
+    val linkedDeadline: String?
 )

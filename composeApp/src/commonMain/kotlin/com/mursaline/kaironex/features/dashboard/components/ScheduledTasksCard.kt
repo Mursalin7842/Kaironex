@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.mursaline.kaironex.ui.theme.KaironexColors
 
 /**
@@ -30,7 +31,10 @@ data class ScheduledTask(
     val endTime: String,
     val duration: String,
     val status: TaskStatus,
-    val priority: TaskPriority = TaskPriority.NORMAL
+    val priority: TaskPriority = TaskPriority.NORMAL,
+    val topics: String? = null,
+    val isFlexible: Boolean = false,
+    val linkedDeadline: String? = null
 )
 
 enum class TaskStatus(val label: String, val color: Long) {
@@ -159,9 +163,10 @@ fun ScheduledTasksCard(
 }
 
 @Composable
-private fun ScheduledTaskItem(
+fun ScheduledTaskItem(
     task: ScheduledTask,
     isMobile: Boolean,
+    isDetailed: Boolean = false,
     onClick: () -> Unit
 ) {
     Surface(
@@ -209,7 +214,7 @@ private fun ScheduledTaskItem(
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = KaironexColors.InkBlack,
-                        maxLines = 1,
+                        maxLines = if (isDetailed) Int.MAX_VALUE else 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     if (task.priority == TaskPriority.HIGH || task.priority == TaskPriority.CRITICAL) {
@@ -222,11 +227,69 @@ private fun ScheduledTaskItem(
                         )
                     }
                 }
-                Text(
-                    task.subject,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = KaironexColors.SlateGray
-                )
+                
+                // Detailed View: Topics and Meta
+                if (isDetailed) {
+                    Spacer(Modifier.height(4.dp))
+                    if (!task.topics.isNullOrBlank()) {
+                        Text(
+                            task.topics,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = KaironexColors.InkBlack.copy(alpha = 0.8f),
+                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight * 1.1,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+                    }
+                    
+                    // Meta Chips
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                         Text(
+                            task.subject,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = KaironexColors.SlateGray
+                        )
+                        
+                        // Flexible Chip
+                        if (task.isFlexible) {
+                            Surface(
+                                color = KaironexColors.SuccessGreen.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    "Flexible",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = KaironexColors.SuccessGreen,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        
+                        // Deadline
+                        if (!task.linkedDeadline.isNullOrBlank()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Event, null, tint = KaironexColors.ErrorRed, modifier = Modifier.size(10.dp))
+                                Spacer(Modifier.width(2.dp))
+                                Text(
+                                    "Due ${task.linkedDeadline.take(10)}", // Simple date take
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = KaironexColors.ErrorRed
+                                )
+                            }
+                        }
+                    }
+                    
+                } else {
+                    // Standard View
+                    Text(
+                        task.subject,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = KaironexColors.SlateGray
+                    )
+                }
             }
 
             // Duration badge

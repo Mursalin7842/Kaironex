@@ -32,31 +32,42 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mursaline.kaironex.ui.theme.KaironexColors
+import com.mursaline.kaironex.core.stats.*
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(stats: HomeStats = HomeStats.EMPTY) {
     BoxWithConstraints {
         val isMobile = this.maxWidth < 600.dp
 
         Column {
-            // Stats Row - Stack vertically on mobile, side-by-side on desktop
+            // Stats Row
             if (isMobile) {
-                // Mobile: Stack cards vertically
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    FocusScoreCard(modifier = Modifier.fillMaxWidth().height(160.dp))
-                    QuickStatusCard(modifier = Modifier.fillMaxWidth().height(140.dp))
+                    FocusScoreCard(
+                        score = stats.cognitive.focusScore, 
+                        modifier = Modifier.fillMaxWidth().height(160.dp)
+                    )
+                    CampaignStatusCard(
+                        meta = stats.campaignMeta, 
+                        modifier = Modifier.fillMaxWidth().height(140.dp)
+                    )
                 }
             } else {
-                // Desktop: Side by side
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    FocusScoreCard(modifier = Modifier.weight(1f).height(180.dp))
-                    QuickStatusCard(modifier = Modifier.weight(1f).height(180.dp))
+                    FocusScoreCard(
+                        score = stats.cognitive.focusScore,
+                        modifier = Modifier.weight(1f).height(180.dp)
+                    )
+                    CampaignStatusCard(
+                        meta = stats.campaignMeta,
+                        modifier = Modifier.weight(1f).height(180.dp)
+                    )
                 }
             }
 
@@ -72,7 +83,7 @@ fun HomeScreen() {
 }
 
 @Composable
-private fun FocusScoreCard(modifier: Modifier = Modifier) {
+private fun FocusScoreCard(score: Int, modifier: Modifier = Modifier) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
@@ -91,14 +102,14 @@ private fun FocusScoreCard(modifier: Modifier = Modifier) {
                         .size(80.dp)
                         .border(6.dp, KaironexColors.Slate100, CircleShape)
                 )
-                // Progress (Static for now)
+                // Progress (Static for now, could animate based on score)
                 Box(
                     modifier = Modifier
                         .size(80.dp)
-                        .border(6.dp, KaironexColors.Emerald500, CircleShape)
+                        .border(6.dp, if(score > 70) KaironexColors.Emerald500 else KaironexColors.Amber500, CircleShape)
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("85", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = KaironexColors.Slate900)
+                    Text(score.toString(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = KaironexColors.Slate900)
                     Text("SCORE", style = MaterialTheme.typography.labelSmall, color = KaironexColors.Slate500)
                 }
             }
@@ -107,7 +118,7 @@ private fun FocusScoreCard(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun QuickStatusCard(modifier: Modifier = Modifier) {
+private fun CampaignStatusCard(meta: CampaignMeta?, modifier: Modifier = Modifier) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = KaironexColors.Indigo600,
@@ -118,16 +129,47 @@ private fun QuickStatusCard(modifier: Modifier = Modifier) {
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(8.dp).background(KaironexColors.Emerald500, CircleShape))
-                Spacer(Modifier.width(8.dp))
-                Text("System Active", color = KaironexColors.Indigo200, style = MaterialTheme.typography.labelMedium)
-            }
+            if (meta != null) {
+                // HEADER: Strategy Mode
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(8.dp).background(KaironexColors.Emerald500, CircleShape))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = meta.strategyMode.take(20), 
+                        color = KaironexColors.Indigo200, 
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1
+                    )
+                }
 
-            Column {
-                Text("You are doing great!", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Text("No distractions detected.", color = KaironexColors.Indigo50.copy(alpha=0.8f), style = MaterialTheme.typography.bodySmall)
+                Column {
+                    // MAIN: Current Phase
+                    Text(
+                        text = meta.currentPhase, 
+                        color = Color.White, 
+                        style = MaterialTheme.typography.titleMedium, 
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    
+                    // FOOTER: Visa / Motivation
+                    val footerText = if (meta.visaPressure.contains("CRITICAL")) 
+                        "⚠️ Visa Compliance Active" 
+                    else 
+                        "⚓ ${meta.motivationAnchor}"
+                    
+                    Text(
+                        text = footerText, 
+                        color = KaironexColors.Indigo50.copy(alpha=0.8f), 
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1
+                    )
+                }
+            } else {
+                // Fallback (Not Calibrated)
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                    Text("Campaign Not Active", color = KaironexColors.Indigo200)
+                }
             }
         }
     }

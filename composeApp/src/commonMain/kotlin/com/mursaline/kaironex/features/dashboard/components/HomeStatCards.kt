@@ -38,7 +38,8 @@ import com.mursaline.kaironex.ui.theme.KaironexColors
 fun CognitivePerformanceCard(
     stats: CognitiveStats,
     isMobile: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -46,7 +47,10 @@ fun CognitivePerformanceCard(
         color = KaironexColors.CanvasWhite,
         shadowElevation = 4.dp
     ) {
-        Column(modifier = Modifier.padding(if (isMobile) 12.dp else 16.dp)) {
+        if (isLoading) {
+            CardLoadingOverlay()
+        } else {
+            Column(modifier = Modifier.padding(if (isMobile) 12.dp else 16.dp)) {
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -129,6 +133,7 @@ fun CognitivePerformanceCard(
         }
     }
 }
+}
 
 @Composable
 private fun CognitiveLoadBadge(level: CognitiveLoadLevel) {
@@ -154,7 +159,8 @@ private fun CognitiveLoadBadge(level: CognitiveLoadLevel) {
 fun LearningProgressCard(
     stats: LearningStats,
     isMobile: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -162,7 +168,10 @@ fun LearningProgressCard(
         color = KaironexColors.CanvasWhite,
         shadowElevation = 4.dp
     ) {
-        Column(modifier = Modifier.padding(if (isMobile) 12.dp else 16.dp)) {
+        if (isLoading) {
+             CardLoadingOverlay()
+        } else {
+            Column(modifier = Modifier.padding(if (isMobile) 12.dp else 16.dp)) {
             Text(
                 "📚 Learning Progress",
                 style = MaterialTheme.typography.titleSmall,
@@ -240,6 +249,7 @@ fun LearningProgressCard(
         }
     }
 }
+}
 
 // ========================================
 // 🎯 MENTAL STATE & MOTIVATION CARD
@@ -249,7 +259,8 @@ fun LearningProgressCard(
 fun MentalStateCard(
     stats: MentalStateStats,
     isMobile: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -257,7 +268,10 @@ fun MentalStateCard(
         color = KaironexColors.CanvasWhite,
         shadowElevation = 4.dp
     ) {
-        Column(modifier = Modifier.padding(if (isMobile) 12.dp else 16.dp)) {
+        if (isLoading) {
+             CardLoadingOverlay()
+        } else {
+            Column(modifier = Modifier.padding(if (isMobile) 12.dp else 16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -363,6 +377,7 @@ fun MentalStateCard(
         }
     }
 }
+}
 
 // ========================================
 // ⚡ PRESSURE & RISK CARD
@@ -372,7 +387,8 @@ fun MentalStateCard(
 fun PressureRiskCard(
     stats: PressureStats,
     isMobile: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -380,7 +396,10 @@ fun PressureRiskCard(
         color = KaironexColors.CanvasWhite,
         shadowElevation = 4.dp
     ) {
-        Column(modifier = Modifier.padding(if (isMobile) 12.dp else 16.dp)) {
+        if (isLoading) {
+             CardLoadingOverlay()
+        } else {
+            Column(modifier = Modifier.padding(if (isMobile) 12.dp else 16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -448,15 +467,19 @@ fun PressureRiskCard(
                     .background(KaironexColors.CloudGray)
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
+                    // Safe weights (minimum 0.001f to prevent crash)
+                    val interference = maxOf(stats.lifeInterferenceRatio, 0.001f)
+                    val capacity = maxOf(1 - stats.lifeInterferenceRatio, 0.001f)
+                    
                     Box(
                         modifier = Modifier
-                            .weight(stats.lifeInterferenceRatio)
+                            .weight(interference)
                             .fillMaxHeight()
                             .background(Color(0xFFFF9800))
                     )
                     Box(
                         modifier = Modifier
-                            .weight(1 - stats.lifeInterferenceRatio)
+                            .weight(capacity)
                             .fillMaxHeight()
                             .background(KaironexColors.ElectricBlue)
                     )
@@ -484,6 +507,7 @@ fun PressureRiskCard(
             }
         }
     }
+}
 }
 
 @Composable
@@ -523,6 +547,25 @@ fun MiniStat(emoji: String, value: String, label: String) {
             label,
             style = MaterialTheme.typography.labelSmall,
             color = KaironexColors.SlateGray
+        )
+    }
+}
+
+/**
+ * Shared Loading Overlay for Cards
+ */
+@Composable
+fun CardLoadingOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp), // Approx height of cards
+        contentAlignment = Alignment.Center
+    ) {
+         CircularProgressIndicator(
+            modifier = Modifier.size(24.dp),
+            color = KaironexColors.ElectricBlue,
+            strokeWidth = 2.dp
         )
     }
 }

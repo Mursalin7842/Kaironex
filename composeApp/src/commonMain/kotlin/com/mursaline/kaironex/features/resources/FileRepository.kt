@@ -50,8 +50,8 @@ class FileRepository(
                 if (AppConfig.Appwrite.API_KEY.isNotBlank()) {
                     header("X-Appwrite-Key", AppConfig.Appwrite.API_KEY)
                 }
-                parameter("queries[0]", "equal(\"userId\", \"$userId\")")
-                parameter("queries[1]", "orderDesc(\"\$createdAt\")")
+                parameter("queries[0]", """{"method":"equal","attribute":"userId","values":["$userId"]}""")
+                parameter("queries[1]", """{"method":"orderDesc","attribute":"${'$'}createdAt"}""")
             }
 
             if (response.status.value == 200) {
@@ -71,6 +71,7 @@ class FileRepository(
                 }
             } else {
                 println("❌ Fetch Resources Failed: ${response.status}")
+                println("⚠️ Error Body: ${response.bodyAsText()}")
                 emptyList()
             }
         } catch (e: Exception) {

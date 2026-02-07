@@ -40,6 +40,8 @@ object ArmoryScreen : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val repo = koinInject<AppwriteStatsRepository>()
         val campaignState by repo.campaignState.collectAsState()
+        val isLoading by repo.isLoading.collectAsState()
+        
         val armory = campaignState.armory
         val inventory = armory.inventory
         val blueprints = armory.blueprints
@@ -67,10 +69,19 @@ object ArmoryScreen : Screen {
         ) { padding ->
             if (inventory.isEmpty() && blueprints.isEmpty()) {
                  Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                       Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                           Text("Armory Empty", style = MaterialTheme.typography.titleMedium, color = KaironexColors.SlateGray)
-                           Button(onClick = { navigator.push(CampaignSetupScreen(isEditMode=true)) }) {
-                               Text("Initialize Strategy")
+                       if (isLoading) {
+                           CircularProgressIndicator(color = KaironexColors.ElectricBlue)
+                       } else {
+                           Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                               Text("Armory Empty", style = MaterialTheme.typography.titleMedium, color = KaironexColors.SlateGray)
+                               Button(onClick = { navigator.push(CampaignSetupScreen(isEditMode=true)) }) {
+                                   Text("Initialize Strategy")
+                               }
+                           }
+                           
+                           // Auto-retry fetch if empty and not loading
+                           LaunchedEffect(Unit) {
+                               repo.refreshAll()
                            }
                        }
                  }

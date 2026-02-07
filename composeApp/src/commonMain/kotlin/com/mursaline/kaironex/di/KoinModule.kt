@@ -12,6 +12,11 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import org.koin.dsl.module
+import com.mursaline.kaironex.features.dashboard.ProfileCalibrationViewModel
+import com.mursaline.kaironex.features.dashboard.DashboardViewModel
+import com.mursaline.kaironex.features.voice.VoiceViewModel
+import com.mursaline.kaironex.features.study.StudyViewModel
+import com.mursaline.kaironex.features.agents.AgentsViewModel
 
 import com.mursaline.kaironex.core.KaironexSessionManager
 
@@ -84,9 +89,10 @@ val appModule = module {
     
     // 7. ViewModels
     // 7. ViewModels
-    factory { com.mursaline.kaironex.features.dashboard.ProfileCalibrationViewModel(get(), get()) }
-    factory { com.mursaline.kaironex.features.voice.VoiceViewModel(get(), get()) }
-    factory { com.mursaline.kaironex.features.study.StudyViewModel(get()) }
+    factory { ProfileCalibrationViewModel(get(), get()) }
+    factory { VoiceViewModel(get(), get()) }
+    factory { StudyViewModel(get(), get(), get(), get()) }
+    factory { AgentsViewModel() } // Life Command Center Logic
 
 
     // 8. Wake Word Service (Removed)
@@ -100,10 +106,9 @@ val appModule = module {
     // 9. Session Manager (Central Brain)
     single { KaironexSessionManager(get(), get(), get()) }
 
-    // 10. Resources Repository
+    // 10. Resources and Schedule
     single { com.mursaline.kaironex.features.resources.FileRepository(get(), get()) }
-    
-    // 7. ViewModels
-
+    single { com.mursaline.kaironex.features.study.ScheduleRepository(get(), get()) }
+    factory { DashboardViewModel(get()) }
 }
 

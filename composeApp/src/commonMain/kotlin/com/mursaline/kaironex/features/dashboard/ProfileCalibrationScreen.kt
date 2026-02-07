@@ -503,6 +503,13 @@ class ProfileCalibrationViewModel(
                     profileStorage.saveProfile(it)
                     
                     // 2. Sync to Appwrite (Triggers Brain)
+                    if (!sessionManager.isInitialized.value) {
+                         println("⚠️ Session not initialized, auto-initializing for onboarding...")
+                         sessionManager.initialize("demo_user_001")
+                         // Give it a moment to spin up stats repo
+                         kotlinx.coroutines.delay(500)
+                    }
+
                     val success = sessionManager.getStatsRepository()?.saveUserProfile(it)
                     if (success == true) {
                         println("✅ Profile synced to Appwrite & Brain")

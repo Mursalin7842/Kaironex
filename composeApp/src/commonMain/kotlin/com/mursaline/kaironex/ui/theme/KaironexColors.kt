@@ -15,6 +15,10 @@ object KaironexColors {
     val SuccessGreen = Color(0xFF1E8E3E) // In Flow, Safe
     val AttentionOrange = Color(0xFFE37400) // Drift, Low Energy
     val AlertRed = Color(0xFFB3261E) // Recall, Gatekeeper Failed
+
+    // Aliases for Feature Specifics
+    val EventsOrange = AttentionOrange
+    val ErrorRed = AlertRed
     
     // Text
     val InkBlack = Color(0xFF1F1F1F) // Primary Headings

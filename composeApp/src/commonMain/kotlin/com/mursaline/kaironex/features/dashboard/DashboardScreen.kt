@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.mursaline.kaironex.core.stats.*
+import com.mursaline.kaironex.features.dashboard.components.*
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -55,6 +57,11 @@ import androidx.compose.foundation.rememberScrollState
 import com.mursaline.kaironex.brain.ThoughtStreamItem 
 import com.mursaline.kaironex.core.KaironexSessionManager
 import org.koin.compose.koinInject
+import cafe.adriel.voyager.koin.koinScreenModel
+import com.mursaline.kaironex.features.study.StudyViewModel
+import com.mursaline.kaironex.features.dashboard.components.ScheduledTask
+import com.mursaline.kaironex.features.dashboard.components.TaskStatus
+import com.mursaline.kaironex.features.dashboard.components.TaskPriority
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import androidx.compose.material.icons.Icons
@@ -78,8 +85,35 @@ object DashboardScreen : Screen {
             hasAudioPermission = true
         }
 
+        // --- ViewModels ---
+        val studyViewModel = koinScreenModel<StudyViewModel>()
+        val dashboardViewModel = koinScreenModel<DashboardViewModel>() // New VM
+        
+        val schedule by studyViewModel.schedule.collectAsState()
+        val homeStats by dashboardViewModel.homeStats.collectAsState()
+        val isLoading by dashboardViewModel.isLoading.collectAsState()
+
+        // Map schedule to Dashboard Tasks
+        val dashboardTasks = remember(schedule) {
+             schedule.take(5).map { task ->
+                 val statusEnum = when(task.status.lowercase()) {
+                    "completed" -> TaskStatus.COMPLETED
+                    "active" -> TaskStatus.IN_PROGRESS
+                    else -> TaskStatus.UPCOMING
+                }
+                 ScheduledTask(
+                    id = task.id,
+                    title = task.title,
+                    subject = task.type.replaceFirstChar { it.titlecase() },
+                    startTime = task.startTime.substringAfter("T").take(5), 
+                    endTime = task.endTime.substringAfter("T").take(5),
+                    duration = "60m", 
+                    status = statusEnum
+                 )
+             }
+        }
+
         // --- AGENT POLLING LOGIC ---
-        // Use Koin to get SessionManager, then get Repo
         val sessionManager = koinInject<KaironexSessionManager>()
         val repo = sessionManager.getStatsRepository()
         
@@ -89,7 +123,6 @@ object DashboardScreen : Screen {
         LaunchedEffect(Unit) {
             while (isActive) {
                 try {
-                    // repo might be null if session not ready, but that's okay, we just skip
                     val thought = repo?.getLatestThought()
                     if (thought != null) {
                         polledThought = thought
@@ -100,27 +133,31 @@ object DashboardScreen : Screen {
             }
         }
 
-        // Get comprehensive stats
-        val homeStats = remember { StatsProvider.getHomeStats() }
-        
-        // Cortex State - derived from stats
-        val cortexState by remember {
-            mutableStateOf(
+        // Cortex State - derived from stats (Handle Loading)
+        val cortexState = remember(homeStats) {
+            val stats = homeStats // safe local
+            if (stats != null) {
                 CortexState(
                     currentSubject = "Data Structures",
-                    currentTopic = homeStats.mentalState.aiInsight,
-                    pressure = homeStats.pressure.pressureIndex / 100f,
-                    upcomingDeadlines = homeStats.habits.nextDeadline?.daysRemaining ?: 0,
-                    studyStreak = homeStats.habits.studyStreak,
-                    conceptMastery = homeStats.learning.overallMastery,
+                    currentTopic = stats.mentalState.aiInsight,
+                    pressure = stats.pressure.pressureIndex / 100f,
+                    upcomingDeadlines = stats.habits.nextDeadline?.daysRemaining ?: 0,
+                    studyStreak = stats.habits.studyStreak,
+                    conceptMastery = stats.learning.overallMastery,
                     isActive = true
                 )
-            )
+            } else null
         }
 
         BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
             val isMobile = this.maxWidth < 800.dp
+            val currentStats = homeStats
 
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
+            val isMobile = this.maxWidth < 800.dp
+            val currentStats = homeStats
+
+            // REAL CONTENT (With Loading passed locally)
             Row(modifier = Modifier.fillMaxSize()) {
                 // MAIN SCROLLABLE CONTENT
                 Column(
@@ -131,7 +168,10 @@ object DashboardScreen : Screen {
                         .padding(if (isMobile) 12.dp else 24.dp)
                 ) {
                     // ===== HEADER =====
-                    DashboardHeader(isMobile = isMobile, mentalState = homeStats.mentalState)
+                    // Safe access or default
+                    val headerStats = currentStats ?: HomeStats.EMPTY
+                    DashboardHeader(isMobile = isMobile, mentalState = headerStats.mentalState)
+
 
                     Spacer(Modifier.height(if (isMobile) 12.dp else 24.dp))
 
@@ -184,34 +224,41 @@ object DashboardScreen : Screen {
                     )
                     Spacer(Modifier.height(8.dp))
 
-                    CortexHeroCard(
-                        cortexState = cortexState,
-                        onEnterFlow = { navigator.push(StudyRoomScreen) },
-                        isMobile = isMobile
-                    )
+                    if (cortexState != null) {
+                        CortexHeroCard(
+                            cortexState = cortexState!!,
+                            onEnterFlow = { navigator.push(StudyRoomScreen) },
+                            isMobile = isMobile
+                        )
+                    }
 
                     Spacer(Modifier.height(if (isMobile) 16.dp else 24.dp))
 
+                    val displayStats = currentStats ?: HomeStats.EMPTY
+
                     // ===== SECTION 2: COGNITIVE PERFORMANCE (Mind State) =====
                     CognitivePerformanceCard(
-                        stats = homeStats.cognitive,
-                        isMobile = isMobile
+                        stats = displayStats.cognitive,
+                        isMobile = isMobile,
+                        isLoading = isLoading
                     )
 
                     Spacer(Modifier.height(if (isMobile) 12.dp else 16.dp))
 
                     // ===== SECTION 3: LEARNING PROGRESS =====
                     LearningProgressCard(
-                        stats = homeStats.learning,
-                        isMobile = isMobile
+                        stats = displayStats.learning,
+                        isMobile = isMobile,
+                        isLoading = isLoading
                     )
 
                     Spacer(Modifier.height(if (isMobile) 12.dp else 16.dp))
 
                     // ===== SECTION 4: MENTAL STATE & MOTIVATION =====
                     MentalStateCard(
-                        stats = homeStats.mentalState,
-                        isMobile = isMobile
+                        stats = displayStats.mentalState,
+                        isMobile = isMobile,
+                        isLoading = isLoading
                     )
 
                     Spacer(Modifier.height(if (isMobile) 12.dp else 16.dp))
@@ -228,15 +275,16 @@ object DashboardScreen : Screen {
 
                     // ===== SECTION 5: PRESSURE & RISK =====
                     PressureRiskCard(
-                        stats = homeStats.pressure,
-                        isMobile = isMobile
+                        stats = displayStats.pressure,
+                        isMobile = isMobile,
+                        isLoading = isLoading
                     )
 
                     Spacer(Modifier.height(if (isMobile) 12.dp else 16.dp))
 
                     // ===== SECTION 6: SCHEDULED TASKS =====
                     ScheduledTasksCard(
-                        tasks = getSampleScheduledTasks(),
+                        tasks = dashboardTasks,
                         isMobile = isMobile,
                         onTaskClick = { /* Navigate to task */ },
                         onAddTask = { /* Open add task dialog */ }
@@ -271,6 +319,7 @@ object DashboardScreen : Screen {
             }
         }
     }
+}
 
     @Composable
     private fun DashboardHeader(

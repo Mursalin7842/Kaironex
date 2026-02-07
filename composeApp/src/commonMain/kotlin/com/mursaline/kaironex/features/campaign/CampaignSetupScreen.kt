@@ -41,7 +41,7 @@ import org.koin.compose.koinInject
  * Refactored to 3 Steps: Baseline -> Ambition -> Review
  */
 @OptIn(ExperimentalMaterial3Api::class)
-class CampaignSetupScreen(private val isEditMode: Boolean = false) : Screen {
+class CampaignSetupScreen(private val isEditMode: Boolean = true) : Screen {
     
     @Composable
     override fun Content() {
@@ -56,6 +56,7 @@ class CampaignSetupScreen(private val isEditMode: Boolean = false) : Screen {
         // Form State
         var currentStep by remember { mutableStateOf(0) }
         var isSubmitting by remember { mutableStateOf(false) }
+        var hasExistingProfile by remember { mutableStateOf(false) }
         
 // --- 1. The Core (Identity & Context) ---
         var university by remember { mutableStateOf("") }
@@ -96,9 +97,8 @@ class CampaignSetupScreen(private val isEditMode: Boolean = false) : Screen {
         var softSkills by remember { mutableStateOf("") }
         
         // Initial Refresh
-        LaunchedEffect(Unit) {
-            statsRepo.refreshAll()
-        }
+        // Removed redundant refreshAll() here as it's handled by SessionManager/Repository Caching
+        // LaunchedEffect(Unit) { statsRepo.refreshAll() }
 
         // Sync Logic
         LaunchedEffect(userState) {
@@ -107,6 +107,11 @@ class CampaignSetupScreen(private val isEditMode: Boolean = false) : Screen {
                 try {
                     println("🔍 Syncing Profile from Brain: $profileJson")
                     val profile = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<StudentProfile>(profileJson)
+                    
+                    // Mark as existing profile if critical fields are present
+                    if (!profile.university.isNullOrBlank()) {
+                        hasExistingProfile = true
+                    }
                     
                     if (university.isEmpty()) university = profile.university ?: ""
                     if (major.isEmpty()) major = profile.major ?: ""
@@ -304,7 +309,13 @@ class CampaignSetupScreen(private val isEditMode: Boolean = false) : Screen {
                                         isSubmitting = true
                                         // Update Repo fields
                                         // Construct Full Profile Object
-                                        val newProfile = StudentProfile(
+                                        val currentProfile = userState?.profile?.let {
+                                            try {
+                                                kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<StudentProfile>(it)
+                                            } catch (e: Exception) { StudentProfile() }
+                                        } ?: StudentProfile()
+
+                                        val newProfile = currentProfile.copy(
                                             university = university,
                                             major = major,
                                             currentCgpa = currentCgpa,
@@ -314,13 +325,13 @@ class CampaignSetupScreen(private val isEditMode: Boolean = false) : Screen {
 
                                             // International
                                             isInternationalStudent = isInternationalStudent,
-                                            homeCountry = if(isInternationalStudent) homeCountry else null,
-                                            currentCountry = if(isInternationalStudent) currentCountry else null,
-                                            visaStatus = if(isInternationalStudent) visaStatus else null,
+                                            homeCountry = if(isInternationalStudent) homeCountry else currentProfile.homeCountry,
+                                            currentCountry = if(isInternationalStudent) currentCountry else currentProfile.currentCountry,
+                                            visaStatus = if(isInternationalStudent) visaStatus else currentProfile.visaStatus,
 
                                             // Job
                                             // Job & Experience Packing
-                                            // We combine Role, Desc, and Experience into jobDescription since schema is strict
+                                            hasJob = hasJob,
                                             jobDescription = if(hasJob) {
                                                 buildString {
                                                     append(currentJobRole)
@@ -328,6 +339,7 @@ class CampaignSetupScreen(private val isEditMode: Boolean = false) : Screen {
                                                     if (workExperience.isNotBlank()) append("\n[Exp: $workExperience]")
                                                 }
                                             } else {
+                                                // Preserve existing description if it only had experience, or update if we are saving experience
                                                 if (workExperience.isNotBlank()) "[Exp: $workExperience]" else null 
                                             },
                                             jobImportance = if(hasJob) currentJobReason else null,
@@ -391,8 +403,16 @@ class CampaignSetupScreen(private val isEditMode: Boolean = false) : Screen {
                                         )
                                         
                                         if (userId.isNotEmpty()) {
-                                            println("🧠 Triggering Campaign Calibration (Async)...")
-                                            appwriteBridge.triggerBrain(userId, "campaign", "campaign_calibration", calibrationData)
+                                            // SAFETY: Only trigger full reset if explicitly NOT in edit mode AND no existing profile was found.
+                                            // This prevents accidental wiping of campaign data for existing users.
+                                            if (!isEditMode && !hasExistingProfile) {
+                                                println("🧠 Triggering Campaign Calibration (New Setup)...")
+                                                appwriteBridge.triggerBrain(userId, "campaign", "campaign_calibration", calibrationData)
+                                            } else {
+                                                println("📝 Profile Updated (Skipping Campaign Reset)")
+                                                // Optional: Trigger a lighter 'profile_update' event here if needed in future
+                                                // appwriteBridge.triggerBrain(userId, "campaign", "campaign_update_context", calibrationData)
+                                            }
                                         }
                                         
                                         statsRepo.refreshAll()

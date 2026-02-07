@@ -26,153 +26,172 @@ import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.core.PickerMode
 import io.github.vinceglb.filekit.core.PickerType
 import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
+import cafe.adriel.voyager.koin.koinScreenModel
+import com.mursaline.kaironex.ui.theme.KaironexColors
+import com.mursaline.kaironex.features.study.StudyViewModel
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.foundation.BorderStroke
 
 class DataIngestionScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val fileRepository = koinInject<FileRepository>()
-        val scope = rememberCoroutineScope()
+        val viewModel = koinScreenModel<com.mursaline.kaironex.features.study.StudyViewModel>()
         
-        var driveLink by remember { mutableStateOf("") }
-        var isUploading by remember { mutableStateOf(false) }
-        var uploadStatus by remember { mutableStateOf("") }
+        val resources by viewModel.resources.collectAsState()
+        val isUploading by viewModel.isUploading.collectAsState()
 
-        // File Picker
-        val launcher = rememberFilePickerLauncher(
+        // FileKit Picker
+        val pickerLauncher = io.github.vinceglb.filekit.compose.rememberFilePickerLauncher(
             type = PickerType.File(extensions = listOf("pdf", "docx", "txt", "md")),
-            mode = PickerMode.Single
-        ) { file ->
-            if (file != null) {
-                scope.launch {
-                    isUploading = true
-                    uploadStatus = "Uploading ${file.name}..."
-                    val success = fileRepository.uploadFile(file)
-                    if (success) {
-                        uploadStatus = "✅ ${file.name} Uploaded!"
-                    } else {
-                        uploadStatus = "❌ Upload Failed"
-                    }
-                    isUploading = false
-                }
+            mode = PickerMode.Multiple()
+        ) { files ->
+            if (files != null && files.isNotEmpty()) {
+                viewModel.uploadFiles(files)
             }
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFF1E1E1E)) // Dark bg
-                .padding(24.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                Text(
-                    text = "Feed the Brain 🧠",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
+        Scaffold(
+            bottomBar = {
+                // NEXT BUTTON
+                Surface(
+                    shadowElevation = 8.dp,
                     color = Color.White
-                )
-                
-                Text(
-                    text = "To personalize your learning, Kairo needs access to your academic materials. Upload files or connect Google Drive.",
-                    fontSize = 16.sp,
-                    color = Color.LightGray
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // OPTION 1: Google Drive
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2D2D2D)),
-                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Link, contentDescription = null, tint = Color(0xFF4285F4))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Google Drive Link", fontWeight = FontWeight.SemiBold, color = Color.White)
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = driveLink,
-                            onValueChange = { driveLink = it },
-                            placeholder = { Text("Paste folder or file link...") },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedBorderColor = Color(0xFF4285F4),
-                                unfocusedBorderColor = Color.Gray
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                         Button(
-                            onClick = {
-                                if (driveLink.isNotBlank()) {
-                                    scope.launch {
-                                        isUploading = true
-                                        val success = fileRepository.saveDriveLink(driveLink)
-                                        uploadStatus = if (success) "✅ Link Saved!" else "❌ Save Failed"
-                                        isUploading = false
-                                    }
+                            onClick = { 
+                                if (resources.isNotEmpty()) {
+                                    viewModel.triggerInitialScheduleGeneration()
                                 }
+                                navigator.push(MainShellScreen) 
                             },
-                            enabled = driveLink.isNotBlank() && !isUploading,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4285F4))
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = KaironexColors.InkBlack),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Connect Drive")
+                            Text("Finish Setup", color = Color.White, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.width(8.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color.White)
                         }
                     }
-                }
-
-                // OPTION 2: File Upload
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2D2D2D)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CloudUpload, contentDescription = null, tint = Color(0xFF0F9D58))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Manual Upload", fontWeight = FontWeight.SemiBold, color = Color.White)
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Supported: PDF, DOCX, TXT", fontSize = 12.sp, color = Color.Gray)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        Button(
-                            onClick = { launcher.launch() },
-                            enabled = !isUploading,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333))
-                        ) {
-                            Text("Select Files")
-                        }
-                    }
-                }
-
-                if (uploadStatus.isNotEmpty()) {
-                    Text(
-                        text = uploadStatus,
-                        color = if (uploadStatus.contains("❌")) Color.Red else Color.Green,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
             }
-
-            // NEXT BUTTON
-            Button(
-                onClick = { navigator.push(MainShellScreen) },
-                modifier = Modifier.align(Alignment.BottomEnd),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+        ) { padding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(KaironexColors.CanvasWhite)
+                    .padding(padding),
+                contentPadding = PaddingValues(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("Finish Setup", color = Color.Black)
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color.Black)
+                // Header
+                item {
+                    Text(
+                        "Feed the Brain 🧠",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = KaironexColors.InkBlack
+                    )
+                    Text(
+                        "Upload your syllabus, slides, and notes. The Brain will read everything to build your master plan.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = KaironexColors.SlateGray,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+
+                // 1. Upload Section
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFFFAFAFA), // very light gray
+                        border = BorderStroke(1.dp, Color(0xFFF0F0F0)),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.CloudUpload, 
+                                contentDescription = null, 
+                                tint = KaironexColors.ElectricBlue,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                "Drag & Drop or Tap to Upload",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            
+                            if (isUploading) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = KaironexColors.ElectricBlue)
+                                Spacer(Modifier.height(8.dp))
+                                Text("Ingesting knowledge...", style = MaterialTheme.typography.labelMedium)
+                            } else {
+                                Button(
+                                    onClick = { pickerLauncher.launch() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = KaironexColors.InkBlack),
+                                    shape = RoundedCornerShape(50),
+                                    modifier = Modifier.height(44.dp)
+                                ) {
+                                    Text("Select Files")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Resource List
+                if (resources.isEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) {
+                            Text("No documents yet.", color = Color.LightGray)
+                        }
+                    }
+                } else {
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Ingested Documents", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.weight(1f))
+                            Text("${resources.size} files", style = MaterialTheme.typography.labelSmall, color = KaironexColors.SlateGray)
+                        }
+                    }
+                    
+                    items(resources) { res ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = KaironexColors.ElectricBlue.copy(alpha = 0.05f),
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) { 
+                                    Text("📄", style = MaterialTheme.typography.titleMedium) 
+                                }
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(res.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text("Ready for analysis", style = MaterialTheme.typography.labelSmall, color = KaironexColors.SuccessGreen)
+                            }
+                            androidx.compose.material3.Icon(Icons.Default.CheckCircle, "Active", tint = KaironexColors.SuccessGreen, modifier = Modifier.size(16.dp))
+                        }
+                        HorizontalDivider(color = Color(0xFFF5F5F5))
+                    }
+                }
+                
+                item {
+                    Spacer(Modifier.height(100.dp))
+                }
             }
         }
     }
