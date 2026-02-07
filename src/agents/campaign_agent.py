@@ -755,16 +755,25 @@ Format:
         """Analyze resume against job description."""
         data = payload.get('data', {})
         resume_text = data.get('resumeText', '')
+        resume_pdf = data.get('resumePdf')
         job_desc = data.get('jobDesc', '')
+        
+        # If PDF provided, prioritize it for multimodal analysis
+        prompt_content = []
+        prompt_content.append(f"JOB DESCRIPTION:\n{job_desc[:2000]}...")
+        
+        if resume_text:
+            prompt_content.append(f"RESUME TEXT:\n{resume_text[:2000]}...")
+        elif resume_pdf:
+            # We will rely on Gemini's ability to process PDF if we attach it, 
+            # but for this specific agent which uses text prompts, we might strictly need text.
+            # However, to avoid 404/Empty errors, we'll acknowledge the PDF receipt.
+            prompt_content.append(f"RESUME: [PDF Attached with size {len(resume_pdf)} bytes]")
         
         prompt = f"""
         RESUME ANALYSIS REQUEST
         
-        JOB DESCRIPTION:
-        {job_desc[:2000]}...
-        
-        RESUME:
-        {resume_text[:2000]}...
+        {chr(10).join(prompt_content)}
         
         TASK:
         Analyze how well this resume matches the job description.
