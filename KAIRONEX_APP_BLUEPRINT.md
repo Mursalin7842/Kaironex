@@ -217,20 +217,41 @@ SYNC: Real-time updates for demo dashboard
 PURPOSE: All scheduled items (lectures, study, deadlines)
 SYNC: Displayed on home screen calendar
 
-| Column          | Type     | Required | Description                    |
-|-----------------|----------|----------|--------------------------------|
-| $id             | string   | auto     | Document ID                    |
-| taskId          | string   | ✅       | Unique task identifier         |
-| userId          | string   | ✅       | Owner                          |
-| title           | string   | ✅       | Task title                     |
-| startTime       | datetime | ✅       | When it starts                 |
-| endTime         | datetime | ✅       | When it ends                   |
-| status          | string   | ✅       | PENDING/ACTIVE/COMPLETED/SKIP  |
-| type            | string   | ✅       | LECTURE/STUDY/DEADLINE/WORK    |
-| location        | string   | ❌       | Where                          |
-| is_flexible     | boolean  | ❌       | Can agent reschedule?          |
-| priority        | integer  | ❌       | 1-10                           |
-| linked_deadline | string   | ❌       | Related deadline ID            |
+| Column          | Type     | Required | Description                                |
+|-----------------|----------|----------|--------------------------------------------|
+| $id             | string   | auto     | Document ID                                |
+| taskId          | string   | ✅       | Unique task identifier                     |
+| userId          | string   | ✅       | Owner                                      |
+| title           | string   | ✅       | Task title                                 |
+| startTime       | datetime | ✅       | When it starts                             |
+| endTime         | datetime | ✅       | When it ends                               |
+| status          | string   | ✅       | PENDING/ACTIVE/COMPLETED/SKIP              |
+| type            | string   | ✅       | LECTURE/STUDY/DEADLINE/WORK/TRAVEL/BLOCKED |
+| location        | string   | ❌       | Where                                      |
+| is_flexible     | boolean  | ❌       | Can agent reschedule?                      |
+| priority        | integer  | ❌       | 1-10                                       |
+| linked_deadline | string   | ❌       | Related deadline ID                        |
+| topics          | string   | ❌       | Rich task breakdown (see format below)     |
+| subject         | string   | ❌       | Subject/Course name for content generation |
+| difficulty      | string   | ❌       | beginner/intermediate/advanced             |
+| content_mode    | string   | ❌       | deep_dive/travel/cram/practice             |
+| metadata_json   | string   | ❌       | Full metadata for Proactive Content Engine |
+
+RICH TOPICS FORMAT (for content generation):
+The 'topics' field should contain a structured breakdown:
+- PHASE 1 - INPUT: Reading, watching, listening
+- PHASE 2 - PROCESS: Active learning (concept maps, diagrams)
+- PHASE 3 - OUTPUT: Practice problems, coding, writing
+- PHASE 4 - VERIFY: Self-quiz, gatekeeper quiz
+
+METADATA_JSON STRUCTURE:
+{
+  "learning_objectives": ["List of specific, measurable objectives"],
+  "resource_hints": ["Keywords for content search"],
+  "prerequisites": ["What student must know before"],
+  "deliverables": ["Concrete outputs expected"],
+  "verification": {"type": "quiz", "pass_threshold": 0.8, "topics_covered": []}
+}
 ```
 
 ---

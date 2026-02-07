@@ -164,6 +164,11 @@ async def _handle_http_request(db: KairoDB, context, path: str, method: str, pay
     if path == '/brain/deep' and method == 'POST':
         return await _handle_deep_request(db, context, payload)
         
+    # Campaign Agent endpoint
+    if path == '/campaign' and method == 'POST':
+        context.log(f"⚔️ Campaign request received: {payload.get('type')}")
+        return await run_campaign_agent(db, payload, context)
+        
     # State sync endpoint
     if path == '/state' and method == 'GET':
         return _handle_state_request(db, context, payload)

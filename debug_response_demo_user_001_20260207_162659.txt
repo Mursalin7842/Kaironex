@@ -1,0 +1,96 @@
+=== RAW RESPONSE (16762 chars) ===
+<action>
+{
+  "semester_strategy": {
+    "overview": "Mursaline's path to a 3.8+ GPA requires a surgical approach to time management, specifically bridging the gap between his current 3.25 and the desired excellence. As an 8th-semester student, the cognitive load of Distributed Systems and Computer Graphics is high. The strategy centers on 'The Night Owl Fortress'—protecting the 8 PM to 12 AM window for high-complexity tasks. Given his slow learning pace, we will utilize 'Time Boxing' with a 1.5x buffer, breaking assignments into atomic units. His internship provides practical context but limits his weekday evening capacity; therefore, we treat Tuesdays, Thursdays, and Weekends as 'Deep Sprint' days. Success hinges on clarity—every study session will have a defined deliverable to combat his struggle with planning and distractions.",
+    "total_months": 5,
+    "months": [
+      {
+        "month_index": 1,
+        "phase_title": "FOUNDATION & GRAPHICS SPRINT",
+        "date_range": "Feb 07 - Feb 28",
+        "goals_context": "MONTH 1: FOUNDATION AND GRAPHICS SPRINT\n\n═══ ACADEMIC OVERVIEW ═══\nFebruary is the most critical month for setting the tone of the semester. Mursaline faces immediate pressure from CS460 (Computer Graphics) and needs to establish a rhythm for his CS499 Final Year Project. The primary academic focus is mastering Rasterization and Vector Spaces. \n\n═══ SUBJECT-SPECIFIC STRATEGIES ═══\n\n1. [CS460] COMPUTER GRAPHICS (Priority: Critical)\n- Goal: Complete Lab 1 (Bresenham’s Algorithm) and start Lab 2.\n- Tactic: Since Mursaline is a visual learner, he will use interactive coordinate simulators before coding. Given the 1.5x pace, we allocate 12 hours for the Rasterization lab, broken into 2-hour micro-sessions. Focus on understanding the decision variable in Bresenham's and why integer-only arithmetic is preferred for performance.\n- Resource: Scratchpixel and learnopengl.com.\n\n2. [MAT301] LINEAR ALGEBRA (Priority: High)\n- Goal: Mastery of Vector Spaces and Eigenvalues.\n- Tactic: This is the backbone of Computer Graphics and Machine Learning. Mursaline must spend 45 minutes daily on problem sets. We will use the 'Feynman Technique'—after studying a proof, he will explain it aloud to an imaginary student to ensure clarity.\n- Key Topics: Subspaces, Basis, Dimension, and the Characteristic Equation.\n\n3. [CS450] NEURAL NETWORKS (Priority: Medium-High)\n- Goal: Transition from MLP foundations to implementation.\n- Tactic: Focus on the backpropagation algorithm. Mursaline will derive the chain rule for a simple 3-layer network on paper before touching NumPy. This builds the 'clarity' he lacks.\n\n4. [CS455] DISTRIBUTED SYSTEMS (Priority: Medium)\n- Goal: Understand Lamport Clocks and Logical Time.\n- Tactic: Use diagrams. Distributed systems are abstract; drawing timelines of messages between processes will help him visualize 'happens-before' relationships.\n\n═══ WEEKLY BREAKDOWN ═══\n\nWEEK 1 (Feb 07 - Feb 14): THE RASTERIZATION CRUNCH\n- Primary focus is CS460 Lab 1 (Due Feb 10). Mursaline will spend his late-night sessions (20:00-00:00) strictly on C++/OpenGL. \n- Secondary focus: Starting the HUM101 Research Topic selection. He needs to brainstorm 3 potential CSE-related thesis topics that align with his Junior SE Intern role.\n- Risk: Burnout from the first deadline. Mitigation: Protect the 6 AM gym and prayer times to maintain mental health.\n\nWEEK 2 (Feb 15 - Feb 21): RESEARCH & LOGICAL TIME\n- Feb 20 is the HUM101 deadline. He will spend 1 hour each night refining the 1-page summary. \n- Shift focus to CS455 (Distributed Systems). Start the 'Clocks' assignment early. \n- MAT301: Begin intensive practice on Eigenvalue calculations for the upcoming problem set.\n\nWEEK 3 (Feb 22 - Feb 28): DISTRIBUTED SYSTEMS & MID-TERM PREP\n- Feb 25 is the CS455 Assignment 1 deadline. This requires simulating Lamport Timestamps. \n- Review all materials from weeks 1-2. Mursaline will use 'Spaced Repetition' by reviewing his Cornell notes for 20 minutes every morning during the 'light task' window.\n\n═══ ENERGY & LIFESTYLE INTEGRATION ═══\n\nNIGHT OWL PROTOCOL: \n- 20:30 - 23:00: Deep Work (Coding/Math).\n- 23:00 - 23:30: Family Time (Sacred).\n- 23:30 - 00:30: Reflection and Planning for the next day.\n\nINTERNSHIP BALANCE (Mon/Wed/Fri):\n- On these days, Mursaline's energy will be depleted by 8 PM. He will take a 30-minute nap or rest after returning from work before starting his study session. No heavy reading before work; only light flashcard review.\n\nSPIRITUAL ALIGNMENT:\n- Prayer times (Fajr, Dhuhr, Asr, Maghrib, Isha) are used as 'Mental Resets'. These 15-minute blocks are non-study zones to prevent cognitive fatigue.\n\n═══ RISK MITIGATION ═══\n- Distraction: Mursaline will use the 'Forest' app or 'Freedom' to block social media during the 20:30-00:30 window.\n- Lack of Clarity: Every session starts with a 'Definition of Done'. For example, 'I will not stop until I have calculated 3 Eigenvectors correctly' rather than 'I will study math'.\n- Slow Learning: The 1.5x buffer is applied. If the syllabus says a task takes 2 hours, Kairo schedules 3 hours.",
+        "status": "active"
+      },
+      {
+        "month_index": 2,
+        "phase_title": "THE PROJECT PROPOSAL GRIND",
+        "date_range": "Mar 01 - Mar 31",
+        "goals_context": "MONTH 2: THE PROJECT PROPOSAL GRIND\n\n═══ ACADEMIC OVERVIEW ═══\nMarch is dominated by the CS499 Project Proposal (Due Mar 10) and CS460 Lab 2 (Due Mar 05). This is a 'Crunch Month'. Mursaline must leverage his internship experience to craft a professional-grade proposal. \n\n═══ SUBJECT-SPECIFIC STRATEGIES ═══\n\n1. [CS499] FINAL YEAR PROJECT (Priority: Maximum)\n- Goal: A signed, detailed PDF proposal. \n- Tactic: Break the proposal into: Abstract, Problem Statement, Literature Review (Preliminary), Methodology, and Gantt Chart. Mursaline will meet his supervisor during office hours in Week 1.\n- Deliverable: A comprehensive document that secures a high internal grade.\n\n2. [CS460] COMPUTER GRAPHICS (Priority: High)\n- Goal: 3D Wireframe Cube with Transformations.\n- Tactic: This requires heavy matrix multiplication knowledge from MAT301. Mursaline will implement the Matrix-Vector multiplication class first. \n- Key Concept: Homogeneous coordinates and the difference between World Space and Camera Space.\n\n3. [MAT301] LINEAR ALGEBRA (Priority: Medium)\n- Goal: Prep for PCA (Principal Component Analysis).\n- Tactic: Focus on Orthogonality and Orthonormal bases. This is the mathematical foundation for the PCA project in May.\n\n═══ WEEKLY BREAKDOWN ═══\n\nWEEK 1 (Mar 01 - Mar 07): THE DOUBLE DEADLINE\n- This is a 'High Intensity' week. Mursaline will dedicate 4 hours every night to CS460 Lab 2 and the CS499 Proposal. \n- Morning gym sessions are vital this week to manage cortisol levels.\n\nWEEK 2 (Mar 08 - Mar 14): PROPOSAL FINALIZATION\n- Focus shifts entirely to CS499 until the Mar 10 deadline. \n- Post-deadline: A 'Recovery Day' on Mar 11 with only light reading.\n\nWEEK 3 (Mar 15 - Mar 21): DISTRIBUTED SYSTEMS DEEP DIVE\n- Start preparing for the April Consensus project. Read the Raft paper (Summary version). \n- Mursaline will use his 1.5x time to slowly digest the Leader Election phase of Raft.\n\nWEEK 4 (Mar 22 - Mar 31): MID-SEMESTER CONSOLIDATION\n- Review all lab reports submitted to date. \n- Start early work on CS450 Assignment 2 (Transformers). This is a group project, so Mursaline must initiate communication with his team.\n\n═══ SYSTEMIC ADJUSTMENTS ═══\n- Internship: Use work breaks to read technical documentation related to the CS499 proposal if it overlaps with Software Engineering principles.\n- Slow Learning: Use 'Micro-deadlines'. Instead of 'Write Proposal', use 'Write 200 words on Problem Statement by 10 PM'.",
+        "status": "upcoming"
+      },
+      {
+        "month_index": 3,
+        "phase_title": "COMPLEXITY & CONSENSUS",
+        "date_range": "Apr 01 - Apr 30",
+        "goals_context": "MONTH 3: COMPLEXITY & CONSENSUS\n\n═══ ACADEMIC OVERVIEW ═══\nApril is the 'Technical Peak'. Mursaline faces Transformers in ML (CS450), a 1500-word Lit Review (HUM101), and the Raft Consensus algorithm (CS455). The cognitive load is at its maximum.\n\n═══ SUBJECT-SPECIFIC STRATEGIES ═══\n\n1. [CS455] DISTRIBUTED SYSTEMS (Priority: Critical)\n- Goal: Implement Raft Leader Election.\n- Tactic: This is a group project. Mursaline should take the role of 'Documentation and Testing' if he feels overwhelmed by the core logic, or 'Logic Lead' to push his coding skills. He must allocate 15+ hours for this lab.\n- Key Concepts: Heartbeats, Term numbers, and Vote Request RPCs.\n\n2. [CS450] MACHINE LEARNING (Priority: High)\n- Goal: Fine-tune BERT for Sentiment Analysis.\n- Tactic: Use Google Colab. Mursaline will focus on understanding the 'Attention Mechanism'. He will watch 3 different visualizations of Transformers to overcome the slow-learning barrier.\n\n3. [HUM101] TECHNICAL WRITING (Priority: Medium)\n- Goal: 1500-word Literature Review.\n- Tactic: Use a reference manager (Zotero or Mendeley). Spend 30 minutes every morning reading one academic paper related to his thesis.\n\n═══ WEEKLY BREAKDOWN ═══\n\nWEEK 1 (Apr 01 - Apr 07): TRANSFORMER SPRINT\n- Focus on CS450 Assignment 2. Group meetings scheduled for late evenings. \n- Tactic: Break the BERT fine-tuning into: Data Preprocessing, Model Loading, Training Loop, Evaluation.\n\nWEEK 2 (Apr 08 - Apr 14): THE WRITING WEEK\n- HUM101 Lit Review takes center stage. Mursaline will use his 'Night Owl' energy to draft 300 words per night. \n- Gym sessions should focus on endurance to keep energy up for the long writing blocks.\n\nWEEK 3 (Apr 15 - Apr 21): RAFT CONSENSUS CRUNCH\n- April 20 is the CS455 deadline. This is a high-stress period. Study time increases to 8 hours on the weekend.\n- Tactic: Use 'Rubber Duck Debugging'—explain the Raft code to a physical object to find logic errors.\n\nWEEK 4 (Apr 22 - Apr 30): PCA PREP\n- Begin the MAT301 Project. Apply PCA to an image dataset. \n- Mursaline will use the NumPy skills learned in CS450 to handle the matrix operations in MAT301.\n\n═══ RISK FACTORS ═══\n- Group Dynamics: If teammates are faster learners, Mursaline might feel 'imposter syndrome'. Strategy: Own a specific module of the project completely to build confidence.",
+        "status": "upcoming"
+      },
+      {
+        "month_index": 4,
+        "phase_title": "THE FINAL PROJECTS PUSH",
+        "date_range": "May 01 - May 31",
+        "goals_context": "MONTH 4: THE FINAL PROJECTS PUSH\n\n═══ ACADEMIC OVERVIEW ═══\nMay is the 'Delivery Phase'. The Ray Tracer (CS460), PCA Analysis (MAT301), and the Draft Thesis (CS499) are all due. This month requires extreme discipline and the elimination of all non-essential distractions.\n\n═══ SUBJECT-SPECIFIC STRATEGIES ═══\n\n1. [CS460] COMPUTER GRAPHICS (Priority: Maximum)\n- Goal: Build a Ray Tracer with shadows and reflections.\n- Tactic: This is the 'Boss Level' of the semester. Mursaline will use the 'Incremental Building' strategy: Ray-Sphere intersection first, then diffuse lighting, then shadows, then reflections. \n- Allocation: 25+ hours over the first two weeks.\n\n2. [CS499] FINAL YEAR PROJECT (Priority: High)\n- Goal: Complete Draft Thesis.\n- Tactic: This is about documentation. Mursaline will follow the university's LaTeX template. He will spend 1 hour every night (23:00-00:00) formatting his results into chapters.\n\n3. [MAT301] LINEAR ALGEBRA (Priority: Medium)\n- Goal: PCA Image Compression.\n- Tactic: Focus on the SVD (Singular Value Decomposition) aspect of PCA. Ensure the visualization of 'Compressed vs Original' is clear for the final report.\n\n═══ WEEKLY BREAKDOWN ═══\n\nWEEK 1 (May 01 - May 07): PCA & RAY TRACING START\n- Finish MAT301 Project by May 01. \n- Begin the core architecture of the Ray Tracer. No distractions allowed during the 20:30-00:30 window.\n\nWEEK 2 (May 08 - May 15): THE RAY TRACING MARATHON\n- May 15 deadline. Mursaline will take a 'Study Leave' from non-essential social activities. \n- Tactic: Focus on the 'Reflection' recursive calls. This is where slow learners often get stuck; he will draw the recursion tree on paper first.\n\nWEEK 3 (May 16 - May 24): THESIS DRAFTING\n- Shift focus to CS499. The goal is a professional, error-free draft. \n- Peer Review: Exchange drafts with a friend to catch grammatical errors.\n\nWEEK 4 (May 25 - May 31): SEMESTER REVIEW\n- Start preparing for final exams. \n- Create a 'Master Summary' for each course. \n- Mursaline will use his internship experience to write the 'Conclusion' and 'Future Work' sections of his thesis.\n\n═══ SUSTAINABILITY ═══\n- Family Time: Increase to 45 minutes to decompress from the high project stress. \n- Sleep: Ensure 7 hours of sleep despite the night-owl sessions. Sleep is non-negotiable for cognitive retention.",
+        "status": "upcoming"
+      },
+      {
+        "month_index": 5,
+        "phase_title": "FINALS & CLOSURE",
+        "date_range": "Jun 01 - Jun 15",
+        "goals_context": "MONTH 5: FINALS AND CLOSURE\n\n═══ ACADEMIC OVERVIEW ═══\nJune is about 'Retention and Performance'. With all projects submitted, Mursaline must focus on the theoretical exams for CS450, CS455, and MAT301. His target is to convert his project hard work into high exam marks to reach the 3.8 GPA goal.\n\n═══ STRATEGIES ═══\n\n1. ACTIVE RECALL:\n- Mursaline will not 're-read' notes. He will use blank-sheet testing: write down everything he remembers about a topic (e.g., 'Raft Consensus') and then check for gaps.\n\n2. PAST PAPER ANALYSIS:\n- Solve at least 3 years of past papers for MAT301 and CS455. Time himself strictly, but adding the 1.5x buffer to his practice runs initially.\n\n3. THE FINAL VIVA (CS499):\n- Prepare a 10-minute presentation for his thesis. Practice in front of a mirror to overcome any anxiety.\n\n═══ WEEKLY BREAKDOWN ═══\n\nWEEK 1 (Jun 01 - Jun 07): THE THEORY BLITZ\n- Focus on CS455 and CS450 theories. \n- Night sessions: Solving complex ML problems and Distributed System scenarios.\n\nWEEK 2 (Jun 08 - Jun 15): FINAL EXAM SPRINT\n- MAT301 and CS460 theory review. \n- Ensure all administrative requirements for graduation/semester completion are met.\n\n═══ THE FINISH LINE ═══\n- Post-Exam: Update Resume with the new skills (OpenGL, Raft, BERT, PCA) to prepare for the 'Good Job' goal mentioned in his profile.",
+        "status": "upcoming"
+      }
+    ]
+  },
+  "current_month_schedule": {
+    "days": [
+      {
+        "date": "2026-02-07",
+        "day_type": "weekend",
+        "intensity": "high",
+        "day_summary": "Weekend Deep Dive: Graphics Foundation & OpenGL Setup",
+        "tasks": [
+          {
+            "startTime": "06:00",
+            "endTime": "07:30",
+            "title": "Gym & Morning Refresh",
+            "type": "blocked",
+            "priority": 10,
+            "location": "Gym/Home",
+            "subject": "Health",
+            "topics": "Morning workout and shower. Post-gym protein. Fajr prayer at 05:45."
+          },
+          {
+            "startTime": "10:30",
+            "endTime": "12:00",
+            "title": "MAT301: Vector Space Fundamentals",
+            "type": "study",
+            "priority": 7,
+            "location": "Home",
+            "subject": "MAT301",
+            "difficulty": "intermediate",
+            "content_mode": "deep_dive",
+            "learning_objectives": ["Define 10 axioms of vector spaces", "Identify subspaces"],
+            "topics": "Review Chapter 1.1-1.3. Solve 5 problems on subspace identification. (1.5x time applied).",
+            "resource_hints": ["Gilbert Strang Lectures", "Textbook Ch 1"],
+            "prerequisites": [],
+            "deliverables": ["Subspace problem set solutions"],
+            "verification": {"type": "self_check", "questions": ["Does the set contain the zero vector?", "Is it closed under addition?"]}
+          },
+          {
+            "startTime": "13:30",
+            "endTime": "16:00",
+            "title": "CS460: OpenGL Environment & Bresenham Logic",
+            "type": "project",
+            "priority": 9,
+            "location": "Home",
+            "subject": "CS460",
+            "difficulty": "advanced",
+            "content_mode": "deep_dive",
+            "learning_objectives": ["Configure OpenGL in C++", "Understand Bresenham's derivation"],
+            "topics": "═══ PHASE 1: SETUP (60 min) ═══\nLink GLFW and GLEW in VS Code. Test with a simple window.\n\n═══ PHASE 2: LOGIC (90 min) ═══\nDraw the derivation of Bresenham's for 0 < m < 1. Write the pseudocode.",
+            "resource_hints": ["LearnOpenGL.com", "Lab 1 PDF"],
+            "prerequisites": ["C
+
+=== PARSED DATA ===
+{}

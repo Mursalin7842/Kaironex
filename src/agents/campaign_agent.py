@@ -86,6 +86,9 @@ Remember: You're not just planning tasks—you're building a career."""
             'simulacrum_start': self._handle_simulacrum_start,
             'simulacrum_response': self._handle_simulacrum_response,
             'campaign_calibration': self._handle_campaign_calibration,
+            'analyze_resume': self._handle_analyze_resume,
+            'generate_resume': self._handle_generate_resume,
+            'design_interview': self._handle_design_interview,
         }
         
         handler = handlers.get(event_type, self._handle_generic)
@@ -746,6 +749,129 @@ Format:
             
         except Exception as e:
             return AgentResult(success=False, response=f"Calibration failed: {str(e)}", error=str(e))
+
+
+    async def _handle_analyze_resume(self, user_id: str, payload: Dict[str, Any], context: StateContext) -> AgentResult:
+        """Analyze resume against job description."""
+        data = payload.get('data', {})
+        resume_text = data.get('resumeText', '')
+        job_desc = data.get('jobDesc', '')
+        
+        prompt = f"""
+        RESUME ANALYSIS REQUEST
+        
+        JOB DESCRIPTION:
+        {job_desc[:2000]}...
+        
+        RESUME:
+        {resume_text[:2000]}...
+        
+        TASK:
+        Analyze how well this resume matches the job description.
+        1. Calculate ATS Score (0-100)
+        2. Identify Matched Keywords
+        3. Identify Missing Keywords
+        4. Provide an improvement checklist
+        
+        OUTPUT JSON:
+        {{
+            "ats_score": 75,
+            "matched_keywords": ["Java", "Kotlin"],
+            "missing_keywords": ["CI/CD", "AWS"],
+            "overall_assessment": "Good base, needs more cloud focus.",
+            "estimated_pass_rate": "High",
+            "interview_ready": true,
+            "checklist": [
+                {{ "item": "Add AWS certification", "status": "pending", "impact": "HIGH" }}
+            ]
+        }}
+        """
+        
+        response = await self.engine.reason(ReasoningRequest(
+            prompt=prompt, user_id=user_id, agent="campaign", mode=ReasoningMode.DEEP
+        ))
+        
+        try:
+            analysis_data = json.loads(response.content)
+            return AgentResult(success=True, response="Resume Analyzed", data=analysis_data)
+        except:
+            return AgentResult(success=False, response="Failed to parse analysis.")
+
+    async def _handle_generate_resume(self, user_id: str, payload: Dict[str, Any], context: StateContext) -> AgentResult:
+        """Generate tailored resume."""
+        data = payload.get('data', {})
+        job_desc = data.get('jobDesc', '')
+        projects = data.get('projects', '[]')
+        
+        prompt = f"""
+        RESUME GENERATION REQUEST
+        
+        JOB: {job_desc[:1000]}
+        PROJECTS: {projects}
+        
+        TASK:
+        Generate a professional summary and skills section tailored to this job.
+        
+        OUTPUT JSON:
+        {{
+            "resume": {{
+                "professional_summary": "...",
+                "skills_section": ["Skill 1", "Skill 2"]
+            }},
+            "estimated_ats_score": 85
+        }}
+        """
+        
+        response = await self.engine.reason(ReasoningRequest(
+            prompt=prompt, user_id=user_id, agent="campaign", mode=ReasoningMode.DEEP
+        ))
+        
+        try:
+            gen_data = json.loads(response.content)
+            return AgentResult(success=True, response="Resume Generated", data=gen_data)
+        except:
+            return AgentResult(success=False, response="Failed to generate resume.")
+
+    async def _handle_design_interview(self, user_id: str, payload: Dict[str, Any], context: StateContext) -> AgentResult:
+        """Design the Simulacrum Interview."""
+        data = payload.get('data', {})
+        job_desc = data.get('jobDesc', '')
+        difficulty = data.get('difficulty', 'medium')
+        
+        prompt = f"""
+        DESIGN INTERVIEW: {difficulty.upper()}
+        JOB: {job_desc[:1000]}
+        
+        TASK:
+        Create a structured interview plan.
+        1. Interviewer Persona
+        2. Question Bank (5 questions)
+        3. Gemini Live Prompt (System prompt for the voice agent)
+        
+        OUTPUT JSON:
+        {{
+            "interview_id": "sim_123",
+            "duration_minutes": 25,
+            "interviewer": {{
+                "name": "Alex", "role": "Senior Engineer", "personality": "Strict", "company": "TechCorp"
+            }},
+            "question_bank": [
+                {{ "id": "q1", "question": "...", "category": "Technical", "good_answer_criteria": ["..."], "red_flags": ["..."] }}
+            ],
+            "gemini_live_prompt": "You are Alex, a Senior Engineer...",
+            "candidate_prep_notes": ["Review HashMap", "Practice STAR method"]
+        }}
+        """
+        
+        response = await self.engine.reason(ReasoningRequest(
+            prompt=prompt, user_id=user_id, agent="campaign", mode=ReasoningMode.DEEP
+        ))
+        
+        try:
+            design_data = json.loads(response.content)
+            return AgentResult(success=True, response="Interview Designed", data=design_data)
+        except:
+            return AgentResult(success=False, response="Failed to design interview.")
 
 
 # Factory function for compatibility with existing code

@@ -655,7 +655,11 @@ class KairoDB:
     # =========================================================================
     def create_schedule_task(self, task_data):
         """
-        Create a single schedule task.
+        Create a single schedule task with rich metadata for content generation.
+        
+        Required fields: userId, title, startTime, endTime
+        Optional fields: status, type, location, is_flexible, priority, 
+                        topics, subject, difficulty, content_mode, metadata_json
         """
         try:
             # Ensure required fields
@@ -667,6 +671,19 @@ class KairoDB:
             if 'type' not in task_data: task_data['type'] = 'study'
             if 'is_flexible' not in task_data: task_data['is_flexible'] = True
             if 'priority' not in task_data: task_data['priority'] = 5
+            
+            # NEW: Handle rich task metadata fields
+            # Truncate fields to fit DB constraints
+            if 'topics' in task_data and task_data['topics']:
+                task_data['topics'] = str(task_data['topics'])[:10000]
+            if 'subject' in task_data and task_data['subject']:
+                task_data['subject'] = str(task_data['subject'])[:255]
+            if 'difficulty' in task_data and task_data['difficulty']:
+                task_data['difficulty'] = str(task_data['difficulty'])[:50]
+            if 'content_mode' in task_data and task_data['content_mode']:
+                task_data['content_mode'] = str(task_data['content_mode'])[:50]
+            if 'metadata_json' in task_data and task_data['metadata_json']:
+                task_data['metadata_json'] = str(task_data['metadata_json'])[:100000]
             
             self.db.create_row(
                 APPWRITE_DATABASE_ID, 

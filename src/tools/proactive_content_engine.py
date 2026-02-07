@@ -108,6 +108,252 @@ class ProactiveContentEngine:
         self._prepared_content: Dict[str, List[PreparedContent]] = {}
         self._preparation_lead_time_minutes = 30  # Prepare 30 min ahead
     
+    # =========================================================================
+    # NEW: RICH TASK FORMAT INTEGRATION
+    # =========================================================================
+    
+    async def prepare_content_for_rich_task(
+        self,
+        user_id: str,
+        task: Dict[str, Any],
+        mastery_data: Optional[Dict[str, float]] = None
+    ) -> Optional[PreparedContent]:
+        """
+        Prepare content for a task using the new rich task format.
+        
+        Reads from task fields:
+        - subject: Course name for context
+        - topics: 4-phase breakdown
+        - content_mode: deep_dive/travel/cram/practice
+        - metadata_json: {learning_objectives, resource_hints, verification}
+        """
+        import uuid
+        
+        # Parse task start time
+        task_start = self._parse_datetime(task.get('startTime'))
+        if not task_start:
+            return None
+        
+        # Extract rich metadata
+        metadata = {}
+        if task.get('metadata_json'):
+            try:
+                metadata = json.loads(task['metadata_json'])
+            except:
+                metadata = {}
+        
+        # Determine content mode (default to deep_dive)
+        content_mode = task.get('content_mode', 'deep_dive')
+        subject = task.get('subject', task.get('title', 'General Study'))
+        difficulty = task.get('difficulty', 'intermediate')
+        
+        # Extract learning objectives and resource hints
+        learning_objectives = metadata.get('learning_objectives', [])
+        resource_hints = metadata.get('resource_hints', [])
+        prerequisites = metadata.get('prerequisites', [])
+        verification = metadata.get('verification')
+        
+        # Parse topics for main concepts
+        topics_text = task.get('topics', '')
+        
+        # Calculate duration
+        task_end = self._parse_datetime(task.get('endTime'))
+        duration_minutes = 60  # default
+        if task_start and task_end:
+            duration_minutes = int((task_end - task_start).total_seconds() / 60)
+        
+        # Prepare content based on mode
+        content_data = {}
+        
+        if content_mode == 'deep_dive':
+            content_data = await self._prepare_deep_dive_content(
+                subject=subject,
+                learning_objectives=learning_objectives,
+                resource_hints=resource_hints,
+                topics_text=topics_text,
+                duration_minutes=duration_minutes,
+                mastery_data=mastery_data
+            )
+        elif content_mode == 'travel':
+            content_data = await self._prepare_travel_content(
+                subject=subject,
+                learning_objectives=learning_objectives,
+                resource_hints=resource_hints,
+                duration_minutes=duration_minutes
+            )
+        elif content_mode == 'cram':
+            content_data = await self._prepare_cram_content(
+                subject=subject,
+                learning_objectives=learning_objectives,
+                resource_hints=resource_hints,
+                mastery_data=mastery_data
+            )
+        elif content_mode == 'practice':
+            content_data = await self._prepare_practice_content(
+                subject=subject,
+                learning_objectives=learning_objectives,
+                resource_hints=resource_hints,
+                difficulty=difficulty
+            )
+        
+        # Add verification info if present
+        if verification:
+            content_data['gatekeeper_quiz'] = await self._generate_gatekeeper_quiz(
+                topics=verification.get('topics_covered', []),
+                pass_threshold=verification.get('pass_threshold', 0.8)
+            )
+        
+        # Create prepared content object
+        prepared = PreparedContent(
+            content_id=f"pc_{uuid.uuid4().hex[:8]}",
+            user_id=user_id,
+            context=AnticipatedContext.STUDY_SESSION,
+            scheduled_for=task_start,
+            content_type=content_mode,
+            subject=subject,
+            topics=learning_objectives or resource_hints,
+            content_data=content_data,
+            duration_minutes=duration_minutes,
+            readiness_state=ContentReadinessState.READY,
+            prepared_at=datetime.now()
+        )
+        
+        self._store_prepared_content(user_id, prepared)
+        return prepared
+    
+    async def _prepare_deep_dive_content(
+        self,
+        subject: str,
+        learning_objectives: List[str],
+        resource_hints: List[str],
+        topics_text: str,
+        duration_minutes: int,
+        mastery_data: Optional[Dict[str, float]] = None
+    ) -> Dict[str, Any]:
+        """Prepare comprehensive content for deep study sessions."""
+        return {
+            'summaries': await self._generate_summaries(resource_hints or learning_objectives),
+            'video_recommendations': await self._search_videos(resource_hints),
+            'practice_problems': await self._generate_problems(learning_objectives),
+            'flashcards': await self._generate_flashcards(learning_objectives, mastery_data),
+            'warmup_quiz': await self._generate_warmup_quiz(learning_objectives),
+            'suggested_flow': self._create_session_flow(duration_minutes, learning_objectives),
+            'topics_breakdown': topics_text
+        }
+    
+    async def _prepare_travel_content(
+        self,
+        subject: str,
+        learning_objectives: List[str],
+        resource_hints: List[str],
+        duration_minutes: int
+    ) -> Dict[str, Any]:
+        """Prepare audio-friendly content for travel/commute."""
+        script = await self._generate_audio_script(
+            topics=learning_objectives or resource_hints,
+            style="conversational",
+            duration_seconds=(duration_minutes - 2) * 60,
+            destination_context="your destination"
+        )
+        return {
+            'audio_script': script,
+            'key_terms': resource_hints,
+            'audio_chapters': self._create_audio_chapters(script, learning_objectives or resource_hints),
+            'quick_review_points': await self._generate_quick_review(learning_objectives)
+        }
+    
+    async def _prepare_cram_content(
+        self,
+        subject: str,
+        learning_objectives: List[str],
+        resource_hints: List[str],
+        mastery_data: Optional[Dict[str, float]] = None
+    ) -> Dict[str, Any]:
+        """Prepare rapid revision content."""
+        weak_topics = self._find_weak_topics(learning_objectives, mastery_data)
+        return {
+            'critical_flashcards': await self._generate_critical_flashcards(weak_topics),
+            'formula_sheet': await self._generate_formula_sheet(subject),
+            'common_mistakes': await self._generate_common_mistakes(subject),
+            'key_definitions': await self._generate_key_definitions(learning_objectives),
+            'mnemonics': await self._generate_mnemonics(resource_hints)
+        }
+    
+    async def _prepare_practice_content(
+        self,
+        subject: str,
+        learning_objectives: List[str],
+        resource_hints: List[str],
+        difficulty: str
+    ) -> Dict[str, Any]:
+        """Prepare practice exercises."""
+        return {
+            'problem_set': await self._generate_problem_set(learning_objectives, difficulty),
+            'coding_exercises': await self._generate_coding_exercises(resource_hints, difficulty),
+            'quiz': await self._generate_practice_quiz(learning_objectives),
+            'worked_examples': await self._generate_worked_examples(learning_objectives)
+        }
+    
+    async def _generate_gatekeeper_quiz(
+        self,
+        topics: List[str],
+        pass_threshold: float
+    ) -> Dict[str, Any]:
+        """Generate verification quiz for end of study session."""
+        questions = await self._generate_quiz_questions(topics, count=5)
+        return {
+            'questions': questions,
+            'pass_threshold': pass_threshold,
+            'max_attempts': 2,
+            'feedback_mode': 'immediate'
+        }
+    
+    async def _generate_quick_review(self, topics: List[str]) -> List[str]:
+        """Generate quick review bullet points."""
+        return [f"Key point for {t}" for t in topics[:5]]
+    
+    async def _generate_key_definitions(self, topics: List[str]) -> List[Dict[str, str]]:
+        """Generate key definitions for cram mode."""
+        return [{"term": t, "definition": f"Definition of {t}"} for t in topics]
+    
+    async def _generate_mnemonics(self, topics: List[str]) -> List[str]:
+        """Generate memory aids."""
+        return [f"Mnemonic for {t}" for t in topics[:3]]
+    
+    async def _generate_problem_set(self, topics: List[str], difficulty: str) -> List[Dict[str, Any]]:
+        """Generate graded problem set."""
+        return [{"topic": t, "problem": f"Problem on {t}", "difficulty": difficulty} for t in topics]
+    
+    async def _generate_coding_exercises(self, topics: List[str], difficulty: str) -> List[Dict[str, Any]]:
+        """Generate coding exercises if applicable."""
+        return [{"topic": t, "task": f"Implement {t}", "difficulty": difficulty} for t in topics]
+    
+    async def _generate_practice_quiz(self, topics: List[str]) -> List[Dict[str, Any]]:
+        """Generate practice quiz."""
+        return [{"question": f"Quiz Q on {t}", "options": ["A", "B", "C", "D"], "answer": "A"} for t in topics]
+    
+    async def _generate_worked_examples(self, topics: List[str]) -> List[Dict[str, Any]]:
+        """Generate worked examples."""
+        return [{"topic": t, "example": f"Step-by-step example for {t}"} for t in topics]
+    
+    async def _search_videos(self, topics: List[str]) -> List[Dict[str, Any]]:
+        """Search for relevant video resources."""
+        # In production, use Google Search API grounding
+        return [{"topic": t, "search_query": f"{t} tutorial video", "url": None} for t in topics]
+    
+    async def _generate_quiz_questions(self, topics: List[str], count: int = 5) -> List[Dict[str, Any]]:
+        """Generate quiz questions for verification."""
+        return [
+            {"question": f"Question {i+1} about {topics[i % len(topics)]}", 
+             "options": ["A", "B", "C", "D"], 
+             "correct": "A"} 
+            for i in range(count)
+        ]
+    
+    # =========================================================================
+    # ORIGINAL METHODS (analyze_upcoming_schedule, etc.)
+    # =========================================================================
+    
     async def analyze_upcoming_schedule(
         self,
         user_id: str,
@@ -124,14 +370,26 @@ class ProactiveContentEngine:
         look_ahead_end = now + timedelta(hours=look_ahead_hours)
         
         for event in schedule:
-            event_time = self._parse_datetime(event.get("start_time"))
+            event_time = self._parse_datetime(event.get("startTime") or event.get("start_time"))
             if not event_time or event_time > look_ahead_end:
                 continue
             
             event_type = event.get("type", "")
+            content_mode = event.get("content_mode", "deep_dive")
             
-            # Study Session → Prepare full study content
-            if event_type == "study_session":
+            # NEW: Use rich task format if available
+            if event.get("metadata_json"):
+                preparation_tasks.append({
+                    "context": self._map_type_to_context(event_type, content_mode),
+                    "event": event,
+                    "prepare_by": event_time - timedelta(minutes=30),
+                    "content_mode": content_mode,
+                    "priority": "high" if event.get("priority", 5) >= 7 else "medium"
+                })
+                continue
+            
+            # Legacy: Study Session → Prepare full study content
+            if event_type in ["study_session", "study"]:
                 preparation_tasks.append({
                     "context": AnticipatedContext.STUDY_SESSION,
                     "event": event,
@@ -392,6 +650,16 @@ class ProactiveContentEngine:
         if user_id not in self._prepared_content:
             self._prepared_content[user_id] = []
         self._prepared_content[user_id].append(content)
+    
+    def _map_type_to_context(self, event_type: str, content_mode: str) -> AnticipatedContext:
+        """Map task type and content mode to anticipated context."""
+        if content_mode == 'travel':
+            return AnticipatedContext.COMMUTE_TO_CLASS
+        if event_type == 'exam':
+            return AnticipatedContext.PRE_EXAM
+        if event_type == 'exercise':
+            return AnticipatedContext.EXERCISE
+        return AnticipatedContext.STUDY_SESSION
     
     def _parse_datetime(self, dt_str: Any) -> Optional[datetime]:
         """Parse datetime from string or return if already datetime."""
