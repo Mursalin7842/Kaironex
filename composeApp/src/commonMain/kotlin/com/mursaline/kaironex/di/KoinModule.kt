@@ -109,6 +109,8 @@ val appModule = module {
     // 10. Resources and Schedule
     single { com.mursaline.kaironex.features.resources.FileRepository(get(), get()) }
     single { com.mursaline.kaironex.features.study.ScheduleRepository(get(), get()) }
+    single { com.mursaline.kaironex.features.study.MonthlyPlansRepository(get(), get()) }
     factory { DashboardViewModel(get()) }
+    factory { com.mursaline.kaironex.features.study.MonthlyPlansViewModel(get()) }
 }
 

@@ -69,6 +69,7 @@ kotlin {
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.0")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
             
             // Koin (DI)
             implementation(libs.koin.core)
@@ -95,6 +96,7 @@ kotlin {
             implementation(libs.firebase.database.ktx)
             implementation(libs.ktor.android)
             implementation(libs.koin.android)
+            implementation("androidx.webkit:webkit:1.10.0")
 //            implementation(libs.sqldelight.android)
         }
         jvmMain.dependencies {

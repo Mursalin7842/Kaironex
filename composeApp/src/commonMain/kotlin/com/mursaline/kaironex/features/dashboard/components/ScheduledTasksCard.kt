@@ -2,6 +2,7 @@ package com.mursaline.kaironex.features.dashboard.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,16 +26,22 @@ import com.mursaline.kaironex.ui.theme.KaironexColors
 
 data class ScheduledTask(
     val id: String,
+    val taskId: String? = null,
+    val userId: String? = null,
     val title: String,
-    val subject: String,
+    val subject: String, // mapped from type or subject
     val startTime: String,
     val endTime: String,
     val duration: String,
     val status: TaskStatus,
     val priority: TaskPriority = TaskPriority.NORMAL,
     val topics: String? = null,
-    val isFlexible: Boolean = false,
-    val linkedDeadline: String? = null
+    val isFlexible: Boolean = true,
+    val linkedDeadline: String? = null,
+    val type: String = "study",
+    val location: String? = null,
+    val difficulty: String? = null,
+    val contentMode: String? = null
 )
 
 enum class TaskStatus(val label: String, val color: Long) {
@@ -58,6 +65,7 @@ fun ScheduledTasksCard(
     isMobile: Boolean,
     onTaskClick: (ScheduledTask) -> Unit = {},
     onAddTask: () -> Unit = {},
+    onViewAllClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -133,7 +141,7 @@ fun ScheduledTasksCard(
                 }
             } else {
                 // Task list
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     tasks.take(if (isMobile) 3 else 5).forEach { task ->
                         ScheduledTaskItem(
                             task = task,
@@ -145,10 +153,23 @@ fun ScheduledTasksCard(
                     // Show more button if there are more tasks
                     if (tasks.size > (if (isMobile) 3 else 5)) {
                         TextButton(
-                            onClick = { /* Navigate to full schedule */ },
+                            onClick = onViewAllClick,
                             modifier = Modifier.align(Alignment.CenterHorizontally)
                         ) {
                             Text("View all ${tasks.size} tasks")
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    } else if (tasks.isNotEmpty()) {
+                         // Always show "View All" even if list is short, to navigate to calendar
+                        TextButton(
+                            onClick = onViewAllClick,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        ) {
+                            Text("View Full Schedule")
                             Icon(
                                 Icons.Default.ChevronRight,
                                 contentDescription = null,
@@ -162,146 +183,195 @@ fun ScheduledTasksCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ScheduledTaskItem(
     task: ScheduledTask,
     isMobile: Boolean,
-    isDetailed: Boolean = false,
+    isDetailed: Boolean = true, // Defaulting to detailed for new design
+    showShadow: Boolean = true, // New param to control floating/flat
+    showFullContext: Boolean = false, // New param for full content
     onClick: () -> Unit
 ) {
+    // Redesigned Card with Conditional Shadow
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = Color(task.status.color).copy(alpha = 0.08f)
+        shape = RoundedCornerShape(16.dp),
+        color = KaironexColors.CanvasWhite,
+        shadowElevation = if (showShadow) 4.dp else 0.dp, // Conditional Shadow
+        border = if (!showShadow) androidx.compose.foundation.BorderStroke(1.dp, KaironexColors.CloudGray) else null, // Border if flat
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            // Time indicator
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(if (isMobile) 50.dp else 60.dp)
+            // 1. TOP: Title & Status/Priority
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
                 Text(
-                    task.startTime,
-                    style = MaterialTheme.typography.labelMedium,
+                    text = task.title,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color(task.status.color)
+                    color = KaironexColors.InkBlack,
+                    modifier = Modifier.weight(1f)
                 )
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .height(12.dp)
-                        .background(Color(task.status.color).copy(alpha = 0.3f))
-                )
-                Text(
-                    task.endTime,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = KaironexColors.SlateGray
-                )
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            // Task details
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        task.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = KaironexColors.InkBlack,
-                        maxLines = if (isDetailed) Int.MAX_VALUE else 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (task.priority == TaskPriority.HIGH || task.priority == TaskPriority.CRITICAL) {
-                        Spacer(Modifier.width(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(Color(task.priority.color))
-                        )
-                    }
-                }
                 
-                // Detailed View: Topics and Meta
-                if (isDetailed) {
-                    Spacer(Modifier.height(4.dp))
-                    if (!task.topics.isNullOrBlank()) {
-                        Text(
-                            task.topics,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = KaironexColors.InkBlack.copy(alpha = 0.8f),
-                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight * 1.1,
-                            modifier = Modifier.padding(bottom = 6.dp)
-                        )
-                    }
-                    
-                    // Meta Chips
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                Spacer(Modifier.width(8.dp))
+                
+                // Priority Dot or Badge
+                if (task.priority == TaskPriority.HIGH || task.priority == TaskPriority.CRITICAL) {
+                     Surface(
+                        shape = CircleShape,
+                        color = Color(task.priority.color).copy(alpha = 0.1f)
+                     ) {
                          Text(
-                            task.subject,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = KaironexColors.SlateGray
-                        )
-                        
-                        // Flexible Chip
-                        if (task.isFlexible) {
-                            Surface(
-                                color = KaironexColors.SuccessGreen.copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Text(
-                                    "Flexible",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                    color = KaironexColors.SuccessGreen,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                        
-                        // Deadline
-                        if (!task.linkedDeadline.isNullOrBlank()) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Event, null, tint = KaironexColors.ErrorRed, modifier = Modifier.size(10.dp))
-                                Spacer(Modifier.width(2.dp))
-                                Text(
-                                    "Due ${task.linkedDeadline.take(10)}", // Simple date take
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                    color = KaironexColors.ErrorRed
-                                )
-                            }
-                        }
-                    }
-                    
-                } else {
-                    // Standard View
-                    Text(
-                        task.subject,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = KaironexColors.SlateGray
-                    )
+                             task.priority.label,
+                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                             style = MaterialTheme.typography.labelSmall,
+                             color = Color(task.priority.color),
+                             fontWeight = FontWeight.Bold
+                         )
+                     }
                 }
             }
-
-            // Duration badge
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = KaironexColors.CloudGray
-            ) {
+            
+            Spacer(Modifier.height(8.dp))
+            
+            // 2. TIME DURATION ROW
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Schedule, 
+                    contentDescription = null, 
+                    tint = KaironexColors.ElectricBlue,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.width(4.dp))
                 Text(
-                    task.duration,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = KaironexColors.SlateGray
+                    text = "${task.startTime} - ${task.endTime} (${task.duration})",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = KaironexColors.ElectricBlue
+                )
+            }
+            
+            Spacer(Modifier.height(8.dp))
+            
+            // 3. DETAILS ROW (Subject, Topics, Flexible, Leadline)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                 // Subject Chip
+                 Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = KaironexColors.CloudGray
+                 ) {
+                     Text(
+                         task.subject,
+                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                         style = MaterialTheme.typography.labelSmall,
+                         color = KaironexColors.SlateGray
+                     )
+                 }
+
+                 // Location
+                 if (!task.location.isNullOrBlank()) {
+                      Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = KaironexColors.CloudGray
+                     ) {
+                         Row(
+                             verticalAlignment = Alignment.CenterVertically,
+                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                         ) {
+                             Icon(Icons.Default.Place, null, tint = KaironexColors.SlateGray, modifier = Modifier.size(10.dp))
+                             Spacer(Modifier.width(2.dp))
+                             Text(
+                                 task.location,
+                                 style = MaterialTheme.typography.labelSmall,
+                                 color = KaironexColors.SlateGray
+                             )
+                         }
+                     }
+                 }
+                 
+                 // Difficulty
+                 if (!task.difficulty.isNullOrBlank()) {
+                      Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = if(task.difficulty.equals("hard", true)) KaironexColors.ErrorRed.copy(alpha=0.1f) else KaironexColors.CloudGray
+                     ) {
+                         Text(
+                             task.difficulty.replaceFirstChar { it.titlecase() },
+                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                             style = MaterialTheme.typography.labelSmall,
+                             color = if(task.difficulty.equals("hard", true)) KaironexColors.ErrorRed else KaironexColors.SlateGray
+                         )
+                     }
+                 }
+                 
+                 // Content Mode
+                 if (!task.contentMode.isNullOrBlank()) {
+                      Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = KaironexColors.ElectricBlue.copy(alpha = 0.1f)
+                     ) {
+                         Text(
+                             task.contentMode.replaceFirstChar { it.titlecase() },
+                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                             style = MaterialTheme.typography.labelSmall,
+                             color = KaironexColors.ElectricBlue
+                         )
+                     }
+                 }
+                 
+                 // Flexible Badge
+                 if (task.isFlexible) {
+                      Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = KaironexColors.SuccessGreen.copy(alpha = 0.1f)
+                     ) {
+                         Row(
+                             verticalAlignment = Alignment.CenterVertically,
+                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                         ) {
+                             Icon(Icons.Default.Autorenew, null, tint = KaironexColors.SuccessGreen, modifier = Modifier.size(10.dp))
+                             Spacer(Modifier.width(2.dp))
+                             Text(
+                                 "Flexible",
+                                 style = MaterialTheme.typography.labelSmall,
+                                 color = KaironexColors.SuccessGreen
+                             )
+                         }
+                     }
+                 }
+                 
+                 // Deadline
+                 if (!task.linkedDeadline.isNullOrBlank()) {
+                      Row(verticalAlignment = Alignment.CenterVertically) {
+                          Icon(Icons.Default.Event, null, tint = KaironexColors.ErrorRed, modifier = Modifier.size(12.dp))
+                          Spacer(Modifier.width(2.dp))
+                          Text(
+                              "Due: ${task.linkedDeadline.take(10)}",
+                              style = MaterialTheme.typography.labelSmall,
+                              color = KaironexColors.ErrorRed
+                          )
+                      }
+                 }
+            }
+            
+            // Topics details
+            if (!task.topics.isNullOrBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = task.topics,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = KaironexColors.SlateGray,
+                    maxLines = if (showFullContext) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -327,7 +397,8 @@ fun getSampleScheduledTasks(): List<ScheduledTask> = listOf(
         endTime = "12:00 PM",
         duration = "60 min",
         status = TaskStatus.IN_PROGRESS,
-        priority = TaskPriority.HIGH
+        priority = TaskPriority.HIGH,
+        topics = "Sorting, Searching, Dynamic Programming"
     ),
     ScheduledTask(
         id = "3",
@@ -346,7 +417,8 @@ fun getSampleScheduledTasks(): List<ScheduledTask> = listOf(
         endTime = "5:00 PM",
         duration = "60 min",
         status = TaskStatus.SCHEDULED,
-        priority = TaskPriority.CRITICAL
+        priority = TaskPriority.CRITICAL,
+        linkedDeadline = "2026-02-10"
     ),
     ScheduledTask(
         id = "5",

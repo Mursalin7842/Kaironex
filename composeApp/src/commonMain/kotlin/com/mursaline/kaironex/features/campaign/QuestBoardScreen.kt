@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -73,7 +74,7 @@ object QuestBoardScreen : Screen {
                     containerColor = Color(0xFF5E35B1), // Campaign Purple
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Filled.Sort, "Filter")
+                    Icon(Icons.AutoMirrored.Filled.Sort, "Filter")
                     Spacer(Modifier.width(8.dp))
                     Text("Filter")
                 }

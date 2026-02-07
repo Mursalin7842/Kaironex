@@ -30,6 +30,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import cafe.adriel.voyager.koin.koinScreenModel
 import com.mursaline.kaironex.agents.genesis.StudentProfile
 import com.mursaline.kaironex.core.storage.ProfileStorage
 import com.mursaline.kaironex.ui.theme.KaironexColors
@@ -46,7 +47,7 @@ class ProfileCalibrationScreen(
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
-        val viewModel = getScreenModel<ProfileCalibrationViewModel>()
+        val viewModel = koinScreenModel<ProfileCalibrationViewModel>()
         
         val profile by viewModel.profile.collectAsState()
         val isSaved by viewModel.isSaved.collectAsState()

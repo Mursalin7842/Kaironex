@@ -43,6 +43,8 @@ import org.koin.compose.koinInject
 @OptIn(ExperimentalMaterial3Api::class)
 class CampaignSetupScreen(private val isEditMode: Boolean = true) : Screen {
     
+    private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+    
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -106,7 +108,7 @@ class CampaignSetupScreen(private val isEditMode: Boolean = true) : Screen {
             if (profileJson != null) {
                 try {
                     println("🔍 Syncing Profile from Brain: $profileJson")
-                    val profile = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<StudentProfile>(profileJson)
+                    val profile = json.decodeFromString<StudentProfile>(profileJson)
                     
                     // Mark as existing profile if critical fields are present
                     if (!profile.university.isNullOrBlank()) {
@@ -311,7 +313,7 @@ class CampaignSetupScreen(private val isEditMode: Boolean = true) : Screen {
                                         // Construct Full Profile Object
                                         val currentProfile = userState?.profile?.let {
                                             try {
-                                                kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<StudentProfile>(it)
+                                                json.decodeFromString<StudentProfile>(it)
                                             } catch (e: Exception) { StudentProfile() }
                                         } ?: StudentProfile()
 

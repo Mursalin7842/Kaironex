@@ -810,4 +810,204 @@ class AppwriteStatsRepository(
             println("❌ Error ensuring table $collectionId: ${e.message}")
         }
     }
+
+    // =========================================================================
+    // ARMORY: RESUME TOOLS
+    // =========================================================================
+    
+    /**
+     * Analyze resume against job description using Brain API.
+     * Supports both plain text and base64-encoded PDF input.
+     * Returns ATS score, missing keywords, and improvement checklist.
+     */
+    suspend fun analyzeResume(resumeText: String? = null, jobDescription: String, resumePdfBase64: String? = null): AtsAnalysisResult? {
+        return try {
+            val payload = buildJsonObject {
+                put("userId", userId)
+                put("type", "analyze_resume")
+                put("data", buildJsonObject {
+                    resumeText?.let { put("resumeText", it) }
+                    resumePdfBase64?.let { put("resumePdf", it) }
+                    put("jobDesc", jobDescription)
+                })
+            }
+            
+            val response = httpClient.post("${AppConfig.Brain.baseUrl}/campaign") {
+                header("Content-Type", "application/json")
+                setBody(json.encodeToString(payload))
+            }
+            
+            if (response.status.value == 200) {
+                val result = json.parseToJsonElement(response.bodyAsText()).jsonObject
+                val data = result["data"]?.jsonObject
+                
+                if (data != null) {
+                    // Parse the ATS analysis result
+                    val atsScore = data["ats_score"]?.jsonPrimitive?.intOrNull ?: 0
+                    val matchedKeywords = data["matched_keywords"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+                    val missingKeywords = data["missing_keywords"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+                    val overallAssessment = data["overall_assessment"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val estimatedPassRate = data["estimated_pass_rate"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val interviewReady = data["interview_ready"]?.jsonPrimitive?.booleanOrNull ?: false
+                    
+                    // Parse checklist
+                    val checklist = data["checklist"]?.jsonArray?.mapNotNull { item ->
+                        val obj = item.jsonObject
+                        AtsChecklistItem(
+                            item = obj["item"]?.jsonPrimitive?.contentOrNull ?: "",
+                            status = obj["status"]?.jsonPrimitive?.contentOrNull ?: "pending",
+                            impact = obj["impact"]?.jsonPrimitive?.contentOrNull ?: "MEDIUM"
+                        )
+                    } ?: emptyList()
+                    
+                    AtsAnalysisResult(
+                        atsScore = atsScore,
+                        matchedKeywords = matchedKeywords,
+                        missingKeywords = missingKeywords,
+                        checklist = checklist,
+                        overallAssessment = overallAssessment,
+                        interviewReady = interviewReady,
+                        estimatedPassRate = estimatedPassRate
+                    )
+                } else null
+            } else {
+                println("❌ Resume Analysis Failed: ${response.status}")
+                null
+            }
+        } catch (e: Exception) {
+            println("❌ Resume Analysis Error: ${e.message}")
+            null
+        }
+    }
+    
+    /**
+     * Generate a tailored resume from projects and job description.
+     * Returns structured resume data + optional DOCX file as base64.
+     */
+    suspend fun generateResume(jobDescription: String, projectsText: String, includeDocx: Boolean = true): GeneratedResume? {
+        return try {
+            // Parse projects from text (simple format: numbered list)
+            val projects = projectsText.split(Regex("\\d+\\.\\s*")).filter { it.isNotBlank() }.map { 
+                mapOf("description" to it.trim())
+            }
+            
+            val payload = buildJsonObject {
+                put("userId", userId)
+                put("type", "generate_resume")
+                put("data", buildJsonObject {
+                    put("jobDesc", jobDescription)
+                    put("projects", json.encodeToString(projects))
+                    put("includeDocx", includeDocx)
+                })
+            }
+            
+            val response = httpClient.post("${AppConfig.Brain.baseUrl}/campaign") {
+                header("Content-Type", "application/json")
+                setBody(json.encodeToString(payload))
+            }
+            
+            if (response.status.value == 200) {
+                val result = json.parseToJsonElement(response.bodyAsText()).jsonObject
+                val data = result["data"]?.jsonObject
+                val resume = data?.get("resume")?.jsonObject
+                
+                // Get DOCX data if available
+                val docxBase64 = result["docx"]?.jsonPrimitive?.contentOrNull
+                val docxFilename = result["docx_filename"]?.jsonPrimitive?.contentOrNull
+                
+                if (resume != null) {
+                    val professionalSummary = resume["professional_summary"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val skillsSection = resume["skills_section"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+                    val estimatedAtsScore = data["estimated_ats_score"]?.jsonPrimitive?.intOrNull ?: 0
+                    
+                    GeneratedResume(
+                        professionalSummary = professionalSummary,
+                        skillsSection = skillsSection,
+                        estimatedAtsScore = estimatedAtsScore,
+                        docxBase64 = docxBase64,
+                        docxFilename = docxFilename
+                    )
+                } else null
+            } else {
+                println("❌ Resume Generation Failed: ${response.status}")
+                null
+            }
+        } catch (e: Exception) {
+            println("❌ Resume Generation Error: ${e.message}")
+            null
+        }
+    }
+    
+    /**
+     * Design a mock interview for the Simulacrum.
+     */
+    suspend fun designInterview(jobDescription: String, resumeText: String?, interviewType: String = "technical", difficulty: String = "medium"): InterviewDesign? {
+        return try {
+            val payload = buildJsonObject {
+                put("userId", userId)
+                put("type", "design_interview")
+                put("data", buildJsonObject {
+                    put("jobDesc", jobDescription)
+                    resumeText?.let { put("resumeText", it) }
+                    put("interviewType", interviewType)
+                    put("difficulty", difficulty)
+                })
+            }
+            
+            val response = httpClient.post("${AppConfig.Brain.baseUrl}/campaign") {
+                header("Content-Type", "application/json")
+                setBody(json.encodeToString(payload))
+            }
+            
+            if (response.status.value == 200) {
+                val result = json.parseToJsonElement(response.bodyAsText()).jsonObject
+                val data = result["data"]?.jsonObject
+                
+                if (data != null) {
+                    val interviewId = data["interview_id"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val geminiLivePrompt = data["gemini_live_prompt"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val durationMinutes = data["duration_minutes"]?.jsonPrimitive?.intOrNull ?: 25
+                    
+                    // Parse interviewer
+                    val interviewerObj = data["interviewer"]?.jsonObject
+                    val interviewer = InterviewerPersona(
+                        name = interviewerObj?.get("name")?.jsonPrimitive?.contentOrNull ?: "Interviewer",
+                        role = interviewerObj?.get("role")?.jsonPrimitive?.contentOrNull ?: "Technical Recruiter",
+                        company = interviewerObj?.get("company")?.jsonPrimitive?.contentOrNull ?: "TechCorp",
+                        personality = interviewerObj?.get("personality")?.jsonPrimitive?.contentOrNull ?: "Professional"
+                    )
+                    
+                    // Parse question bank
+                    val questionBank = data["question_bank"]?.jsonArray?.mapNotNull { q ->
+                        val qObj = q.jsonObject
+                        InterviewQuestion(
+                            id = qObj["id"]?.jsonPrimitive?.contentOrNull ?: "",
+                            category = qObj["category"]?.jsonPrimitive?.contentOrNull ?: "",
+                            question = qObj["question"]?.jsonPrimitive?.contentOrNull ?: "",
+                            followUps = qObj["follow_ups"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList(),
+                            goodAnswerCriteria = qObj["good_answer_criteria"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList(),
+                            redFlags = qObj["red_flags"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+                        )
+                    } ?: emptyList()
+                    
+                    val candidatePrepNotes = data["candidate_prep_notes"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+                    
+                    InterviewDesign(
+                        interviewId = interviewId,
+                        durationMinutes = durationMinutes,
+                        interviewer = interviewer,
+                        questionBank = questionBank,
+                        geminiLivePrompt = geminiLivePrompt,
+                        candidatePrepNotes = candidatePrepNotes
+                    )
+                } else null
+            } else {
+                println("❌ Interview Design Failed: ${response.status}")
+                null
+            }
+        } catch (e: Exception) {
+            println("❌ Interview Design Error: ${e.message}")
+            null
+        }
+    }
 }

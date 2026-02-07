@@ -28,10 +28,12 @@ actual fun InterviewWebView(
                     javaScriptEnabled = true
                     domStorageEnabled = true
                     mediaPlaybackRequiresUserGesture = false
-                    allowFileAccess = true
-                    allowFileAccessFromFileURLs = true
-                    allowUniversalAccessFromFileURLs = true
+                    allowFileAccess = true // Keep for other file access if needed, but not for assets
                 }
+
+                val assetLoader = androidx.webkit.WebViewAssetLoader.Builder()
+                    .addPathHandler("/assets/", androidx.webkit.WebViewAssetLoader.AssetsPathHandler(context))
+                    .build()
 
                 webChromeClient = object : WebChromeClient() {
                     override fun onPermissionRequest(request: PermissionRequest) {
@@ -40,6 +42,13 @@ actual fun InterviewWebView(
                 }
 
                 webViewClient = object : WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: WebView,
+                        request: android.webkit.WebResourceRequest
+                    ): android.webkit.WebResourceResponse? {
+                        return assetLoader.shouldInterceptRequest(request.url)
+                    }
+
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
                         val triggerScript = """
@@ -67,10 +76,10 @@ actual fun InterviewWebView(
                     }
                 }, "Android")
 
-                // Load with URL Params
+                // Load with URL Params via AssetLoader
                 val encodedUser = android.net.Uri.encode(userName)
                 val encodedAgent = android.net.Uri.encode(agentName)
-                loadUrl("file:///android_asset/interviewer/index.html?userName=${encodedUser}&agentName=${encodedAgent}")
+                loadUrl("https://appassets.androidplatform.net/assets/interviewer/index.html?userName=${encodedUser}&agentName=${encodedAgent}")
             }
         },
         onRelease = { webView ->

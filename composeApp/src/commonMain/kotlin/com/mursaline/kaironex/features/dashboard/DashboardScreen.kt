@@ -47,8 +47,7 @@ import com.mursaline.kaironex.features.dashboard.components.MentalStateCard
 import com.mursaline.kaironex.features.dashboard.components.PressureRiskCard
 import com.mursaline.kaironex.features.dashboard.components.ScheduledTasksCard
 import com.mursaline.kaironex.features.dashboard.components.getSampleScheduledTasks
-import com.mursaline.kaironex.features.dashboard.components.DriveIngestionCard
-import com.mursaline.kaironex.features.dashboard.components.getSampleUploadedFiles
+
 import com.mursaline.kaironex.features.zones.CortexState
 import com.mursaline.kaironex.features.study.StudyRoomScreen
 import com.mursaline.kaironex.core.stats.StatsProvider
@@ -62,6 +61,8 @@ import com.mursaline.kaironex.features.study.StudyViewModel
 import com.mursaline.kaironex.features.dashboard.components.ScheduledTask
 import com.mursaline.kaironex.features.dashboard.components.TaskStatus
 import com.mursaline.kaironex.features.dashboard.components.TaskPriority
+import com.mursaline.kaironex.features.dashboard.components.SemesterPlanCard
+import com.mursaline.kaironex.features.study.MonthlyPlansScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import androidx.compose.material.icons.Icons
@@ -129,24 +130,22 @@ object DashboardScreen : Screen {
                         isBrainConnected = true
                     }
                 } catch (e: Exception) { }
-                delay(4000)
+                delay(30000)
             }
         }
 
-        // Cortex State - derived from stats (Handle Loading)
+        // Cortex State - derived from stats
         val cortexState = remember(homeStats) {
-            val stats = homeStats // safe local
-            if (stats != null) {
-                CortexState(
-                    currentSubject = "Data Structures",
-                    currentTopic = stats.mentalState.aiInsight,
-                    pressure = stats.pressure.pressureIndex / 100f,
-                    upcomingDeadlines = stats.habits.nextDeadline?.daysRemaining ?: 0,
-                    studyStreak = stats.habits.studyStreak,
-                    conceptMastery = stats.learning.overallMastery,
-                    isActive = true
-                )
-            } else null
+            val stats = homeStats
+            CortexState(
+                currentSubject = "Data Structures",
+                currentTopic = stats.mentalState.aiInsight,
+                pressure = stats.pressure.pressureIndex / 100f,
+                upcomingDeadlines = stats.habits.nextDeadline?.daysRemaining ?: 0,
+                studyStreak = stats.habits.studyStreak,
+                conceptMastery = stats.learning.overallMastery,
+                isActive = true
+            )
         }
 
         BoxWithConstraints(modifier = Modifier.fillMaxSize().background(KaironexColors.CloudGray)) {
@@ -224,13 +223,14 @@ object DashboardScreen : Screen {
                     )
                     Spacer(Modifier.height(8.dp))
 
-                    if (cortexState != null) {
-                        CortexHeroCard(
-                            cortexState = cortexState!!,
-                            onEnterFlow = { navigator.push(StudyRoomScreen) },
-                            isMobile = isMobile
-                        )
-                    }
+                    // ===== SECTION 1: THE HERO - CORTEX (Study Room) =====
+
+
+                    CortexHeroCard(
+                        cortexState = cortexState,
+                        onEnterFlow = { navigator.push(StudyRoomScreen) },
+                        isMobile = isMobile
+                    )
 
                     Spacer(Modifier.height(if (isMobile) 16.dp else 24.dp))
 
@@ -282,35 +282,43 @@ object DashboardScreen : Screen {
 
                     Spacer(Modifier.height(if (isMobile) 12.dp else 16.dp))
 
-                    // ===== SECTION 6: SCHEDULED TASKS =====
+                    // ===== SECTION 6: SCHEDULED TASKS & SEMESTER PLAN =====
                     ScheduledTasksCard(
                         tasks = dashboardTasks,
                         isMobile = isMobile,
                         onTaskClick = { /* Navigate to task */ },
-                        onAddTask = { /* Open add task dialog */ }
+                        onAddTask = { /* Open add task dialog */ },
+                        onViewAllClick = { navigator.push(com.mursaline.kaironex.features.study.StudySessionsScreen) }
                     )
 
                     Spacer(Modifier.height(if (isMobile) 12.dp else 16.dp))
 
-                    // ===== SECTION 7: DRIVE INGESTION / FILE UPLOAD =====
-                    DriveIngestionCard(
-                        files = getSampleUploadedFiles(),
-                        isDriveConnected = false, // TODO: Get from user settings
-                        isMobile = isMobile,
-                        onConnectDrive = { /* Connect to Google Drive */ },
-                        onUploadFiles = { /* Open file picker */ },
-                        onFileClick = { /* Open file viewer */ }
+                    SemesterPlanCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        currentMonth = "February 2026", // Dynamic later
+                        status = "On Track",
+                        onClick = { navigator.push(MonthlyPlansScreen) }
                     )
 
                     Spacer(Modifier.height(if (isMobile) 16.dp else 24.dp))
 
-                    // ===== SECTION 8: PRESSURE MAP VISUALIZATION =====
+                    // ===== SECTION 8: PRESSURE METRICS =====
                     Text(
-                        text = if (isMobile) "Pressure Timeline" else "Weekly Pressure Overview",
+                        text = "Pressure Overview",
                         style = if (isMobile) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = KaironexColors.SlateGray
                     )
+                    Spacer(Modifier.height(if (isMobile) 6.dp else 12.dp))
+
+                    // Pressure Row (Today, Week, Month)
+                    PressureStatsRow(
+                        dailyPressure = displayStats.pressure.pressureIndex / 100f,
+                        weeklyPressure = 0.65f, // Mock for now, connect to stats later
+                        monthlyPressure = 0.4f, // Mock for now
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
                     Spacer(Modifier.height(if (isMobile) 6.dp else 12.dp))
 
                     // Extra bottom spacing for navbar

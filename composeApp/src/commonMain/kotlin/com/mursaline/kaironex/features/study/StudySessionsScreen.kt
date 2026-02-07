@@ -6,11 +6,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,7 +60,8 @@ object StudySessionsScreen : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel = koinScreenModel<StudyViewModel>()
         
-        var selectedTab by remember { mutableStateOf(0) }
+        // Default to "Upcoming" (1) to show the schedule/tasks immediately as requested
+        var selectedTab by remember { mutableStateOf(1) }
         val schedule by viewModel.schedule.collectAsState()
         val isGenerating by viewModel.isGenerating.collectAsState()
         val isLoading by viewModel.isLoading.collectAsState() // Observe loading state
@@ -81,7 +88,7 @@ object StudySessionsScreen : Screen {
                             if (topResources.isNotEmpty()) {
                                 viewModel.generateSchedule(topResources, 15)
                             } else {
-                                viewModel.loadSchedule() // Just refresh if no resources
+                                viewModel.loadSchedule(force = true) // Just refresh if no resources
                             }
                         }) {
                             Icon(Icons.Default.Refresh, "Refresh")
@@ -101,26 +108,59 @@ object StudySessionsScreen : Screen {
                     Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }, text = { Text("Previous") })
                 }
 
-                // Content
-                if (isLoading || isGenerating) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = KaironexColors.ElectricBlue)
-                            Spacer(Modifier.height(16.dp))
-                            Text(
-                                if (isGenerating) "Designing Strategy..." else "Syncing Profile...",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = KaironexColors.SlateGray
-                            )
-                        }
+        // Content
+        Box(modifier = Modifier.weight(1f)) {
+            // optimization: Compute derived lists only when schedule changes
+            val todayTasks = remember(schedule) {
+                try {
+                    val today = kotlinx.datetime.Clock.System.now()
+                        .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+                        .date.toString() // YYYY-MM-DD
+                        
+                    schedule.filter { 
+                        it.status.lowercase() != "completed" && 
+                        it.startTime.startsWith(today) 
                     }
-                } else {
-                    when (selectedTab) {
-                        0 -> CurrentSessionContent(onStartSession = { navigator.push(StudyRoomScreen) })
-                        1 -> UpcomingSessionsContent(schedule.filter { it.status.lowercase() != "completed" })
-                        2 -> PreviousSessionsContent(schedule.filter { it.status.lowercase() == "completed" })
+                    .map { it.toUiTask() }
+                } catch (e: Throwable) {
+                    // Fallback to top 5 if date calculation fails
+                    schedule.filter { it.status.lowercase() != "completed" }
+                        .take(5)
+                        .map { it.toUiTask() }
+                }
+            }
+            
+            val upcomingTasks = remember(schedule) {
+                schedule.filter { it.status.lowercase() != "completed" }
+            }
+            
+            val previousTasks = remember(schedule) {
+                schedule.filter { it.status.lowercase() == "completed" }
+            }
+
+            if (isLoading || isGenerating) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = KaironexColors.ElectricBlue)
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            if (isGenerating) "Designing Strategy..." else "Syncing Profile...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = KaironexColors.SlateGray
+                        )
                     }
                 }
+            } else {
+                when (selectedTab) {
+                    0 -> CurrentSessionContent(
+                            onStartSession = { navigator.push(StudyRoomScreen) },
+                            todayTasks = todayTasks
+                         )
+                    1 -> UpcomingSessionsContent(upcomingTasks)
+                    2 -> PreviousSessionsContent(previousTasks)
+                }
+            }
+        }
             }
         }
     }
@@ -130,12 +170,17 @@ object StudySessionsScreen : Screen {
 
 
 @Composable
-private fun CurrentSessionContent(onStartSession: () -> Unit) {
+private fun CurrentSessionContent(
+    onStartSession: () -> Unit,
+    todayTasks: List<ScheduledTask>
+) {
     val hasActiveSession = false // TODO: Get from ViewModel
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -144,8 +189,6 @@ private fun CurrentSessionContent(onStartSession: () -> Unit) {
             ActiveSessionCard()
         } else {
             // No active session - show start button
-            Spacer(Modifier.height(48.dp))
-
             Surface(
                 shape = RoundedCornerShape(20.dp),
                 color = KaironexColors.CanvasWhite,
@@ -206,8 +249,41 @@ private fun CurrentSessionContent(onStartSession: () -> Unit) {
             ) {
                 QuickStartChip("25 min", "Pomodoro", Modifier.weight(1f))
                 QuickStartChip("50 min", "Deep Work", Modifier.weight(1f))
-                QuickStartChip("90 min", "Flow State", Modifier.weight(1f))
             }
+            
+            Spacer(Modifier.height(24.dp))
+            
+            // Today's Schedule
+            Text(
+                "Today's Schedule",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = KaironexColors.SlateGray,
+                modifier = Modifier.align(Alignment.Start)
+            )
+            Spacer(Modifier.height(12.dp))
+            
+            if (todayTasks.isNotEmpty()) {
+                todayTasks.forEach { task ->
+                    ScheduledTaskItem(
+                        task = task,
+                        isMobile = true,
+                        isDetailed = true,
+                        showShadow = true,
+                        showFullContext = true, // Show full context as requested
+                        onClick = {}
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+            } else {
+                 Text(
+                    "No tasks scheduled for today.",
+                    color = KaironexColors.SlateGray,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            Spacer(Modifier.height(100.dp))
         }
     }
 }
@@ -320,15 +396,15 @@ private fun UpcomingSessionsContent(schedule: List<ScheduleRepository.ScheduleTa
             grouped.forEach { (date, tasks) ->
                 stickyHeader {
                     Surface(
-                        color = KaironexColors.CloudGray,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        color = KaironexColors.EventsOrange.copy(alpha=0.1f), // Orange background for Upcoming
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp, top = 16.dp)
                     ) {
                         Text(
                             text = formatDateHeader(date),
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = KaironexColors.InkBlack,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                            color = KaironexColors.EventsOrange, // Orange text for Upcoming
+                            modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
                         )
                     }
                 }
@@ -338,7 +414,9 @@ private fun UpcomingSessionsContent(schedule: List<ScheduleRepository.ScheduleTa
                     ScheduledTaskItem(
                         task = uiTask,
                         isMobile = true, 
-                        isDetailed = true, // Enable detailed view for Study Room
+                        isDetailed = true, 
+                        showShadow = true, // Revert to floating card as requested
+                        showFullContext = true, // Show full context as requested
                         onClick = { /* Detail view */ }
                     )
                 }
@@ -374,16 +452,22 @@ private fun DomainTask.toUiTask(): ScheduledTask {
 
     return ScheduledTask(
         id = this.id,
+        taskId = this.taskId,
+        userId = this.userId,
         title = this.title,
-        subject = this.type.replaceFirstChar { it.titlecase() },
+        subject = this.subject ?: this.type.replaceFirstChar { it.titlecase() },
         startTime = sTime,
         endTime = eTime,
-        duration = "60m", 
+        duration = calculateDuration(this.startTime, this.endTime), 
         status = statusEnum,
         priority = priorityEnum,
         topics = this.topics,
         isFlexible = this.isFlexible,
-        linkedDeadline = this.linkedDeadline
+        linkedDeadline = this.linkedDeadline,
+        location = this.location,
+        difficulty = this.difficulty,
+        contentMode = this.contentMode,
+        type = this.type
     )
 }
 
@@ -421,15 +505,43 @@ private fun PreviousSessionsContent(completedTasks: List<ScheduleRepository.Sche
     }
 }
 
-// Helper: Format YYYY-MM-DD to readable (e.g., "Mon, Oct 25")
+// Helper: Format YYYY-MM-DD to "Day, dMMMyyyy" (e.g., "Saturday, 7Feb2026")
 private fun formatDateHeader(dateStr: String): String {
-    if (dateStr == "Unknown Date") return dateStr
-    // Try simple parsing
+    if (dateStr == "Unknown Date" || !dateStr.contains("-")) return dateStr
+    
     return try {
-        // Just return ISO for now or prettify if using java.time (not avail in KMM common easily without lib)
-        // For simplicity in CommonMain, we stick to the ISO string or simple split
-        dateStr
-    } catch(e: Exception) { dateStr }
+        val parts = dateStr.split("-")
+        var year = parts[0].toInt()
+        var month = parts[1].toInt()
+        val day = parts[2].toIntOrNull() ?: return dateStr // Safety check
+        
+        // Month names
+        val months = listOf("", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+        val monthStr = months.getOrElse(month) { "" }
+        
+        // Zeller's congruence for Day of Week
+        // Adjust Jan/Feb
+        if (month < 3) {
+            month += 12
+            year -= 1
+        }
+        
+        val q = day
+        val m = month
+        val k = year % 100
+        val j = year / 100
+        
+        val h = (q + (13 * (m + 1)) / 5 + k + (k / 4) + (j / 4) + (5 * j)) % 7
+        
+        // 0 = Saturday, 1 = Sunday, ..., 6 = Friday
+        val days = listOf("Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        val dayOfWeek = days[h]
+        
+        // Format: Saturday, 7 Feb 2026
+        "$dayOfWeek, $day $monthStr ${parts[0]}"
+    } catch(e: Exception) { 
+        dateStr 
+    }
 }
 
 // Helper: Extract HH:MM AM/PM from ISO string
@@ -447,6 +559,29 @@ private fun formatTime(isoString: String): String {
         
         "$hour12:$min $amPm"
     } catch (e: Exception) { "--:--" }
+}
+
+private fun calculateDuration(start: String, end: String): String {
+    return try {
+        // Basic parsing for HH:MM assuming ISO T separator
+        // start: 2023-10-25T14:00:00...
+        val startPart = start.substringAfter("T").substringBefore(".")
+        val endPart = end.substringAfter("T").substringBefore(".")
+        
+        val (sh, sm) = startPart.split(":").map { it.toInt() }
+        val (eh, em) = endPart.split(":").map { it.toInt() }
+        
+        val startMins = sh * 60 + sm
+        val endMins = eh * 60 + em
+        
+        var diff = endMins - startMins
+        if (diff < 0) diff += 24 * 60 // Handle midnight crossing roughly
+        
+        val h = diff / 60
+        val m = diff % 60
+        
+        if (h > 0) "${h}h ${m}m" else "${m}m"
+    } catch (e: Exception) { "60m" }
 }
 
 @OptIn(ExperimentalLayoutApi::class)

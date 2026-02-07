@@ -57,10 +57,10 @@ class StudyViewModel(
         }
     }
     
-    fun loadSchedule() {
+    fun loadSchedule(force: Boolean = false) {
         screenModelScope.launch {
             try {
-                _schedule.value = scheduleRepository.fetchSchedule()
+                _schedule.value = scheduleRepository.fetchSchedule(forceRefresh = force)
             } catch (e: Exception) {
                 println("Schedule Load Error: ${e.message}")
             }

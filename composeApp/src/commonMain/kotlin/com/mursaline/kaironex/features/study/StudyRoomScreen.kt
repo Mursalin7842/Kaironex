@@ -20,6 +20,7 @@ import com.mursaline.kaironex.features.study.components.*
 
 // Koin / Voyager Imports
 import cafe.adriel.voyager.koin.getScreenModel
+import cafe.adriel.voyager.koin.koinScreenModel
 import com.mursaline.kaironex.features.study.StudyViewModel
 
 @Suppress("unused")
@@ -32,7 +33,7 @@ object StudyRoomScreen : Screen {
         val navigator = LocalNavigator.current
         
         // Inject ViewModel
-        val viewModel = getScreenModel<StudyViewModel>()
+        val viewModel = koinScreenModel<StudyViewModel>()
         val resources by viewModel.resources.collectAsState()
         // val isLoading by viewModel.isLoading.collectAsState() // Can add loading UI later
         

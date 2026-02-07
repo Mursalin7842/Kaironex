@@ -32,6 +32,11 @@ object AppConfig {
         const val STORAGE_BUCKET_ID = "academic_files" 
     }
 
+    object Brain {
+        // TODO: Replace with your actual Kaironex Brain URL
+        const val baseUrl = "https://kaironex-brain.koyeb.app" 
+    }
+
     // ==========================================================================
     // FEATURE FLAGS
     // ==========================================================================
@@ -171,6 +176,7 @@ object AppConfig {
         const val FINANCIAL_STATE = "financial_state"
         const val INTERNATIONAL_INFO = "international_info"
         const val CONCEPT_MASTERY = "concept_mastery"
+        const val MONTHLY_PLANS = "monthly_plans"
     }
 
     // ==========================================================================

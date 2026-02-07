@@ -27,9 +27,11 @@ actual fun WebOrb(
                     domStorageEnabled = true
                     mediaPlaybackRequiresUserGesture = false
                     allowFileAccess = true
-                    allowFileAccessFromFileURLs = true
-                    allowUniversalAccessFromFileURLs = true
                 }
+
+                val assetLoader = androidx.webkit.WebViewAssetLoader.Builder()
+                    .addPathHandler("/assets/", androidx.webkit.WebViewAssetLoader.AssetsPathHandler(context))
+                    .build()
 
                 webChromeClient = object : WebChromeClient() {
                     override fun onPermissionRequest(request: PermissionRequest) {
@@ -37,7 +39,14 @@ actual fun WebOrb(
                     }
                 }
 
-                webViewClient = object : WebViewClient() {}
+                webViewClient = object : WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: WebView,
+                        request: android.webkit.WebResourceRequest
+                    ): android.webkit.WebResourceResponse? {
+                        return assetLoader.shouldInterceptRequest(request.url)
+                    }
+                }
 
                 addJavascriptInterface(object {
                     @android.webkit.JavascriptInterface
@@ -60,7 +69,7 @@ actual fun WebOrb(
                 }, "Android")
                 
                 // Load the orb-web app from assets with API key in URL to be sure
-                loadUrl("file:///android_asset/orb_web/index.html?apiKey=$apiKey")
+                loadUrl("https://appassets.androidplatform.net/assets/orb_web/index.html?apiKey=$apiKey")
             }
         },
         onRelease = { webView ->

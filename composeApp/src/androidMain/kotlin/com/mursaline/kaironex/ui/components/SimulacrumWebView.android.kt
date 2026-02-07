@@ -33,8 +33,10 @@ actual fun SimulacrumWebView(
                 
                 // Allow local file loading (Fixes White Screen / CORS)
                 settings.allowFileAccess = true
-                settings.allowFileAccessFromFileURLs = true
-                settings.allowUniversalAccessFromFileURLs = true
+                
+                val assetLoader = androidx.webkit.WebViewAssetLoader.Builder()
+                    .addPathHandler("/assets/", androidx.webkit.WebViewAssetLoader.AssetsPathHandler(context))
+                    .build()
                 
                 // Bridge React -> Android
                 addJavascriptInterface(object {
@@ -61,7 +63,14 @@ actual fun SimulacrumWebView(
                     }
                 }
                 
-                webViewClient = WebViewClient()
+                webViewClient = object : WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: WebView,
+                        request: android.webkit.WebResourceRequest
+                    ): android.webkit.WebResourceResponse? {
+                        return assetLoader.shouldInterceptRequest(request.url)
+                    }
+                }
                 
                 loadUrl(url)
             }
