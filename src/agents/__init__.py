@@ -14,28 +14,15 @@ Each agent specializes in a different domain:
 # Base
 from .base_agent import BaseAgent, AgentConfig, AgentResult
 
-# Agents (v2.0)
+# Agents (v2.0 - Current)
 from .campaign_agent import CampaignAgent, run_campaign_agent
-from .vitality_agent import VitalityAgent, run_vitality_agent
+from .vitality_agent_v2 import VitalityAgent  # v2.0: Survival & Growth Protocol (default)
+from .vitality_brain_v2 import run_vitality_agent  # v2.0: Default runner
 from .study_agent import StudyAgent, run_study_agent
 from .radius_agent import RadiusAgent, run_radius_agent
 from .supervisor_agent import SupervisorAgent, run_supervisor
 
-# Vitality Agent v2.0 - Survival & Growth Protocol
-from .vitality_agent_v2 import VitalityAgent as VitalityAgentV2
-from .vitality_brain_v2 import run_vitality_agent as run_vitality_v2
-
-# Legacy imports (for backward compatibility with original _brain files)
-try:
-    from .campaign_brain import run_campaign_agent as legacy_campaign
-except ImportError:
-    legacy_campaign = run_campaign_agent
-
-try:
-    from .vitality_brain import run_vitality_agent as legacy_vitality
-except ImportError:
-    legacy_vitality = run_vitality_agent
-
+# Legacy imports (backward compatibility)
 try:
     from .study_brain import run_study_agent as legacy_study
 except ImportError:
@@ -57,25 +44,21 @@ __all__ = [
     'AgentConfig', 
     'AgentResult',
     
-    # v2.0 Agents
+    # v2.0 Agents (Current)
     'CampaignAgent',
-    'VitalityAgent',
-    'VitalityAgentV2',  # New: Survival & Growth Protocol
+    'VitalityAgent',        # v2.0: Survival & Growth Protocol
     'StudyAgent',
     'RadiusAgent',
     'SupervisorAgent',
     
-    # Runners (v2.0 - preferred)
+    # Runners (v2.0)
     'run_campaign_agent',
-    'run_vitality_agent',
-    'run_vitality_v2',  # New: Survival & Growth Protocol
+    'run_vitality_agent',   # v2.0: Survival & Growth Protocol
     'run_study_agent',
     'run_radius_agent',
     'run_supervisor',
     
-    # Legacy compatibility
-    'legacy_campaign',
-    'legacy_vitality',
+    # Legacy (other agents)
     'legacy_study',
     'legacy_radius',
     'legacy_supervisor',

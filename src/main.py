@@ -21,7 +21,7 @@ from typing import Dict, Any, Optional
 from .utils.db_helper import KairoDB
 from .agents.main_brain import run_supervisor
 from .agents.study_agent import run_study_agent
-from .agents.vitality_agent import run_vitality_agent
+from .agents.vitality_brain_v2 import run_vitality_agent  # v2.0 Survival & Growth Protocol
 from .agents.campaign_agent import run_campaign_agent
 from .agents.radius_agent import run_radius_agent
 from .config import validate_config

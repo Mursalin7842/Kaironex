@@ -14,3 +14,12 @@ venv/
 
 # Local only
 local_*.py
+
+# Debug files (may contain user data)
+debug_*.txt
+debug_*.json
+*.debug
+
+# Test outputs
+test_output/
+*.test_output
