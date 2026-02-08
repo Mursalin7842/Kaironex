@@ -5,7 +5,7 @@ The intelligent agents that power the Student Life OS.
 
 Each agent specializes in a different domain:
 - Study Agent: Cognitive supply chain management
-- Vitality Agent: Bio-fuel and resource management
+- Vitality Agent: Bio-fuel and resource management (v2.0: Survival & Growth Protocol)
 - Campaign Agent: Goals, career strategy, and marathons
 - Radius Agent: Spatial context and environment
 - Supervisor: Meta-controller and drift detection
@@ -20,6 +20,10 @@ from .vitality_agent import VitalityAgent, run_vitality_agent
 from .study_agent import StudyAgent, run_study_agent
 from .radius_agent import RadiusAgent, run_radius_agent
 from .supervisor_agent import SupervisorAgent, run_supervisor
+
+# Vitality Agent v2.0 - Survival & Growth Protocol
+from .vitality_agent_v2 import VitalityAgent as VitalityAgentV2
+from .vitality_brain_v2 import run_vitality_agent as run_vitality_v2
 
 # Legacy imports (for backward compatibility with original _brain files)
 try:
@@ -56,6 +60,7 @@ __all__ = [
     # v2.0 Agents
     'CampaignAgent',
     'VitalityAgent',
+    'VitalityAgentV2',  # New: Survival & Growth Protocol
     'StudyAgent',
     'RadiusAgent',
     'SupervisorAgent',
@@ -63,6 +68,7 @@ __all__ = [
     # Runners (v2.0 - preferred)
     'run_campaign_agent',
     'run_vitality_agent',
+    'run_vitality_v2',  # New: Survival & Growth Protocol
     'run_study_agent',
     'run_radius_agent',
     'run_supervisor',

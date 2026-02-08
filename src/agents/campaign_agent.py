@@ -3,6 +3,7 @@ The Campaign Agent: Career strategist and marathon goal tracker.
 """
 
 import json
+import base64
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 
@@ -57,7 +58,7 @@ Remember: You're not just planning tasks—you're building a career."""
             display_name="Campaign Commander",
             system_instruction=self.CAMPAIGN_SYSTEM_PROMPT,
             default_reasoning_mode=ReasoningMode.DEEP,
-            max_thinking_tokens=16384,
+            max_thinking_tokens=46384,
             enable_thought_signatures=True,
             enable_marathon=True,
             forbidden_terms=[],
@@ -764,11 +765,24 @@ Format:
         
         if resume_text:
             prompt_content.append(f"RESUME TEXT:\n{resume_text[:2000]}...")
-        elif resume_pdf:
-            # We will rely on Gemini's ability to process PDF if we attach it, 
-            # but for this specific agent which uses text prompts, we might strictly need text.
-            # However, to avoid 404/Empty errors, we'll acknowledge the PDF receipt.
-            prompt_content.append(f"RESUME: [PDF Attached with size {len(resume_pdf)} bytes]")
+        
+        # Multimodal Attachments
+        attachments = []
+        if resume_pdf:
+            try:
+                # Decode Base64 PDF
+                pdf_bytes = base64.b64decode(resume_pdf)
+                
+                # Create Gemini Part
+                from google.genai import types
+                pdf_part = types.Part.from_bytes(data=pdf_bytes, mime_type='application/pdf')
+                attachments.append(pdf_part)
+                
+                # Note for the model
+                prompt_content.append(f"RESUME: [PDF Attached - See multimodal content]")
+            except Exception as e:
+                print(f"❌ Failed to decode PDF: {e}")
+                prompt_content.append(f"RESUME: [Error attaching PDF: {str(e)}]")
         
         prompt = f"""
         RESUME ANALYSIS REQUEST
@@ -797,14 +811,36 @@ Format:
         """
         
         response = await self.engine.reason(ReasoningRequest(
-            prompt=prompt, user_id=user_id, agent="campaign", mode=ReasoningMode.DEEP
+            prompt=prompt,
+            user_id=user_id,
+            agent="campaign",
+            mode=ReasoningMode.DEEP,
+            attachments=attachments
         ))
         
         try:
-            analysis_data = json.loads(response.content)
+            raw_content = response.content
+            print(f"[DEBUG] Raw response content:\n{raw_content[:2000] if raw_content else 'None'}...")
+            
+            # Extract JSON from response (handle markdown code blocks)
+            json_str = raw_content
+            if "```json" in raw_content:
+                json_str = raw_content.split("```json")[1].split("```")[0].strip()
+            elif "```" in raw_content:
+                json_str = raw_content.split("```")[1].split("```")[0].strip()
+            elif "{" in raw_content:
+                # Find the first { and last }
+                start = raw_content.find("{")
+                end = raw_content.rfind("}") + 1
+                if start != -1 and end > start:
+                    json_str = raw_content[start:end]
+            
+            analysis_data = json.loads(json_str)
             return AgentResult(success=True, response="Resume Analyzed", data=analysis_data)
-        except:
-            return AgentResult(success=False, response="Failed to parse analysis.")
+        except Exception as e:
+            print(f"[ERROR] Failed to parse analysis: {e}")
+            print(f"[ERROR] Response content was: {response.content[:500] if response.content else 'None'}")
+            return AgentResult(success=False, response=f"Failed to parse analysis: {str(e)}")
 
     async def _handle_generate_resume(self, user_id: str, payload: Dict[str, Any], context: StateContext) -> AgentResult:
         """Generate tailored resume."""

@@ -229,4 +229,136 @@ Cite sources when possible.
                 # Fallback to regular generation without search
                 return self.generate_response(prompt)
             
-            return f"Research error: {error_msg}"
+            return f"Research error: {error_msg}"    
+    def generate_response_with_image(
+        self,
+        prompt: str,
+        image_base64: str,
+        mime_type: str = "image/jpeg",
+        use_thinking: bool = True,
+        json_mode: bool = False
+    ) -> str:
+        """
+        Generate response with image input using Gemini 3 Vision.
+        
+        Perfect for:
+        - Fridge/pantry analysis
+        - Receipt/bill scanning
+        - Food identification
+        
+        Args:
+            prompt: Text prompt to accompany the image
+            image_base64: Base64 encoded image data
+            mime_type: Image MIME type (image/jpeg, image/png, etc.)
+            use_thinking: Enable thinking mode for complex analysis
+            json_mode: Request JSON output
+        
+        Returns:
+            Generated response text
+        """
+        import base64
+        import time
+        import random
+        
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            try:
+                # Decode base64 to bytes
+                image_bytes = base64.b64decode(image_base64)
+                
+                # Build config
+                config_args = {
+                    "temperature": 0.7,
+                    "max_output_tokens": 4096
+                }
+                
+                if use_thinking:
+                    config_args["thinking_config"] = types.ThinkingConfig(thinking_budget=4096)
+                
+                if json_mode:
+                    config_args["response_mime_type"] = "application/json"
+                
+                config = types.GenerateContentConfig(**config_args)
+                
+                # Create multimodal content with image
+                contents = [
+                    types.Part.from_text(prompt),
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+                ]
+                
+                response = self.client.models.generate_content(
+                    model=self.model,
+                    contents=contents,
+                    config=config
+                )
+                
+                return response.text or ""
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"⚠️ Vision Error (Attempt {attempt+1}/{max_retries}): {error_msg}")
+                
+                if "503" in error_msg or "429" in error_msg or "quota" in error_msg.lower():
+                    if attempt < max_retries - 1:
+                        backoff = (2 ** attempt) + random.uniform(0.1, 1.0)
+                        time.sleep(backoff)
+                        continue
+                
+                if attempt == max_retries - 1:
+                    print(f"❌ Vision Failed after {max_retries} attempts.")
+                    raise e
+        
+        return ""
+    
+    async def async_generate_with_image(
+        self,
+        prompt: str,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+        use_thinking: bool = True,
+        json_mode: bool = False
+    ) -> str:
+        """
+        Async version of image generation for use with async engines.
+        
+        Args:
+            prompt: Text prompt
+            image_bytes: Raw image bytes
+            mime_type: Image MIME type
+            use_thinking: Enable thinking
+            json_mode: Request JSON output
+        
+        Returns:
+            Generated response text
+        """
+        try:
+            config_args = {
+                "temperature": 0.7,
+                "max_output_tokens": 4096
+            }
+            
+            if use_thinking:
+                config_args["thinking_config"] = types.ThinkingConfig(thinking_budget=4096)
+            
+            if json_mode:
+                config_args["response_mime_type"] = "application/json"
+            
+            config = types.GenerateContentConfig(**config_args)
+            
+            contents = [
+                types.Part.from_text(prompt),
+                types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+            ]
+            
+            response = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=contents,
+                config=config
+            )
+            
+            return response.text or ""
+            
+        except Exception as e:
+            print(f"❌ Async Vision Error: {e}")
+            raise e

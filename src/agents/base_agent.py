@@ -57,9 +57,10 @@ class AgentResult:
     state_updates: Dict[str, Any] = field(default_factory=dict)
     latency_ms: float = 0.0
     error: Optional[str] = None
+    data: Optional[Dict[str, Any]] = None  # Additional result data
     
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "success": self.success,
             "response": self.response,
             "thought_id": self.thought_id,
@@ -69,6 +70,9 @@ class AgentResult:
             "latency_ms": self.latency_ms,
             "error": self.error
         }
+        if self.data:
+            result["data"] = self.data
+        return result
 
 
 class BaseAgent(ABC):

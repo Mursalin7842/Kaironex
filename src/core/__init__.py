@@ -18,6 +18,17 @@ from .schedule_validator import (
     ValidationDecision, ValidationResult, ChangeType
 )
 
+# Survival & Growth Protocol v2.0
+from .survival_protocol import (
+    SurvivalState, SurvivalProtocol, DefconLevel,
+    FinancialState, FridgeInventory, UserPreferences,
+    MealDecisionContext, MealDecisionEngine,
+    SHOPPING_LISTS_BY_DEFCON,
+    extract_campaign_financial_context,
+    extract_study_schedule_context,
+    extract_radius_location_context
+)
+
 __all__ = [
     # Bicameral Reasoning
     'BicameralEngine',

@@ -102,6 +102,7 @@ class ReasoningRequest:
     tools: List[Callable] = field(default_factory=list)
     system_instruction: Optional[str] = None
     max_thinking_tokens: int = 8192
+    attachments: Optional[List[Any]] = None  # Multimodal parts (images, PDFs)
 
 
 @dataclass  
@@ -120,140 +121,28 @@ class BicameralEngine:
     """
     The core reasoning engine with dual-model architecture.
     
-    Features:
-    - REFLEX: Fast responses using Gemini 3 Flash with MINIMAL thinking
-    - DEEP: Complex reasoning with Gemini 3 Flash with HIGH thinking
-    - FUNCTION CALLING: Real tool execution
-    - THOUGHT SIGNATURES: Cryptographic state tracking
-    
-    Usage:
-        engine = BicameralEngine()
-        response = await engine.reason(ReasoningRequest(
-            prompt="Help me plan my week",
-            user_id="user_123",
-            agent="campaign",
-            mode=ReasoningMode.DEEP
-        ))
+    Uses Gemini 3 Flash with thinking levels:
+    - MINIMAL: Fast, reflex responses
+    - HIGH: Deep, thoughtful responses
     """
     
-    # Model configuration - Single model with different thinking levels
-    # gemini-3-flash-preview is the ONLY text model we use
-    MODEL = GEMINI_3_FLASH  # "gemini-3-flash-preview"
+    # Model settings
+    MODEL = GEMINI_3_FLASH
+    DEEP_MODEL = GEMINI_3_FLASH  # Same model, different thinking level
+    REFLEX_CONFIDENCE_THRESHOLD = 0.7
     
-    # For backward compatibility
-    REFLEX_MODEL = GEMINI_3_FLASH
-    DEEP_MODEL = GEMINI_3_FLASH
-    
-    # Thresholds
-    REFLEX_CONFIDENCE_THRESHOLD = 0.8
-    PRESSURE_DEEP_THRESHOLD = 70
-    
-    def __init__(self, api_key: Optional[str] = None, use_tools: bool = True):
-        self.api_key = api_key or GEMINI_API_KEY or os.environ.get('GEMINI_API_KEY')
+    def __init__(self, tool_executor=None, use_tools: bool = True):
+        """Initialize the BicameralEngine."""
+        # Initialize the Gemini client
+        self.client = genai.Client(api_key=GEMINI_API_KEY)
         
-        if not self.api_key:
-            raise ValueError("GEMINI_API_KEY is required")
-        
-        # Initialize the unified client
-        self.client = genai.Client(
-            api_key=self.api_key,
-            http_options={'api_version': 'v1beta'}
-        )
-        
-        # Tool executor for function calling
+        # Tool execution settings
         self.use_tools = use_tools
-        self._tool_executor = None
-        self._tools = None
+        self._tool_executor = tool_executor
+        self._tools: List[Any] = []
         
-        if use_tools:
-            self._initialize_tools()
-        
-        # Thought signature counter
-        self._thought_counter = 0
+        # Thinking traces storage
         self._last_thinking_traces: List[str] = []
-    
-    def _initialize_tools(self):
-        """Initialize tool executor and declarations."""
-        try:
-            from ..tools.tool_executor import ToolExecutor
-            from ..tools.tool_declarations import ALL_KAIRONEX_TOOLS, get_tools_for_agent
-            
-            self._tool_executor = ToolExecutor()
-            self._tools = ALL_KAIRONEX_TOOLS
-            self._get_tools_for_agent = get_tools_for_agent
-        except ImportError as e:
-            print(f"Warning: Could not load tools: {e}")
-            self.use_tools = False
-    
-    def _generate_thought_id(self) -> str:
-        """Generate a unique thought signature ID."""
-        self._thought_counter += 1
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        return f"ts_{timestamp}_{self._thought_counter:04d}"
-    
-    def _compute_context_hash(self, context: Dict[str, Any]) -> str:
-        """Compute SHA-256 hash of the context for integrity."""
-        context_str = json.dumps(context, sort_keys=True, default=str)
-        return f"sha256:{hashlib.sha256(context_str.encode()).hexdigest()[:16]}"
-    
-    def _parse_reasoning_trace(self, raw_response: str) -> List[str]:
-        """Extract reasoning steps from model output."""
-        traces = []
-        
-        # Look for tagged reasoning blocks
-        import re
-        patterns = [
-            r'<analyze>(.*?)</analyze>',
-            r'<strategy>(.*?)</strategy>',
-            r'<decision>(.*?)</decision>',
-            r'<thought_signature>(.*?)</thought_signature>',
-            r'<thinking>(.*?)</thinking>'
-        ]
-        
-        for pattern in patterns:
-            matches = re.findall(pattern, raw_response, re.DOTALL)
-            for match in matches:
-                traces.append(match.strip())
-        
-        # If no structured traces, extract first paragraph as implicit reasoning
-        if not traces and len(raw_response) > 100:
-            first_para = raw_response.split('\n\n')[0][:200]
-            traces.append(f"<implicit>{first_para}</implicit>")
-        
-        return traces
-    
-    def _extract_action_output(self, raw_response: str) -> str:
-        """Extract the actionable output from response."""
-        import re
-        
-        # Check for explicit action tag
-        action_match = re.search(r'<action>(.*?)</action>', raw_response, re.DOTALL)
-        if action_match:
-            return action_match.group(1).strip()
-        
-        # Remove all thinking/reasoning tags
-        clean = re.sub(r'<(analyze|strategy|decision|thought_signature|thinking)>.*?</\1>', '', raw_response, flags=re.DOTALL)
-        return clean.strip()
-    
-    def _estimate_confidence(self, response: str, mode: ReasoningMode) -> float:
-        """Estimate confidence based on response characteristics."""
-        confidence = 0.7  # Base confidence
-        
-        # Higher confidence for structured responses
-        if '<decision>' in response or '<action>' in response:
-            confidence += 0.15
-        
-        # Higher confidence for deep reasoning
-        if mode == ReasoningMode.DEEP:
-            confidence += 0.1
-        
-        # Lower confidence for hedging language
-        hedging_phrases = ['might', 'perhaps', 'maybe', 'could be', 'not sure']
-        for phrase in hedging_phrases:
-            if phrase.lower() in response.lower():
-                confidence -= 0.05
-        
-        return min(max(confidence, 0.1), 1.0)
     
     async def _reflex_generate(self, request: ReasoningRequest) -> str:
         """Fast generation using Gemini 3 Flash with MINIMAL thinking."""
@@ -266,6 +155,11 @@ class BicameralEngine:
             context_summary = json.dumps(request.context, indent=2)[:500]
             full_prompt = f"Context:\n{context_summary}\n\n{full_prompt}"
         
+        # Prepare contents (handle attachments)
+        contents = [full_prompt]
+        if request.attachments:
+            contents.extend(request.attachments)
+            
         # Configure for MINIMAL thinking (fast, low latency)
         config = types.GenerateContentConfig(
             temperature=0.7,
@@ -280,7 +174,7 @@ class BicameralEngine:
         response = await rate_limited_generate(
             self.client,
             model=self.MODEL,
-            contents=full_prompt,
+            contents=contents,
             config=config
         )
         
@@ -311,6 +205,11 @@ RESPONSE FORMAT:
 Think deeply before responding.
 """
         
+        # Prepare contents (handle attachments)
+        contents = [reasoning_prompt]
+        if request.attachments:
+            contents.extend(request.attachments)
+
         # Configure for Gemini 3 with HIGH thinking level
         # This enables maximum reasoning capability!
         config = types.GenerateContentConfig(
@@ -326,7 +225,7 @@ Think deeply before responding.
         response = await rate_limited_generate(
             self.client,
             model=self.DEEP_MODEL,
-            contents=reasoning_prompt,
+            contents=contents,
             config=config
         )
         
@@ -482,7 +381,7 @@ Think deeply before responding.
         start_time = time.time()
         
         # Get tools for this agent
-        agent_tools = self._get_tools_for_agent(request.agent) if hasattr(self, '_get_tools_for_agent') else self._tools
+        agent_tools = self._tools
         
         # Build the prompt with tool awareness
         tool_prompt = f"""
@@ -596,3 +495,70 @@ Think step by step. If you need information, call the appropriate tool.
             tool_results=all_tool_results,
             confidence=thought_signature.confidence
         )
+
+    # =========================================================================
+    # HELPER METHODS
+    # =========================================================================
+    
+    def _generate_thought_id(self) -> str:
+        """Generate a unique thought ID."""
+        import uuid
+        return f"thought_{uuid.uuid4().hex[:12]}"
+    
+    def _compute_context_hash(self, context: Dict[str, Any]) -> str:
+        """Generate a hash of the context for integrity checking."""
+        context_str = json.dumps(context, sort_keys=True)
+        return hashlib.sha256(context_str.encode()).hexdigest()[:16]
+    
+    def _parse_reasoning_trace(self, response: str) -> List[str]:
+        """Extract reasoning steps from the response."""
+        traces = []
+        
+        # Look for structured tags
+        import re
+        for tag in ['analyze', 'strategy', 'decision']:
+            pattern = f"<{tag}>(.*?)</{tag}>"
+            matches = re.findall(pattern, response, re.DOTALL)
+            if matches:
+                traces.append(f"[{tag.upper()}] {matches[0].strip()[:200]}")
+        
+        return traces if traces else ["Direct response provided"]
+    
+    def _estimate_confidence(self, response: str, mode: ReasoningMode) -> float:
+        """Estimate confidence based on response quality."""
+        base_confidence = 0.8 if mode == ReasoningMode.DEEP else 0.6
+        
+        # Boost if structured tags are present
+        if '<analyze>' in response and '<decision>' in response:
+            base_confidence += 0.1
+        
+        # Lower if response is too short
+        if len(response) < 50:
+            base_confidence -= 0.2
+        
+        # Lower if response indicates uncertainty
+        uncertain_phrases = ['i am not sure', 'i think', 'maybe', 'possibly', 'unclear']
+        response_lower = response.lower()
+        for phrase in uncertain_phrases:
+            if phrase in response_lower:
+                base_confidence -= 0.1
+                break
+        
+        return max(0.1, min(1.0, base_confidence))
+    
+    def _extract_action_output(self, response: str) -> str:
+        """Extract the action output from a structured response."""
+        import re
+        
+        # Try to extract from <action> tags first
+        action_match = re.search(r'<action>(.*?)</action>', response, re.DOTALL)
+        if action_match:
+            return action_match.group(1).strip()
+        
+        # Try to extract from <decision> tags
+        decision_match = re.search(r'<decision>(.*?)</decision>', response, re.DOTALL)
+        if decision_match:
+            return decision_match.group(1).strip()
+        
+        # Return the full response if no tags found
+        return response
