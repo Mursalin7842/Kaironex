@@ -22,6 +22,7 @@ import io
 from .base_agent import BaseAgent, AgentConfig, AgentResult
 from ..core.bicameral_engine import ReasoningMode, ReasoningRequest
 from ..core.state_machine import StateContext
+from ..tools.proactive_content_engine import ProactiveContentEngine
 
 
 @dataclass
@@ -73,7 +74,7 @@ OUTPUT: Always return valid JSON without markdown code blocks."""
             default_reasoning_mode=ReasoningMode.DEEP,
             max_thinking_tokens=8192,
             enable_thought_signatures=True,
-            enable_marathon=False
+            enable_marathon=True  # MARATHON AGENT
         )
 
     async def process(self, user_id: str, payload: Dict[str, Any], context: StateContext) -> AgentResult:
@@ -84,6 +85,8 @@ OUTPUT: Always return valid JSON without markdown code blocks."""
             return await self._handle_hierarchical_planning(user_id, payload, context)
         elif event_type == 'resource_ingestion':
             return await self._handle_resource_ingestion(user_id, payload, context)
+        elif event_type == 'content_request':
+            return await self._handle_content_request(user_id, payload, context)
         
         return AgentResult(success=True, response="Event tracked", actions_taken=["tracked"])
 
@@ -737,6 +740,41 @@ CRITICAL REMINDERS:
             except Exception as e:
                 print(f"⚠️ Task save error: {e}")
         
+        # =====================================================================
+        # JIT CONTENT PREPARATION — Prepare content for today's upcoming tasks
+        # =====================================================================
+        if tasks:
+            try:
+                from ..utils.gemini_client import GeminiClient
+                content_engine = ProactiveContentEngine(gemini_client=GeminiClient(), db=self.db)
+                
+                # Find today's study tasks (not blocked) for JIT prep
+                today_str = datetime.now().strftime('%Y-%m-%d')
+                today_tasks = [
+                    t for t in tasks 
+                    if t.get('startTime', '').startswith(today_str) 
+                    and t.get('type') not in ('blocked',)
+                ]
+                
+                jit_count = 0
+                for task_data in today_tasks[:6]:  # Max 6 tasks to avoid rate limits
+                    try:
+                        prepared = await content_engine.prepare_content_for_rich_task(
+                            user_id=user_id,
+                            task=task_data
+                        )
+                        if prepared:
+                            jit_count += 1
+                    except Exception as e:
+                        print(f"⚠️ JIT prep error for '{task_data.get('title', '?')}': {e}")
+                        continue
+                
+                if jit_count > 0:
+                    print(f"🎯 JIT Content: Prepared {jit_count} content packages for today's tasks")
+                    
+            except Exception as e:
+                print(f"⚠️ JIT content preparation skipped: {e}")
+        
         return len(tasks)
 
     # =========================================================================
@@ -1108,6 +1146,103 @@ If dates cannot be found, estimate based on typical semester (4 months from toda
             success=True,
             response=f"Resource '{title}' processed successfully",
             actions_taken=["resource_ingested", "intervention_created"]
+        )
+
+    # =========================================================================
+    # CONTENT REQUEST (JIT On-Demand)
+    # =========================================================================
+
+    async def _handle_content_request(self, user_id: str, payload: Dict[str, Any], context: StateContext) -> AgentResult:
+        """
+        On-demand JIT content for the mobile app.
+        
+        Payload options:
+          - taskId: Fetch content for a single task
+          - date: Fetch content for all tasks on a given date (YYYY-MM-DD)
+          - mode: Override content_mode (deep_dive/travel/cram/practice)
+        """
+        from ..tools.proactive_content_engine import ProactiveContentEngine
+        
+        task_id = payload.get('taskId')
+        date_str = payload.get('date')
+        mode_override = payload.get('mode')
+        
+        content_engine = ProactiveContentEngine(
+            gemini_client=self.engine.client if hasattr(self.engine, 'client') else None,
+            db=self.db
+        )
+        
+        prepared_items = []
+        
+        if task_id:
+            # Single task content request — find by taskId in schedule
+            all_tasks = self.db.get_schedule(user_id)
+            task_doc = next((t for t in all_tasks if t.get('$id') == task_id or t.get('taskId') == task_id), None)
+            if not task_doc:
+                return AgentResult(
+                    success=False,
+                    response=f"Task {task_id} not found",
+                    actions_taken=["content_request_failed"]
+                )
+            
+            if mode_override:
+                task_doc['content_mode'] = mode_override
+            
+            content = await content_engine.prepare_content_for_rich_task(
+                user_id=user_id,
+                task=task_doc
+            )
+            if content:
+                prepared_items.append({
+                    'content_id': content.content_id,
+                    'task_id': task_id,
+                    'subject': task_doc.get('subject', ''),
+                    'content_type': content.content_type,
+                    'content_data': content.content_data,
+                    'prepared_at': content.prepared_at.isoformat() if content.prepared_at else None,
+                    'readiness': content.readiness_state.value if hasattr(content.readiness_state, 'value') else str(content.readiness_state)
+                })
+        
+        elif date_str:
+            # All tasks for a date — filter from user's full schedule
+            all_tasks = self.db.get_schedule(user_id)
+            tasks = [
+                t for t in all_tasks
+                if t.get('startTime', '').startswith(date_str)
+                and t.get('status') != 'blocked'
+            ]
+            
+            for task_doc in (tasks or [])[:8]:
+                if mode_override:
+                    task_doc['content_mode'] = mode_override
+                
+                content = await content_engine.prepare_content_for_rich_task(
+                    user_id=user_id,
+                    task=task_doc
+                )
+                if content:
+                    prepared_items.append({
+                        'content_id': content.content_id,
+                        'task_id': task_doc.get('$id', ''),
+                        'subject': task_doc.get('subject', ''),
+                        'content_type': content.content_type,
+                        'content_data': content.content_data,
+                        'prepared_at': content.prepared_at.isoformat() if content.prepared_at else None,
+                        'readiness': content.readiness_state.value if hasattr(content.readiness_state, 'value') else str(content.readiness_state)
+                    })
+        
+        else:
+            return AgentResult(
+                success=False,
+                response="Provide taskId or date for content request",
+                actions_taken=["content_request_invalid"]
+            )
+        
+        return AgentResult(
+            success=True,
+            response=f"Prepared {len(prepared_items)} content package(s)",
+            actions_taken=["content_prepared"],
+            data={'prepared_content': prepared_items, 'count': len(prepared_items)}
         )
 
 

@@ -94,7 +94,7 @@ OUTPUT FORMAT:
             default_reasoning_mode=ReasoningMode.HYBRID,
             max_thinking_tokens=8192,
             enable_thought_signatures=True,
-            enable_marathon=False
+            enable_marathon=True  # MARATHON AGENT
         )
     
     async def process(

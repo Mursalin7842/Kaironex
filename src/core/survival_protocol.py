@@ -53,9 +53,42 @@ class FinancialState:
     budget_override: float = 0.0  # Temporary bonus (e.g., Victory Feast)
     spent_today: float = 0.0
     spent_yesterday: float = 0.0
+    # === SAVINGS & EMERGENCY FUND ===
+    emergency_fund: float = 0.0  # Emergency savings (sick, unexpected expenses)
+    savings_goal: float = 500.0  # Target savings amount
+    auto_save_percentage: float = 10.0  # Auto-save % of daily surplus
+    savings_balance: float = 0.0  # Current savings balance
+    last_emergency_use: Optional[str] = None  # Last time emergency fund used
+    savings_streak_days: int = 0  # Consecutive days of saving
     
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+    
+    def can_use_emergency_fund(self, amount: float) -> bool:
+        """Check if emergency fund has enough for withdrawal."""
+        return self.emergency_fund >= amount
+    
+    def withdraw_emergency(self, amount: float, reason: str) -> Tuple[bool, str]:
+        """Withdraw from emergency fund for unexpected expenses."""
+        if amount <= 0:
+            return False, "Invalid amount"
+        if amount > self.emergency_fund:
+            return False, f"Insufficient emergency fund. Available: ${self.emergency_fund:.2f}"
+        
+        self.emergency_fund -= amount
+        self.last_emergency_use = datetime.now().isoformat()
+        return True, f"Emergency fund withdrawal: ${amount:.2f} for {reason}. Remaining: ${self.emergency_fund:.2f}"
+    
+    def auto_save(self, surplus: float) -> float:
+        """Auto-save percentage of daily surplus."""
+        if surplus <= 0:
+            return 0.0
+        
+        save_amount = surplus * (self.auto_save_percentage / 100)
+        self.savings_balance += save_amount
+        self.emergency_fund += save_amount * 0.5  # Half to emergency, half to savings
+        self.savings_streak_days += 1
+        return save_amount
 
 
 @dataclass
@@ -83,12 +116,130 @@ class UserPreferences:
         return asdict(self)
 
 
+# =============================================================================
+# PROACTIVE MEAL PLANNING STRUCTURES
+# =============================================================================
+@dataclass
+class MealOption:
+    """A single meal option with budget and requirements."""
+    option_id: str  # e.g., "breakfast_1"
+    name: str
+    description: str
+    meal_type: str  # breakfast, lunch, dinner
+    action_type: str  # COOK, ORDER, QUICK_PREP
+    estimated_cost: float
+    prep_time_mins: int
+    ingredients_needed: List[str] = field(default_factory=list)
+    ingredients_used_from_fridge: List[str] = field(default_factory=list)
+    nutrition_score: int = 70  # 0-100
+    energy_requirement: str = "medium"  # low, medium, high
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class DailyMealPlan:
+    """Proactive daily meal plan with options for each meal."""
+    plan_id: str
+    date: str
+    total_budget: float
+    budget_remaining: float
+    defcon_level: int
+    breakfast_options: List[MealOption] = field(default_factory=list)
+    lunch_options: List[MealOption] = field(default_factory=list)
+    dinner_options: List[MealOption] = field(default_factory=list)
+    selected_breakfast: Optional[str] = None  # option_id
+    selected_lunch: Optional[str] = None
+    selected_dinner: Optional[str] = None
+    spent_today: float = 0.0
+    generated_at: str = ""
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "plan_id": self.plan_id,
+            "date": self.date,
+            "total_budget": self.total_budget,
+            "budget_remaining": self.budget_remaining,
+            "defcon_level": self.defcon_level,
+            "breakfast_options": [o.to_dict() for o in self.breakfast_options],
+            "lunch_options": [o.to_dict() for o in self.lunch_options],
+            "dinner_options": [o.to_dict() for o in self.dinner_options],
+            "selected_breakfast": self.selected_breakfast,
+            "selected_lunch": self.selected_lunch,
+            "selected_dinner": self.selected_dinner,
+            "spent_today": self.spent_today,
+            "generated_at": self.generated_at
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'DailyMealPlan':
+        """Reconstruct DailyMealPlan from dictionary."""
+        if not data:
+            return cls(plan_id="", date="", total_budget=0, budget_remaining=0, defcon_level=3)
+        
+        def parse_options(options_data: List[Dict]) -> List[MealOption]:
+            return [MealOption(**opt) for opt in options_data] if options_data else []
+        
+        return cls(
+            plan_id=data.get('plan_id', ''),
+            date=data.get('date', ''),
+            total_budget=data.get('total_budget', 0),
+            budget_remaining=data.get('budget_remaining', 0),
+            defcon_level=data.get('defcon_level', 3),
+            breakfast_options=parse_options(data.get('breakfast_options', [])),
+            lunch_options=parse_options(data.get('lunch_options', [])),
+            dinner_options=parse_options(data.get('dinner_options', [])),
+            selected_breakfast=data.get('selected_breakfast'),
+            selected_lunch=data.get('selected_lunch'),
+            selected_dinner=data.get('selected_dinner'),
+            spent_today=data.get('spent_today', 0),
+            generated_at=data.get('generated_at', '')
+        )
+    
+    def get_option_by_id(self, option_id: str) -> Optional[MealOption]:
+        """Find a meal option by its ID."""
+        all_options = self.breakfast_options + self.lunch_options + self.dinner_options
+        for opt in all_options:
+            if opt.option_id == option_id:
+                return opt
+        return None
+    
+    def select_option(self, option_id: str) -> Tuple[bool, str, float]:
+        """
+        Select a meal option and update budget.
+        
+        Returns: (success, message, cost_deducted)
+        """
+        option = self.get_option_by_id(option_id)
+        if not option:
+            return False, f"Option {option_id} not found", 0.0
+        
+        if option.estimated_cost > self.budget_remaining:
+            return False, f"Insufficient budget. Need ${option.estimated_cost:.2f}, have ${self.budget_remaining:.2f}", 0.0
+        
+        # Update selection
+        if option.meal_type == "breakfast":
+            self.selected_breakfast = option_id
+        elif option.meal_type == "lunch":
+            self.selected_lunch = option_id
+        elif option.meal_type == "dinner":
+            self.selected_dinner = option_id
+        
+        # Update budget
+        self.budget_remaining -= option.estimated_cost
+        self.spent_today += option.estimated_cost
+        
+        return True, f"Selected {option.name}! Budget remaining: ${self.budget_remaining:.2f}", option.estimated_cost
+
+
 @dataclass
 class SurvivalState:
     """Complete survival state for the Vitality Agent."""
     financial: FinancialState = field(default_factory=FinancialState)
     inventory: FridgeInventory = field(default_factory=FridgeInventory)
     preferences: UserPreferences = field(default_factory=UserPreferences)
+    daily_meal_plan: Optional[DailyMealPlan] = None  # NEW: Proactive daily meal plan
     last_decision: Optional[Dict[str, Any]] = None
     last_shopping_alert: Optional[str] = None
     reward_unlocked: bool = False
@@ -99,6 +250,7 @@ class SurvivalState:
             "financial": self.financial.to_dict(),
             "inventory": self.inventory.to_dict(),
             "preferences": self.preferences.to_dict(),
+            "daily_meal_plan": self.daily_meal_plan.to_dict() if self.daily_meal_plan else None,
             "last_decision": self.last_decision,
             "last_shopping_alert": self.last_shopping_alert,
             "reward_unlocked": self.reward_unlocked,
@@ -114,11 +266,13 @@ class SurvivalState:
         financial_data = data.get('financial', {})
         inventory_data = data.get('inventory', {})
         preferences_data = data.get('preferences', {})
+        meal_plan_data = data.get('daily_meal_plan', {})
         
         return cls(
             financial=FinancialState(**financial_data) if financial_data else FinancialState(),
             inventory=FridgeInventory(**inventory_data) if inventory_data else FridgeInventory(),
             preferences=UserPreferences(**preferences_data) if preferences_data else UserPreferences(),
+            daily_meal_plan=DailyMealPlan.from_dict(meal_plan_data) if meal_plan_data else None,
             last_decision=data.get('last_decision'),
             last_shopping_alert=data.get('last_shopping_alert'),
             reward_unlocked=data.get('reward_unlocked', False),
@@ -875,6 +1029,243 @@ Enjoy your Victory Feast! This is what you work for.
             return f"Base ready! Add eggs or canned protein for nutrition."
         else:
             return f"Get creative with {', '.join(ingredients[:3])}!"
+
+    async def generate_proactive_meal_plan(
+        self,
+        financial: FinancialState,
+        inventory: FridgeInventory,
+        preferences: UserPreferences,
+        schedule_pressure: str = "normal",
+        energy_level: int = 50
+    ) -> DailyMealPlan:
+        """
+        🧠 PROACTIVE MEAL PLANNING ENGINE
+        
+        Automatically generates a complete daily meal plan with multiple options per meal.
+        User just selects, agent updates stats. No asking "what do you want to eat?"
+        
+        This is the Action Era - we plan BEFORE the user is hungry.
+        
+        Args:
+            financial: User's financial state (for budget)
+            inventory: Current fridge inventory (for cooking options)
+            preferences: User's food preferences
+            schedule_pressure: Schedule pressure level
+            energy_level: Current energy (affects cooking vs order ratio)
+        
+        Returns:
+            DailyMealPlan with 2-3 options per meal
+        """
+        import uuid
+        
+        plan_id = f"meal_plan_{uuid.uuid4().hex[:8]}"
+        today = datetime.now().strftime("%Y-%m-%d")
+        daily_budget = financial.daily_runway
+        
+        # Determine strategy based on defcon and energy
+        if financial.defcon_level <= 2:
+            strategy = "SURVIVAL"
+            budget_split = {"breakfast": 0.15, "lunch": 0.35, "dinner": 0.50}
+            cooking_bias = 0.9  # 90% cooking options
+        elif financial.defcon_level == 3:
+            strategy = "VALUE"
+            budget_split = {"breakfast": 0.20, "lunch": 0.35, "dinner": 0.45}
+            cooking_bias = 0.6
+        else:
+            strategy = "BALANCED"
+            budget_split = {"breakfast": 0.25, "lunch": 0.35, "dinner": 0.40}
+            cooking_bias = 0.4
+        
+        # Adjust for energy
+        if energy_level < 30:
+            cooking_bias = max(0.1, cooking_bias - 0.5)  # Low energy = more ordering
+        
+        # Get ingredients for cooking options
+        ingredient_names = [i.get('name', '') for i in inventory.ingredients if i.get('name')]
+        
+        # Build prompt for Gemini
+        prompt = f"""You are a proactive meal planning AI for a student survival app.
+
+MISSION: Generate a complete daily meal plan with OPTIONS for the user to choose from.
+The user should see all options and simply SELECT one. No decision paralysis.
+
+USER CONTEXT:
+- Daily Budget: ${daily_budget:.2f}
+- Defcon Level: {financial.defcon_level} ({strategy} mode)
+- Available Fridge Items: {', '.join(ingredient_names[:15]) if ingredient_names else 'Unknown/Empty'}
+- Dietary Restrictions: {', '.join(preferences.dietary_restrictions) if preferences.dietary_restrictions else 'None'}
+- Cooking Skill: {preferences.cooking_skill_level}
+- Schedule Pressure: {schedule_pressure}
+- Energy Level: {energy_level}/100
+- Cooking Bias: {int(cooking_bias * 100)}% (higher = more cooking options)
+
+BUDGET SPLIT:
+- Breakfast: ${daily_budget * budget_split['breakfast']:.2f}
+- Lunch: ${daily_budget * budget_split['lunch']:.2f}  
+- Dinner: ${daily_budget * budget_split['dinner']:.2f}
+
+GENERATE FOR EACH MEAL (breakfast, lunch, dinner):
+- 2-3 options ranging from cheapest to most convenient
+- Mix of COOK (from ingredients), QUICK_PREP, and ORDER options
+- Each option MUST include: name, cost, prep time, type
+
+OUTPUT JSON FORMAT:
+{{
+    "breakfast_options": [
+        {{
+            "option_id": "breakfast_1",
+            "name": "Meal Name",
+            "description": "Brief appetizing description",
+            "meal_type": "breakfast",
+            "action_type": "COOK|ORDER|QUICK_PREP",
+            "estimated_cost": 0.00,
+            "prep_time_mins": 10,
+            "ingredients_needed": ["item1", "item2"],
+            "ingredients_used_from_fridge": ["eggs", "bread"],
+            "nutrition_score": 75,
+            "energy_requirement": "low|medium|high"
+        }}
+    ],
+    "lunch_options": [...],
+    "dinner_options": [...],
+    "daily_summary": "Brief tactical summary",
+    "budget_optimization": "How to maximize nutrition within budget"
+}}
+
+RULES:
+1. COOK options should use available fridge items when possible
+2. ORDER options should suggest specific restaurants/types with realistic prices
+3. Include at least one ultra-cheap option per meal for survival mode
+4. All costs MUST fit within meal budget allocation
+5. Be realistic about prep times and energy requirements
+6. {"NO ordering options for breakfast/lunch due to budget" if financial.defcon_level <= 2 else "Include delivery/takeout options"}
+
+Generate the meal plan NOW:"""
+
+        if self.client is None:
+            # Fallback to static options if no API
+            return self._generate_fallback_meal_plan(plan_id, today, daily_budget, financial.defcon_level, inventory)
+        
+        try:
+            response = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=[types.Part.from_text(text=prompt)],
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(thinking_budget=8192),  # Deep thinking for meal planning
+                    response_mime_type="application/json"
+                )
+            )
+            
+            response_text = response.text or "{}"
+            result = json.loads(response_text)
+            
+            # Parse options
+            def parse_options(options_data: List[Dict], meal_type: str) -> List[MealOption]:
+                parsed = []
+                for i, opt in enumerate(options_data[:3]):  # Max 3 options per meal
+                    parsed.append(MealOption(
+                        option_id=opt.get('option_id', f"{meal_type}_{i+1}"),
+                        name=opt.get('name', f"Option {i+1}"),
+                        description=opt.get('description', ''),
+                        meal_type=meal_type,
+                        action_type=opt.get('action_type', 'COOK'),
+                        estimated_cost=float(opt.get('estimated_cost', 0)),
+                        prep_time_mins=int(opt.get('prep_time_mins', 15)),
+                        ingredients_needed=opt.get('ingredients_needed', []),
+                        ingredients_used_from_fridge=opt.get('ingredients_used_from_fridge', []),
+                        nutrition_score=int(opt.get('nutrition_score', 70)),
+                        energy_requirement=opt.get('energy_requirement', 'medium')
+                    ))
+                return parsed
+            
+            return DailyMealPlan(
+                plan_id=plan_id,
+                date=today,
+                total_budget=daily_budget,
+                budget_remaining=daily_budget,
+                defcon_level=financial.defcon_level,
+                breakfast_options=parse_options(result.get('breakfast_options', []), 'breakfast'),
+                lunch_options=parse_options(result.get('lunch_options', []), 'lunch'),
+                dinner_options=parse_options(result.get('dinner_options', []), 'dinner'),
+                generated_at=datetime.now().isoformat()
+            )
+            
+        except Exception as e:
+            print(f"⚠️ Proactive meal planning error: {e}")
+            return self._generate_fallback_meal_plan(plan_id, today, daily_budget, financial.defcon_level, inventory)
+    
+    def _generate_fallback_meal_plan(
+        self,
+        plan_id: str,
+        date: str,
+        daily_budget: float,
+        defcon_level: int,
+        inventory: FridgeInventory
+    ) -> DailyMealPlan:
+        """Generate a static fallback meal plan when API is unavailable."""
+        ingredient_names = [i.get('name', '') for i in inventory.ingredients[:5]]
+        
+        # Defcon-aware static options
+        if defcon_level <= 2:
+            # Survival mode - ultra cheap
+            breakfast_opts = [
+                MealOption("breakfast_1", "Oatmeal + Banana", "Budget fuel", "breakfast", "COOK", 0.50, 5, ["oatmeal", "banana"], [], 70, "low"),
+                MealOption("breakfast_2", "Toast + Peanut Butter", "Quick protein", "breakfast", "QUICK_PREP", 0.30, 3, ["bread", "peanut butter"], [], 65, "low"),
+            ]
+            lunch_opts = [
+                MealOption("lunch_1", "Rice & Beans Bowl", "Complete protein", "lunch", "COOK", 1.50, 25, ["rice", "beans"], ingredient_names[:2], 80, "medium"),
+                MealOption("lunch_2", "Egg Fried Rice", "Pantry staples", "lunch", "COOK", 1.00, 15, ["rice", "eggs", "veggies"], ingredient_names[:3], 75, "medium"),
+            ]
+            dinner_opts = [
+                MealOption("dinner_1", "Pasta with Veggie Sauce", "Filling & cheap", "dinner", "COOK", 2.50, 30, ["pasta", "canned tomatoes", "veggies"], [], 75, "medium"),
+                MealOption("dinner_2", "Bean & Cheese Quesadilla", "Quick & satisfying", "dinner", "COOK", 2.00, 15, ["tortilla", "beans", "cheese"], [], 70, "medium"),
+            ]
+        elif defcon_level == 3:
+            # Value mode
+            breakfast_opts = [
+                MealOption("breakfast_1", "Eggs & Toast", "Classic fuel", "breakfast", "COOK", 1.50, 10, ["eggs", "bread"], [], 80, "low"),
+                MealOption("breakfast_2", "Smoothie Bowl", "Energy boost", "breakfast", "QUICK_PREP", 2.50, 5, ["yogurt", "banana", "berries"], [], 85, "low"),
+                MealOption("breakfast_3", "Coffee + Pastry", "Cafe quick stop", "breakfast", "ORDER", 5.00, 0, [], [], 50, "low"),
+            ]
+            lunch_opts = [
+                MealOption("lunch_1", "Chicken Stir-Fry", "Protein packed", "lunch", "COOK", 4.00, 25, ["chicken", "veggies", "rice"], ingredient_names[:3], 85, "medium"),
+                MealOption("lunch_2", "Sandwich + Salad", "Balanced", "lunch", "QUICK_PREP", 3.50, 10, ["bread", "deli meat", "lettuce"], [], 75, "low"),
+                MealOption("lunch_3", "Chipotle Bowl", "Fast casual", "lunch", "ORDER", 10.00, 0, [], [], 70, "low"),
+            ]
+            dinner_opts = [
+                MealOption("dinner_1", "Baked Salmon + Veggies", "Omega boost", "dinner", "COOK", 8.00, 35, ["salmon", "broccoli", "rice"], [], 90, "medium"),
+                MealOption("dinner_2", "Pasta Primavera", "Veggie loaded", "dinner", "COOK", 5.00, 30, ["pasta", "mixed veggies", "olive oil"], [], 80, "medium"),
+                MealOption("dinner_3", "Thai Takeout", "Treat yourself", "dinner", "ORDER", 15.00, 0, [], [], 75, "low"),
+            ]
+        else:
+            # Balanced/Abundance mode
+            breakfast_opts = [
+                MealOption("breakfast_1", "Avocado Toast + Eggs", "Instagram worthy", "breakfast", "COOK", 4.00, 15, ["avocado", "eggs", "sourdough"], [], 90, "low"),
+                MealOption("breakfast_2", "Acai Bowl", "Superfood start", "breakfast", "ORDER", 12.00, 0, [], [], 85, "low"),
+                MealOption("breakfast_3", "Quick Yogurt Parfait", "Ready in 2 min", "breakfast", "QUICK_PREP", 3.00, 2, ["yogurt", "granola", "berries"], [], 75, "low"),
+            ]
+            lunch_opts = [
+                MealOption("lunch_1", "Mediterranean Salad", "Fresh & filling", "lunch", "COOK", 6.00, 15, ["greens", "feta", "olives", "chicken"], [], 90, "low"),
+                MealOption("lunch_2", "Poke Bowl", "Hawaiian vibes", "lunch", "ORDER", 16.00, 0, [], [], 85, "low"),
+                MealOption("lunch_3", "Leftover Magic", "Use what's there", "lunch", "QUICK_PREP", 0.00, 5, [], ingredient_names, 70, "low"),
+            ]
+            dinner_opts = [
+                MealOption("dinner_1", "Steak & Roasted Vegetables", "Protein powerhouse", "dinner", "COOK", 15.00, 40, ["steak", "potatoes", "asparagus"], [], 90, "high"),
+                MealOption("dinner_2", "Sushi Delivery", "Treat mode", "dinner", "ORDER", 25.00, 0, [], [], 80, "low"),
+                MealOption("dinner_3", "Homemade Pizza", "Fun project", "dinner", "COOK", 8.00, 45, ["dough", "sauce", "cheese", "toppings"], [], 75, "high"),
+            ]
+        
+        return DailyMealPlan(
+            plan_id=plan_id,
+            date=date,
+            total_budget=daily_budget,
+            budget_remaining=daily_budget,
+            defcon_level=defcon_level,
+            breakfast_options=breakfast_opts,
+            lunch_options=lunch_opts,
+            dinner_options=dinner_opts,
+            generated_at=datetime.now().isoformat()
+        )
 
 
 # =============================================================================

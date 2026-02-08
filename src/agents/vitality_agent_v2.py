@@ -28,6 +28,7 @@ from ..core.survival_protocol import (
     SurvivalState, SurvivalProtocol, DefconLevel,
     FinancialState, FridgeInventory, UserPreferences,
     MealDecisionContext, MealDecisionEngine,
+    MealOption, DailyMealPlan,  # NEW: Proactive meal planning
     SHOPPING_LISTS_BY_DEFCON,
     extract_campaign_financial_context,
     extract_study_schedule_context,
@@ -105,7 +106,7 @@ Remember: You're managing life logistics - money, food, energy. Not providing me
             default_reasoning_mode=ReasoningMode.HYBRID,
             max_thinking_tokens=8192,
             enable_thought_signatures=True,
-            enable_marathon=False,
+            enable_marathon=True,  # MARATHON AGENT
             forbidden_terms=self.FORBIDDEN_MEDICAL_TERMS,
             required_disclaimer="[Kaironex provides lifestyle suggestions only, not medical advice.]"
         )
@@ -140,6 +141,11 @@ Remember: You're managing life logistics - money, food, energy. Not providing me
             'daily_budget_check': self._handle_daily_budget_check,
             'defcon_update': self._handle_defcon_update,
             'cross_agent_sync': self._handle_cross_agent_sync,
+            
+            # PROACTIVE MEAL PLANNING - The Action Era
+            'proactive_meal_plan': self._handle_proactive_meal_plan,
+            'select_meal_option': self._handle_select_meal_option,
+            'get_todays_meals': self._handle_get_todays_meals,
         }
         
         handler = handlers.get(event_type, self._handle_energy_check)
@@ -907,6 +913,285 @@ Military/gaming style. Brief and impactful.
             actions_taken=actions_taken,
             state_updates=vitality_update,
             data=data
+        )
+
+    # =========================================================================
+    # 🍽️ PROACTIVE MEAL PLANNING - THE ACTION ERA
+    # =========================================================================
+    
+    async def _handle_proactive_meal_plan(
+        self,
+        user_id: str,
+        payload: Dict[str, Any],
+        context: StateContext
+    ) -> AgentResult:
+        """
+        🍽️ PROACTIVE MEAL PLANNING ENGINE
+        
+        Automatically generates a complete daily meal plan with options.
+        This is the Action Era - we plan BEFORE the user asks.
+        """
+        survival_state = self._get_survival_state(user_id)
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        # Check if we already have today's plan
+        existing_plan = survival_state.daily_meal_plan
+        if existing_plan and existing_plan.date == today and not payload.get('force_regenerate'):
+            return AgentResult(
+                success=True,
+                response="🍽️ Your meal plan for today is ready! Select what sounds good.",
+                data={"plan": existing_plan.to_dict(), "status": "existing_plan"},
+                actions_taken=["existing_plan_returned"]
+            )
+        
+        # Generate new plan
+        meal_plan = await self.survival_protocol.generate_proactive_meal_plan(
+            financial=survival_state.financial,
+            inventory=survival_state.inventory,
+            preferences=survival_state.preferences,
+            schedule_pressure=payload.get('schedule_pressure', 'normal'),
+            energy_level=payload.get('energy_level', 50)
+        )
+        
+        # Store the plan
+        survival_state.daily_meal_plan = meal_plan
+        self._cached_survival_state[user_id] = survival_state
+        
+        # Count options
+        total_options = (
+            len(meal_plan.breakfast_options) +
+            len(meal_plan.lunch_options) +
+            len(meal_plan.dinner_options)
+        )
+        
+        # Generate AI summary
+        prompt = f"""
+DAILY MEAL PLAN GENERATED - PROACTIVE LOGISTICS
+
+Budget: ${meal_plan.total_budget:.2f}
+Defcon Level: {meal_plan.defcon_level}
+Total Options: {total_options}
+
+BREAKFAST OPTIONS: {len(meal_plan.breakfast_options)}
+LUNCH OPTIONS: {len(meal_plan.lunch_options)}
+DINNER OPTIONS: {len(meal_plan.dinner_options)}
+
+TASK:
+Give a 2-sentence tactical briefing announcing the meal plan.
+Mention they have OPTIONS ready - no decision paralysis.
+Military/gaming style. End with "Select your fuel, commander!"
+"""
+        
+        response = await self.engine.reason(ReasoningRequest(
+            prompt=prompt,
+            user_id=user_id,
+            agent="vitality",
+            mode=ReasoningMode.REFLEX
+        ))
+        
+        vitality_update = {
+            "vitality": {
+                "survival": survival_state.to_dict(),
+                "meal_plan_date": today
+            }
+        }
+        self.update_state_cache(user_id, vitality_update)
+        
+        return AgentResult(
+            success=True,
+            response=self._sanitize_output(response.content),
+            thought_id=response.thought_signature.thought_id if response.thought_signature else None,
+            actions_taken=["meal_plan_generated", f"options:{total_options}"],
+            state_updates=vitality_update,
+            data={
+                "plan": meal_plan.to_dict(),
+                "total_options": total_options
+            }
+        )
+    
+    async def _handle_select_meal_option(
+        self,
+        user_id: str,
+        payload: Dict[str, Any],
+        context: StateContext
+    ) -> AgentResult:
+        """
+        🎯 SELECT A MEAL OPTION
+        
+        User selects their choice → budget updates → inventory updates.
+        The Action Era: user selects, system handles logistics.
+        """
+        survival_state = self._get_survival_state(user_id)
+        option_id = payload.get('option_id')
+        
+        if not option_id:
+            return AgentResult(
+                success=False,
+                response="❌ No option_id provided. Which meal did you select?",
+                error="Missing option_id"
+            )
+        
+        meal_plan = survival_state.daily_meal_plan
+        if not meal_plan:
+            return AgentResult(
+                success=False,
+                response="📋 No meal plan for today! Let me generate one first.",
+                error="No meal plan exists",
+                data={"trigger_action": "proactive_meal_plan"}
+            )
+        
+        # Find and select
+        option = meal_plan.get_option_by_id(option_id)
+        if not option:
+            return AgentResult(
+                success=False,
+                response=f"❌ Option '{option_id}' not found in today's plan.",
+                error="Option not found"
+            )
+        
+        # Execute selection
+        success, message, cost_deducted = meal_plan.select_option(option_id)
+        
+        if not success:
+            return AgentResult(
+                success=False,
+                response=f"💰 {message}",
+                error="Budget exceeded",
+                data={"budget_remaining": meal_plan.budget_remaining, "option_cost": option.estimated_cost}
+            )
+        
+        # Update inventory if cooking
+        ingredients_consumed = []
+        if option.action_type == "COOK" and option.ingredients_used_from_fridge:
+            for ingredient in option.ingredients_used_from_fridge:
+                for inv_item in survival_state.inventory.ingredients:
+                    if ingredient.lower() in inv_item.get('name', '').lower():
+                        inv_item['quantity'] = 'reduced'
+                        ingredients_consumed.append(ingredient)
+            
+            if survival_state.inventory.days_remaining > 0 and len(ingredients_consumed) >= 2:
+                survival_state.inventory.days_remaining = max(0, survival_state.inventory.days_remaining - 1)
+        
+        # Track spending
+        survival_state.financial.spent_today += cost_deducted
+        self._cached_survival_state[user_id] = survival_state
+        
+        # AI confirmation
+        prompt = f"""
+MEAL SELECTION CONFIRMED
+
+Selected: {option.name} ({option.action_type})
+Cost: ${option.estimated_cost:.2f}
+Budget Remaining: ${meal_plan.budget_remaining:.2f}
+Meal Type: {option.meal_type}
+
+Give a 1-sentence enthusiastic confirmation. Military/gaming tactical approval style.
+Include the remaining budget.
+"""
+        
+        response = await self.engine.reason(ReasoningRequest(
+            prompt=prompt,
+            user_id=user_id,
+            agent="vitality",
+            mode=ReasoningMode.REFLEX
+        ))
+        
+        vitality_update = {
+            "vitality": {
+                "survival": survival_state.to_dict()
+            }
+        }
+        self.update_state_cache(user_id, vitality_update)
+        
+        return AgentResult(
+            success=True,
+            response=self._sanitize_output(response.content),
+            thought_id=response.thought_signature.thought_id if response.thought_signature else None,
+            actions_taken=[f"meal_selected:{option.meal_type}", f"spent:${cost_deducted:.2f}"],
+            state_updates=vitality_update,
+            data={
+                "selected": {"id": option.option_id, "name": option.name, "cost": option.estimated_cost},
+                "cost_deducted": cost_deducted,
+                "budget_remaining": meal_plan.budget_remaining,
+                "ingredients_consumed": ingredients_consumed,
+                "progress": {
+                    "breakfast": meal_plan.selected_breakfast is not None,
+                    "lunch": meal_plan.selected_lunch is not None,
+                    "dinner": meal_plan.selected_dinner is not None
+                }
+            }
+        )
+    
+    async def _handle_get_todays_meals(
+        self,
+        user_id: str,
+        payload: Dict[str, Any],
+        context: StateContext
+    ) -> AgentResult:
+        """
+        📋 GET TODAY'S MEAL PLAN STATUS
+        
+        Quick view of what's planned and what's been selected.
+        """
+        survival_state = self._get_survival_state(user_id)
+        meal_plan = survival_state.daily_meal_plan
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        if not meal_plan or meal_plan.date != today:
+            return AgentResult(
+                success=True,
+                response="📋 No meal plan for today yet! Let me generate one.",
+                data={"status": "no_plan", "trigger_action": "proactive_meal_plan"},
+                actions_taken=["no_plan"]
+            )
+        
+        # Build status
+        def meal_status(selected_id, options):
+            if selected_id:
+                for opt in options:
+                    if opt.option_id == selected_id:
+                        return {"status": "selected", "selected": opt.name, "cost": opt.estimated_cost}
+            return {"status": "pending", "options_count": len(options)}
+        
+        breakfast_status = meal_status(meal_plan.selected_breakfast, meal_plan.breakfast_options)
+        lunch_status = meal_status(meal_plan.selected_lunch, meal_plan.lunch_options)
+        dinner_status = meal_status(meal_plan.selected_dinner, meal_plan.dinner_options)
+        
+        all_selected = all([
+            breakfast_status["status"] == "selected",
+            lunch_status["status"] == "selected",
+            dinner_status["status"] == "selected"
+        ])
+        
+        pending_meals = [
+            m for m, s in [("breakfast", breakfast_status), ("lunch", lunch_status), ("dinner", dinner_status)]
+            if s["status"] == "pending"
+        ]
+        
+        if all_selected:
+            message = f"✅ All meals planned! Budget used: ${meal_plan.spent_today:.2f} / ${meal_plan.total_budget:.2f}"
+        elif pending_meals:
+            message = f"🍽️ Pending: {', '.join(pending_meals)}. ${meal_plan.budget_remaining:.2f} remaining."
+        else:
+            message = "📋 Today's meals are ready for selection!"
+        
+        return AgentResult(
+            success=True,
+            response=message,
+            actions_taken=["meal_status_retrieved"],
+            data={
+                "date": meal_plan.date,
+                "breakfast": breakfast_status,
+                "lunch": lunch_status,
+                "dinner": dinner_status,
+                "budget": {
+                    "total": meal_plan.total_budget,
+                    "spent": meal_plan.spent_today,
+                    "remaining": meal_plan.budget_remaining
+                },
+                "all_selected": all_selected,
+                "pending_meals": pending_meals
+            }
         )
 
     # =========================================================================
