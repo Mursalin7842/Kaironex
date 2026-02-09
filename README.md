@@ -8,6 +8,10 @@
 ![Marathon Agent](https://img.shields.io/badge/Track-Marathon%20Agent-green)
 ![Agents](https://img.shields.io/badge/Agents-5%20Specialized-purple)
 
+### 📐 [Full Backend Architecture →](BACKEND_ARCHITECTURE.md)
+
+> Complete system documentation: continuous marathon loop, all 5 agent capabilities, two-layer hierarchical scheduling, Bicameral Engine reasoning, Live API voice integration, 20-collection database schema, and the Thought Signature audit chain.
+
 ---
 
 ## 🎯 Why Kaironex is NOT a Generic Chatbot
@@ -32,7 +36,7 @@
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
 │  │   STUDY     │  │  VITALITY   │  │  CAMPAIGN   │            │
 │  │   Agent     │  │   Agent     │  │   Agent     │            │
-│  │ (Cognitive  │  │ (Survival & │  │ (72-hour    │            │
+│  │ (Cognitive  │  │ (Survival & │  │ (Continuous │            │
 │  │  Supply)    │  │  Growth)    │  │  Marathons) │            │
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘            │
 │         │                │                │                    │
@@ -197,7 +201,7 @@ Kaironex operates as the **backend brain** for a Kotlin Multiplatform (KMP) Andr
 kairo-brain/
 ├── src/
 │   ├── agents/           # 5 Specialized Agents
-│   │   ├── campaign_agent.py    # 72-hour career marathons
+│   │   ├── campaign_agent.py    # Continuous career marathons
 │   │   ├── vitality_agent_v2.py # Survival & Growth Protocol
 │   │   ├── study_agent.py       # Cognitive supply chain
 │   │   ├── radius_agent.py      # Spatial context
@@ -251,7 +255,7 @@ appwrite deploy function
 
 | Requirement | Our Implementation |
 |-------------|-------------------|
-| Tasks spanning hours/days | ✅ 72-hour career campaigns, week-long study marathons |
+| Tasks spanning hours/days | ✅ Continuous career campaigns, semester-long study marathons |
 | Thought Signatures | ✅ Full thought chain with cryptographic hashes |
 | Thinking Levels | ✅ REFLEX (MINIMAL) / DEEP (HIGH) / MARATHON |
 | Self-correction | ✅ MarathonRunner with checkpoints and recovery |

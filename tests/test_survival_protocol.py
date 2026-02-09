@@ -20,7 +20,7 @@ from datetime import datetime
 # Add src to path
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from src.core.survival_protocol import (
     SurvivalState, SurvivalProtocol, DefconLevel,

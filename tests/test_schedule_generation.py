@@ -15,10 +15,10 @@ from datetime import datetime, timedelta
 
 # Load environment variables FIRST
 from dotenv import load_dotenv
-load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.utils.db_helper import KairoDB
 from src.core.bicameral_engine import BicameralEngine

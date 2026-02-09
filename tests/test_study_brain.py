@@ -19,7 +19,7 @@ from datetime import datetime
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from test_mocks import MockDBHelper, MockContext, MockGeminiClient
 

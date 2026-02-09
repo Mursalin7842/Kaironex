@@ -3,6 +3,9 @@ Test the Campaign Agent endpoint locally
 """
 import asyncio
 import json
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # Mock context for testing
 class MockRes:

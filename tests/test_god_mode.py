@@ -11,7 +11,7 @@ import datetime
 from pathlib import Path
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.utils.db_helper import KairoDB
 from src.config import *
