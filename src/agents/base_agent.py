@@ -37,7 +37,7 @@ class AgentConfig:
     display_name: str
     system_instruction: str
     default_reasoning_mode: ReasoningMode = ReasoningMode.HYBRID
-    max_thinking_tokens: int = 8192
+    max_thinking_tokens: int = 65536
     enable_thought_signatures: bool = True
     enable_marathon: bool = False
     

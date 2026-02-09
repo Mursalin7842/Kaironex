@@ -202,7 +202,7 @@ class DeepBrain:
         # Build config with HIGH thinking
         config = types.GenerateContentConfig(
             thinking_config=types.ThinkingConfig(
-                thinking_budget=8192  # HIGH thinking
+                thinking_budget=65536  # HIGH thinking
             ),
             temperature=0.7,
             max_output_tokens=4096

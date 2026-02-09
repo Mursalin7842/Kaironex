@@ -261,7 +261,7 @@ Return ONLY valid JSON:
             user_id=user_id,
             agent="campaign",
             mode=ReasoningMode.DEEP,
-            max_thinking_tokens=16384,
+            max_thinking_tokens=65536,
             system_instruction="You are an expert ATS analyzer. Output valid JSON only. Be thorough and actionable."
         ))
         
@@ -401,7 +401,7 @@ Create a TAILORED, ATS-optimized resume that:
             user_id=user_id,
             agent="campaign",
             mode=ReasoningMode.DEEP,
-            max_thinking_tokens=32768,
+            max_thinking_tokens=65536,
             system_instruction="You are an expert resume writer. Output valid JSON only. Be specific and actionable."
         ))
         
@@ -558,7 +558,7 @@ Design a comprehensive 20-30 minute mock interview.
             user_id=user_id,
             agent="campaign",
             mode=ReasoningMode.DEEP,
-            max_thinking_tokens=24576,
+            max_thinking_tokens=65536,
             system_instruction="You are an expert interview designer. Create detailed, realistic interviews. Output valid JSON only."
         ))
         
@@ -672,7 +672,7 @@ RULES:
             user_id=user_id,
             agent="campaign",
             mode=ReasoningMode.DEEP,
-            max_thinking_tokens=16384,
+            max_thinking_tokens=65536,
             system_instruction="You are a career strategist. Create actionable skill trees. Output valid JSON only."
         ))
         

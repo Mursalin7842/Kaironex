@@ -92,7 +92,7 @@ OUTPUT FORMAT:
             display_name="Supervisor",
             system_instruction=self.SUPERVISOR_SYSTEM_PROMPT,
             default_reasoning_mode=ReasoningMode.HYBRID,
-            max_thinking_tokens=8192,
+            max_thinking_tokens=65536,
             enable_thought_signatures=True,
             enable_marathon=True  # MARATHON AGENT
         )

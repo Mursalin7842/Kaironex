@@ -104,7 +104,7 @@ Remember: You're managing life logistics - money, food, energy. Not providing me
             display_name="Vitality Core v2.0",
             system_instruction=self.VITALITY_SYSTEM_PROMPT,
             default_reasoning_mode=ReasoningMode.HYBRID,
-            max_thinking_tokens=8192,
+            max_thinking_tokens=65536,
             enable_thought_signatures=True,
             enable_marathon=True,  # MARATHON AGENT
             forbidden_terms=self.FORBIDDEN_MEDICAL_TERMS,

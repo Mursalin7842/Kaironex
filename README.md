@@ -10,7 +10,7 @@
 
 ### 📐 [Full Backend Architecture →](BACKEND_ARCHITECTURE.md)
 
-> Complete system documentation: continuous marathon loop, all 5 agent capabilities, two-layer hierarchical scheduling, Bicameral Engine reasoning, Live API voice integration, 20-collection database schema, and the Thought Signature audit chain.
+> Complete system documentation: continuous marathon loop, all 5 agent capabilities, **65,536 thinking tokens** on every agent, two-layer hierarchical scheduling, Bicameral Engine dual-process reasoning, Gemini Live API voice integration (native-audio model on mobile), 20-collection database schema, and the Thought Signature audit chain.
 
 ---
 
@@ -36,7 +36,7 @@
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
 │  │   STUDY     │  │  VITALITY   │  │  CAMPAIGN   │            │
 │  │   Agent     │  │   Agent     │  │   Agent     │            │
-│  │ (Cognitive  │  │ (Survival & │  │ (Continuous │            │
+│  │ (Cognitive  │  │ (Survival & │  │ (Career     │            │
 │  │  Supply)    │  │  Growth)    │  │  Marathons) │            │
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘            │
 │         │                │                │                    │
@@ -124,7 +124,7 @@ class MarathonGoal:
     title: str                    # "Get a Job Interview at Google"
     description: str              # Detailed goal context
     success_criteria: List[str]   # Measurable completion criteria
-    deadline: Optional[datetime]  # 72+hours timeline
+    deadline: Optional[datetime]  # Flexible timeline (hours to months)
     priority: int                 # 1-10 scale
 ```
 
@@ -164,9 +164,9 @@ class MarathonStatus(Enum):
 ```python
 class ReasoningMode(Enum):
     REFLEX = "reflex"       # Fast, pattern-based (MINIMAL thinking)
-    DEEP = "deep"           # Slow, thoughtful (HIGH thinking)
-    HYBRID = "hybrid"       # Reflex + validation
-    MARATHON = "marathon"   # Long-running with checkpoints
+    DEEP = "deep"           # Slow, thoughtful (65,536 thinking tokens)
+    HYBRID = "hybrid"       # Reflex first → escalate if confidence < 0.7
+    MARATHON = "marathon"   # Long-running with checkpoints (65,536 thinking tokens)
 ```
 
 **Automatic routing** based on complexity, urgency, and pressure index.
@@ -177,9 +177,10 @@ class ReasoningMode(Enum):
 
 Kaironex operates as the **backend brain** for a Kotlin Multiplatform (KMP) Android app:
 
-- **REFLEX responses** handled by mobile app (fast, under 200ms)
-- **DEEP reasoning** handled by this backend (complex planning)
-- **State sync** via Appwrite Database (no WebSockets required)
+- **REFLEX responses** handled by mobile app — `gemini-3-flash-preview` at MINIMAL thinking (fast, under 200ms)
+- **DEEP reasoning** handled by this backend — `gemini-3-flash-preview` at HIGH thinking (65,536 tokens on every agent)
+- **Voice Engine** on mobile — `gemini-2.5-flash-native-audio-preview` via Gemini Live API WebSocket
+- **State sync** via Appwrite TablesDB — agents write, app reads reactively (no WebSockets for state)
 
 ---
 
@@ -187,11 +188,12 @@ Kaironex operates as the **backend brain** for a Kotlin Multiplatform (KMP) Andr
 
 | Component | Technology |
 |-----------|------------|
-| AI Model | Gemini 3 Flash Preview (Thinking Model) |
-| Vision | Gemini 3 Native Multimodal |
-| Backend | Appwrite Functions (Python) |
-| State | Appwrite Database |
-| Mobile | Kotlin Multiplatform (KMP) |
+| AI Model (Backend) | `gemini-3-flash-preview` — 1M input, 65K output, thinking: **65,536 tokens** on all agents |
+| AI Model (Voice) | `gemini-2.5-flash-native-audio-preview-12-2025` — Live API on mobile |
+| Vision | Gemini 3 Flash Preview native multimodal (fridge scan, resume PDF) |
+| Backend | Appwrite Functions (Python 3.13) |
+| State | Appwrite TablesDB (20 collections) |
+| Mobile | Kotlin Multiplatform (KMP) — Compose UI |
 
 ---
 
@@ -221,15 +223,15 @@ kairo-brain/
 ## 🚀 Running the Project
 
 ### Prerequisites
-- Python 3.11+
+- Python 3.13+
 - Appwrite Account
-- Gemini API Key
+- Gemini API Key (`gemini-3-flash-preview` access)
 
 ### Setup
 ```bash
 # Clone & setup
-git clone https://github.com/your-repo/kairo-brain
-cd kairo-brain
+git clone https://github.com/AliHaider0343/Kaironex-Brain.git
+cd Kaironex-Brain
 python -m venv .venv
 .venv\\Scripts\\activate  # Windows
 pip install -r requirements.txt
@@ -238,14 +240,76 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your API keys
 
-# Test
-python test_survival_protocol.py
+# Test (149 tests, all offline — no API keys needed)
+python tests/test_all_agents.py
 ```
 
 ### Deploy to Appwrite
 ```bash
 appwrite deploy function
 ```
+
+---
+
+## 🧪 Testing Guide for Judges
+
+### Option 1: Offline Tests (No API Key Required)
+
+All 149 tests run fully offline using mocked Gemini responses and in-memory database. This verifies all agent logic, routing, error handling, and state management.
+
+```bash
+# Run the complete test suite
+python tests/test_all_agents.py
+
+# Or run individual agent suites
+python tests/test_radius_brain.py      # 57 assertions — Cultural Survival
+python tests/test_vitality_brain.py    # 39 assertions — Life Logistics + DEFCON
+python tests/test_study_brain.py       # 26 assertions — Cognitive Supply Chain
+python tests/test_campaign_brain.py    # 27 assertions — Career Strategist
+
+# Other tests
+python tests/test_survival_protocol.py # Financial survival system
+python tests/test_endpoint.py          # Appwrite endpoint integration
+python tests/test_god_mode.py          # Database persistence
+python tests/test_schedule_generation.py # Semester schedule generation
+```
+
+**Expected output:** `149 passed, 0 failed`
+
+### Option 2: Live Testing with Gemini API
+
+API credentials are provided in the hackathon submission form. To test with real Gemini API calls:
+
+```bash
+# 1. Set up environment
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+pip install -r requirements.txt
+
+# 2. Set environment variables (credentials from submission)
+$env:GEMINI_API_KEY="<provided_in_submission>"
+$env:APPWRITE_ENDPOINT="<provided_in_submission>"
+$env:APPWRITE_PROJECT_ID="<provided_in_submission>"
+$env:APPWRITE_API_KEY="<provided_in_submission>"
+$env:APPWRITE_DATABASE_ID="<provided_in_submission>"
+
+# 3. Run live endpoint test
+python tests/test_endpoint.py
+
+# 4. Test individual agents with real Gemini reasoning
+python tests/test_resume_local.py      # Upload a resume → real ATS scoring
+python tests/test_schedule_generation.py  # Generate a real semester schedule
+```
+
+### What to Look For
+
+| Test | What It Proves |
+|------|----------------|
+| `test_all_agents.py` | All 5 brains route correctly, create ThoughtSignatures, handle errors gracefully |
+| `test_survival_protocol.py` | DEFCON system calculates budgets, fridge vision parses images, meal decisions factor time × money × energy |
+| `test_schedule_generation.py` | Two-layer hierarchical planning generates semester strategy + daily tasks in one API call at 65,536 thinking tokens |
+| `test_resume_local.py` | Campaign Agent scores resumes against job descriptions with real Gemini reasoning |
+| `test_endpoint.py` | Full Appwrite Function endpoint responds to HTTP requests, database events, and CRON triggers |
 
 ---
 
@@ -256,18 +320,18 @@ appwrite deploy function
 | Requirement | Our Implementation |
 |-------------|-------------------|
 | Tasks spanning hours/days | ✅ Continuous career campaigns, semester-long study marathons |
-| Thought Signatures | ✅ Full thought chain with cryptographic hashes |
-| Thinking Levels | ✅ REFLEX (MINIMAL) / DEEP (HIGH) / MARATHON |
-| Self-correction | ✅ MarathonRunner with checkpoints and recovery |
-| Multi-step tool calls | ✅ Cross-agent context engine, cascading decisions |
-| No human supervision | ✅ Autonomous decision making with drift detection |
+| Thought Signatures | ✅ Full thought chain with SHA-256 context hashes |
+| Thinking Levels | ✅ REFLEX (MINIMAL) / DEEP (65,536) / MARATHON (65,536 + checkpoints) |
+| Self-correction | ✅ MarathonRunner with checkpoints and recovery across restarts |
+| Multi-step tool calls | ✅ 10 tool groups, up to 5 iterative loops per reasoning step |
+| No human supervision | ✅ CRON-triggered morning/evening routines, autonomous drift detection |
 
 ### Why We're Different
 
 1. **Not a chatbot** - Multi-agent orchestrator with persistent state
 2. **Not simple RAG** - Bicameral reasoning with context-aware routing
 3. **Not basic vision** - Full causal decision chain (see fridge → decide meal → calculate budget impact → trigger shopping alert if near store)
-4. **Real autonomy** - Tasks complete over 72+ hours without user intervention
+4. **Real autonomy** - Tasks run continuously across days/weeks without user intervention
 
 ---
 
@@ -279,7 +343,7 @@ MIT License - See [LICENSE](LICENSE)
 
 ## 👥 Team
 
-Built for **Google DeepMind Gemini 3 Hackathon** - February 2026
+Built for **Gemini 3 AI Hackathon** — February 2026
 
 ---
 

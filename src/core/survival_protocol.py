@@ -601,7 +601,7 @@ USER INPUT:
             contents=parts,
             config=types.GenerateContentConfig(
                 thinking_config=types.ThinkingConfig(
-                    thinking_budget=4096  # Use thinking for financial analysis
+                    thinking_budget=65536  # Use thinking for financial analysis
                 ),
                 response_mime_type="application/json"
             )
@@ -682,7 +682,7 @@ Analyze the image:"""
                 types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
             ],
             config=types.GenerateContentConfig(
-                thinking_config=types.ThinkingConfig(thinking_budget=2048),
+                thinking_config=types.ThinkingConfig(thinking_budget=65536),
                 response_mime_type="application/json"
             )
         )
@@ -1151,7 +1151,7 @@ Generate the meal plan NOW:"""
                 model=self.model,
                 contents=[types.Part.from_text(text=prompt)],
                 config=types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(thinking_budget=8192),  # Deep thinking for meal planning
+                    thinking_config=types.ThinkingConfig(thinking_budget=65536),  # Deep thinking for meal planning
                     response_mime_type="application/json"
                 )
             )

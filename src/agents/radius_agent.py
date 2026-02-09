@@ -111,7 +111,7 @@ OUTPUT FORMAT:
             display_name="🌍 Cultural Survival Controller",
             system_instruction=self.RADIUS_SYSTEM_PROMPT,
             default_reasoning_mode=ReasoningMode.HYBRID,
-            max_thinking_tokens=8192,  # Extended for cultural reasoning
+            max_thinking_tokens=65536,  # Maximum thinking for cultural reasoning
             enable_thought_signatures=True,
             enable_marathon=True  # MARATHON AGENT
         )

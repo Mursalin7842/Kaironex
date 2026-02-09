@@ -58,7 +58,7 @@ Remember: You're not just planning tasks—you're building a career."""
             display_name="Campaign Commander",
             system_instruction=self.CAMPAIGN_SYSTEM_PROMPT,
             default_reasoning_mode=ReasoningMode.DEEP,
-            max_thinking_tokens=46384,
+            max_thinking_tokens=65536,
             enable_thought_signatures=True,
             enable_marathon=True,
             forbidden_terms=[],
@@ -149,7 +149,7 @@ Provide the strategy and first actionable step.
                 "user_context": user_context
             },
             system_instruction=self.CAMPAIGN_SYSTEM_PROMPT,
-            max_thinking_tokens=16384
+            max_thinking_tokens=65536
         ))
         
         # Extract strategy and quests from response

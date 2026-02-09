@@ -72,7 +72,7 @@ OUTPUT: Always return valid JSON without markdown code blocks."""
             display_name="Semester Director",
             system_instruction=self.SYSTEM_PROMPT,
             default_reasoning_mode=ReasoningMode.DEEP,
-            max_thinking_tokens=8192,
+            max_thinking_tokens=65536,
             enable_thought_signatures=True,
             enable_marathon=True  # MARATHON AGENT
         )

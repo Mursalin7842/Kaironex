@@ -101,7 +101,7 @@ class ReasoningRequest:
     parent_thought: Optional[str] = None
     tools: List[Callable] = field(default_factory=list)
     system_instruction: Optional[str] = None
-    max_thinking_tokens: int = 8192
+    max_thinking_tokens: int = 65536
     attachments: Optional[List[Any]] = None  # Multimodal parts (images, PDFs)
 
 
@@ -356,7 +356,7 @@ Think deeply before responding.
             agent=agent,
             context=context,
             mode=ReasoningMode.DEEP,
-            max_thinking_tokens=16384
+            max_thinking_tokens=65536
         ))
     
     # =========================================================================
