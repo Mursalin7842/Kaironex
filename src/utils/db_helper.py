@@ -769,3 +769,44 @@ class KairoDB:
         except Exception as e:
             print(f"❌ Clear Schedule Error: {e}")
             return False
+
+    def update_schedule_task(self, task_id, updates):
+        """Update an existing schedule task."""
+        try:
+            # Prepare updates
+            update_data = {}
+            for key, value in updates.items():
+                # Handle resizing or validation if needed
+                if key == 'metadata_json':
+                    update_data[key] = str(value)[:100000]
+                elif key == 'topics':
+                    update_data[key] = str(value)[:10000]
+                # NEW: Handle Just-in-Time Content Fields
+                elif key == 'just_in_time_resources':
+                    # Size: 100000 - JSON array of resources
+                    update_data[key] = str(value)[:100000]
+                elif key == 'flash_cards':
+                    # Size: 20000 - JSON array of flashcards
+                    update_data[key] = str(value)[:20000]
+                elif key == 'macro_quizes':
+                    # Size: 20000 - JSON quiz object for gatekeeper
+                    update_data[key] = str(value)[:20000]
+                elif key == 'quiz_result':
+                    # Size: 10000 - JSON with quiz attempt results
+                    # Used by Gemini to analyze user performance & adjust scheduling
+                    update_data[key] = str(value)[:10000]
+                else:
+                    update_data[key] = value
+
+            self.db.update_row(
+                APPWRITE_DATABASE_ID,
+                SCHEDULE_COL,
+                task_id,
+                update_data
+            )
+            # print(f"📅 Task Updated: {task_id}")
+            return True
+        except Exception as e:
+            print(f"❌ Update Task Error: {e}")
+            return False
+

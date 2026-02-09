@@ -681,6 +681,46 @@ After schedule generation, the engine pre-generates study content for upcoming t
 - **cram** — Condensed review material for pre-exam periods
 - **practice** — Problem sets and exercises for skill building
 
+#### Daily Content Generator — Gatekeeper Quiz System
+
+**File:** `src/tools/daily_content_generator.py`
+
+The Daily Content Generator creates AI-powered learning materials for each scheduled study task. It populates three new schedule table fields:
+
+| Field | Size | Content |
+|-------|------|---------|
+| `just_in_time_resources` | 100KB | JSON array of 5-8 text-based resources (white UI friendly) |
+| `flash_cards` | 20KB | JSON array of 8-12 flashcards with front/back structure |
+| `macro_quizes` | 20KB | Gatekeeper quiz with 5-7 questions (70% to pass) |
+| `quiz_result` | 10KB | Quiz attempt result (written by app, read by AI) |
+
+**Gatekeeper System:** Students MUST pass the daily quiz (70% score) to unlock the next day's content. Failed quizzes are logged to `quiz_result` for Gemini to analyze and potentially reschedule topics.
+
+**Usage:**
+
+```python
+# As module (called by Study Agent or scheduled function)
+from src.tools.daily_content_generator import DailyContentGenerator
+generator = DailyContentGenerator()
+generator.process_user_daily_content(user_id="user_123", target_date="2026-02-09")
+
+# CLI for manual testing
+python -m src.tools.daily_content_generator --user demo_user_001 --date 2026-02-09
+
+# Process all active users (scheduled Appwrite Function)
+generator.process_all_users_daily_content(target_date="2026-02-09")
+```
+
+**Resource Format (part-by-part, not monolithic):**
+
+```json
+[
+  {"id": "resource_1", "name": "Introduction", "type": "concept", "content": "...", "estimated_read_time": 3},
+  {"id": "resource_2", "name": "Key Definitions", "type": "key_points", "content": "...", "estimated_read_time": 2},
+  {"id": "resource_3", "name": "Worked Example", "type": "example", "content": "...", "estimated_read_time": 4}
+]
+```
+
 ---
 
 ### Vitality Brain — Life Logistics Engine
@@ -1240,6 +1280,22 @@ erDiagram
         json preferences
     }
     
+    schedule {
+        string taskId PK
+        string userId FK
+        string title
+        string subject
+        string topics
+        datetime startTime
+        datetime endTime
+        string type
+        string status
+        string just_in_time_resources "100KB JSON - Part-by-part resources"
+        string flash_cards "20KB JSON - Flashcard array"
+        string macro_quizes "20KB JSON - Gatekeeper quiz"
+        string quiz_result "10KB JSON - Quiz attempt result"
+    }
+    
     agent_memory {
         string memoryId PK
         string userId FK
@@ -1303,6 +1359,7 @@ erDiagram
     }
     
     users ||--o{ agent_memory : "has"
+    users ||--o{ schedule : "has tasks"
     users ||--o{ thought_signatures : "generates"
     users ||--o{ interventions : "receives"
     users ||--o{ marathon_sessions : "runs"
@@ -1324,7 +1381,7 @@ erDiagram
 | `financial_state` | DEFCON system financial data |
 | `vitality_state` | Health/energy/meal state |
 | `radius_state` | Cultural progress + safehouses |
-| `schedule` | Student schedule entries |
+| `schedule` | Student schedule entries + JIT content fields |
 | `study_logs` | Study session telemetry |
 | `daily_snapshots` | End-of-day summaries |
 | `policy_episodes` | RL-style policy learning data |
@@ -1373,6 +1430,7 @@ Kaironex-Brain/
 │   │   └── thought_manager.py         # Thought chain management
 │   ├── tools/
 │   │   ├── proactive_content_engine.py  # JIT content generation (839 lines)
+│   │   ├── daily_content_generator.py   # Gatekeeper quiz + flashcards
 │   │   ├── content_delivery.py        # Content delivery
 │   │   ├── deep_research.py           # Research capabilities
 │   │   ├── financial_survival.py      # Financial calculations

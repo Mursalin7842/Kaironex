@@ -138,12 +138,12 @@ async def _async_main(context):
             return await run_campaign_agent(db, payload, context)
         elif event_type == 'cron_schedule':
             context.log("🛡️ Running Supervisor Check (console test)")
-            return run_supervisor(db, context) # Supervisor is still sync
+            return await run_supervisor(db, context) # Supervisor is now async
     
     # --- CRON SCHEDULE ---
     if 'cron' in trigger_event or not trigger_event:
         context.log(f"🛡️ Safety Net: Running Supervisor")
-        return run_supervisor(db, context)
+        return await run_supervisor(db, context)
     
     context.log(f"⚠️ Unhandled trigger: {trigger_event}")
     return context.res.json({"status": "no_action", "trigger": trigger_event})

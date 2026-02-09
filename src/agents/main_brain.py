@@ -28,7 +28,8 @@ def _create_thought_signature(user_id, agent, prompt, response, db_helper, conte
         print(f"❌ Thought signature error: {e}")
         return None
 
-def run_supervisor(db_helper, context):
+
+async def run_supervisor(db_helper, context):
     """
     Supervisor: Checks for 'Drift' (User silence) and runs audits.
     Run via CRON.
@@ -91,6 +92,23 @@ def run_supervisor(db_helper, context):
         if scan_daily_jobs(db_helper, user_id, context):
             interventions_triggered += 1
             context.log(f"⚔️ Daily Job Scan completed for {user_id}")
+
+        # 3. RUN DAILY STUDY PREP (Study Agent Delegation)
+        try:
+            from .study_agent import StudyAgent
+            from ..core.bicameral_engine import BicameralEngine
+            from ..core.thought_manager import ThoughtManager
+            
+            # Lightweight instantiation (no full payload needed for this method)
+            study_engine = BicameralEngine()
+            thought_mgr = ThoughtManager(db_helper)
+            study_agent = StudyAgent(study_engine, thought_mgr, db_helper)
+            
+            prep_count = await study_agent.run_daily_prep(user_id)
+            if prep_count > 0:
+                context.log(f"📚 Daily Study Prep: {prep_count} tasks prepared for {user_id}")
+        except Exception as e:
+            context.log(f"❌ Daily Study Prep Failed for {user_id}: {e}")
 
     context.log(f"✅ Supervisor complete. Interventions: {interventions_triggered}, Thoughts: {thoughts_created}")
     return context.res.json({

@@ -87,6 +87,11 @@ OUTPUT: Always return valid JSON without markdown code blocks."""
             return await self._handle_resource_ingestion(user_id, payload, context)
         elif event_type == 'content_request':
             return await self._handle_content_request(user_id, payload, context)
+        elif event_type == 'daily_prep':
+            count = await self.run_daily_prep(user_id)
+            return AgentResult(success=True, response=f"Prepared content for {count} tasks", actions_taken=[f"prepared_{count}"])
+        elif event_type == 'schedule_change_request':
+            return await self._handle_schedule_change_request(user_id, payload, context)
         
         return AgentResult(success=True, response="Event tracked", actions_taken=["tracked"])
 
@@ -1244,6 +1249,138 @@ If dates cannot be found, estimate based on typical semester (4 months from toda
             actions_taken=["content_prepared"],
             data={'prepared_content': prepared_items, 'count': len(prepared_items)}
         )
+
+
+
+    # =========================================================================
+    # DAILY PREP & SCHEDULE MANAGEMENT
+    # =========================================================================
+    
+    async def run_daily_prep(self, user_id: str) -> int:
+        """
+        CRON TASK: Prepares content for all of today's study tasks.
+        Run this every morning at 4 AM.
+        """
+        print(f"🌅 Running Daily Prep for {user_id}...")
+        
+        # 1. Get today's schedule
+        today_str = datetime.now().strftime('%Y-%m-%d')
+        all_tasks = self.db.get_schedule(user_id, limit=100)
+        
+        today_tasks = [
+            t for t in all_tasks 
+            if t.get('startTime', '').startswith(today_str)
+            and t.get('type') not in ('blocked',)
+            and t.get('status') != 'completed'
+        ]
+        
+        if not today_tasks:
+            print(f"🌅 No study tasks found for today ({today_str})")
+            return 0
+            
+        # 2. Initialize Engine
+        from ..utils.gemini_client import GeminiClient
+        content_engine = ProactiveContentEngine(gemini_client=GeminiClient(), db=self.db)
+        
+        # 3. Process tasks
+        count = 0
+        for task in today_tasks:
+            try:
+                # Check if already prepared
+                meta = {}
+                if task.get('metadata_json'):
+                    try:
+                        meta = json.loads(task['metadata_json'])
+                    except:
+                        pass
+                
+                if meta.get('content_ready'):
+                    continue
+                    
+                print(f"⚡ Preparing content for: {task.get('title')}")
+                processed = await content_engine.prepare_content_for_rich_task(user_id, task)
+                if processed:
+                    count += 1
+            except Exception as e:
+                print(f"❌ Failed to prepare task {task.get('taskId')}: {e}")
+                
+        print(f"✅ Daily Prep Complete: {count} tasks ready")
+        return count
+
+    async def _handle_schedule_change_request(self, user_id: str, payload: Dict[str, Any], context: StateContext) -> AgentResult:
+        """
+        Handle user request to change schedule.
+        """
+        task_id = payload.get('taskId')
+        reason = payload.get('reason', '')
+        
+        if not task_id or not reason:
+            return AgentResult(success=False, response="Missing taskId or reason")
+            
+        print(f"📩 Schedule Change Request: {reason} for task {task_id}")
+        
+        # 1. Validate with Gemini
+        prompt = f'''
+        User wants to change a study task.
+        Reason: "{reason}"
+        
+        Is this a valid reason? 
+        Valid: Sickness, Emergency, Work Overtime, Family Obligation, Burnout.
+        Invalid: Laziness, "Just because", "Don't feel like it" (unless burnout).
+        
+        Output JSON: {{"valid": boolean, "reply": "short message to user", "severity": "low|medium|high"}}
+        '''
+        
+        try:
+            response = await self.engine.reason(ReasoningRequest(
+                prompt=prompt,
+                user_id=user_id,
+                agent="study",
+                mode=ReasoningMode.REFLEX,
+                system_instruction="Output JSON only."
+            ))
+            
+            evaluation = self._parse_json(response.content)
+            is_valid = evaluation.get('valid', False)
+            reply = evaluation.get('reply', "Request received.")
+            
+            # 2. Log to schedule_changes table
+            change_data = {
+                "change_type": "manual_request",
+                "target_block_id": task_id,
+                "userId": user_id, 
+                "change_id": f"chg_{uuid.uuid4().hex[:8]}", 
+                "new_block_data": json.dumps({"reason": reason}),
+                "validation_result": json.dumps(evaluation),
+                "warnings": "Valid request" if is_valid else "Invalid reason detected",
+                "user_confirmed": is_valid,
+                "applied_at": datetime.now().isoformat() if is_valid else None
+            }
+            
+            try:
+                self.db.db.create_row(
+                    self.db.APPWRITE_DATABASE_ID,
+                    "schedule_changes", 
+                    'unique()',
+                    change_data
+                )
+            except Exception as db_e:
+                print(f"⚠️ Failed to log schedule change: {db_e}")
+            
+            # 3. If Valid, update task status
+            if is_valid:
+                self.db.update_schedule_task(task_id, {
+                    "status": "reschedule_requested",
+                    "type": "blocked" 
+                })
+                
+                return AgentResult(success=True, response=f"Approved: {reply}", actions_taken=["change_approved"])
+            else:
+                return AgentResult(success=False, response=f"Denied: {reply}", actions_taken=["change_denied"])
+                
+        except Exception as e:
+            print(f"❌ Schedule Change Error: {e}")
+            return AgentResult(success=False, response="Failed to process request", error=str(e))
 
 
 # Entry Point

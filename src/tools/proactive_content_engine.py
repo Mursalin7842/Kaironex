@@ -13,6 +13,7 @@ The brain anticipates:
 """
 
 import json
+import uuid
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
@@ -47,6 +48,7 @@ class PreparedContent:
     """Content prepared in advance for a specific context."""
     content_id: str
     user_id: str
+    task_id: Optional[str]  # Added task_id for persistence
     context: AnticipatedContext
     scheduled_for: datetime
     content_type: str  # audio, text, flashcards, quiz
@@ -133,12 +135,20 @@ class ProactiveContentEngine:
         task_start = self._parse_datetime(task.get('startTime'))
         if not task_start:
             return None
+            
+        task_id = task.get('taskId') or task.get('$id')
+        if not task_id:
+            print("⚠️ No Task ID found for content prep")
+            return None
         
         # Extract rich metadata
         metadata = {}
         if task.get('metadata_json'):
             try:
-                metadata = json.loads(task['metadata_json'])
+                if isinstance(task['metadata_json'], str):
+                    metadata = json.loads(task['metadata_json'])
+                elif isinstance(task['metadata_json'], dict):
+                    metadata = task['metadata_json']
             except:
                 metadata = {}
         
@@ -207,6 +217,7 @@ class ProactiveContentEngine:
         prepared = PreparedContent(
             content_id=f"pc_{uuid.uuid4().hex[:8]}",
             user_id=user_id,
+            task_id=task_id,
             context=AnticipatedContext.STUDY_SESSION,
             scheduled_for=task_start,
             content_type=content_mode,
@@ -218,7 +229,8 @@ class ProactiveContentEngine:
             prepared_at=datetime.now()
         )
         
-        self._store_prepared_content(user_id, prepared)
+        # Pass existing metadata to merge
+        self._store_prepared_content(user_id, prepared, existing_metadata=metadata)
         return prepared
     
     async def _prepare_deep_dive_content(
@@ -459,6 +471,7 @@ class ProactiveContentEngine:
         prepared = PreparedContent(
             content_id=content_id,
             user_id=user_id,
+            task_id=None,
             context=AnticipatedContext.STUDY_SESSION,
             scheduled_for=scheduled_for,
             content_type="study_package",
@@ -558,6 +571,7 @@ class ProactiveContentEngine:
         content = PreparedContent(
             content_id=f"exam_prep_{uuid.uuid4().hex[:8]}",
             user_id=user_id,
+            task_id=None,
             context=AnticipatedContext.PRE_EXAM,
             scheduled_for=exam_time - timedelta(hours=1),
             content_type="exam_prep",
@@ -645,11 +659,81 @@ class ProactiveContentEngine:
     
     # Private helpers
     
-    def _store_prepared_content(self, user_id: str, content: PreparedContent):
-        """Store prepared content for later delivery."""
+    def _store_prepared_content(self, user_id: str, content: PreparedContent, existing_metadata: Optional[Dict] = None):
+        """Store prepared content to DB and cache."""
         if user_id not in self._prepared_content:
             self._prepared_content[user_id] = []
         self._prepared_content[user_id].append(content)
+        
+        # DB Persistence
+        if content.task_id and self.db:
+            try:
+                # Structure for Frontend "Part by Part"
+                resources = []
+                data = content.content_data
+                
+                # 1. Summaries
+                if 'summaries' in data:
+                    for topic, text in data['summaries'].items():
+                        resources.append({
+                            "id": f"res_{uuid.uuid4().hex[:6]}",
+                            "type": "summary",
+                            "title": f"Summary: {topic}", # White UI needs clear titles
+                            "content": text,
+                            "icon": "summarize"
+                        })
+                        
+                # 2. Flashcards
+                if 'flashcards' in data:
+                    resources.append({
+                        "id": f"res_{uuid.uuid4().hex[:6]}",
+                        "type": "flashcards",
+                        "title": "Study Flashcards",
+                        "content": data['flashcards'], # List of objects
+                        "icon": "style"
+                    })
+                    
+                # 3. Practice Problems
+                if 'practice_problems' in data:
+                    resources.append({
+                        "id": f"res_{uuid.uuid4().hex[:6]}",
+                        "type": "problem_set",
+                        "title": "Practice Problems",
+                        "content": data['practice_problems'],
+                        "icon": "assignment"
+                    })
+                    
+                # 4. Audio
+                if 'audio_script' in data:
+                     resources.append({
+                        "id": f"res_{uuid.uuid4().hex[:6]}",
+                        "type": "audio_script",
+                        "title": "Audio Guide Script",
+                        "content": data['audio_script'],
+                        "icon": "headphones"
+                    })
+
+                # Construct AI Content Package
+                ai_content = {
+                    "resources": resources,
+                    "quiz": data.get('gatekeeper_quiz'),
+                    "generated_at": datetime.now().isoformat()
+                }
+                
+                # Merge with existing
+                meta_update = existing_metadata or {}
+                meta_update['ai_content'] = ai_content
+                meta_update['content_ready'] = True
+                
+                # Update DB
+                self.db.update_schedule_task(
+                    content.task_id,
+                    {'metadata_json': json.dumps(meta_update)}
+                )
+                print(f"✅ Content persisted for task {content.task_id}")
+                
+            except Exception as e:
+                print(f"❌ Failed to persist prepared content: {e}")
     
     def _map_type_to_context(self, event_type: str, content_mode: str) -> AnticipatedContext:
         """Map task type and content mode to anticipated context."""

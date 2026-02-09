@@ -159,6 +159,47 @@ class MarathonStatus(Enum):
 
 ---
 
+## 📚 Just-in-Time Content Generation — Gatekeeper System
+
+The Study Agent generates AI-powered learning materials for every scheduled task:
+
+| Content Type | Description | Format |
+|--------------|-------------|--------|
+| **Resources** | 5-8 part-by-part text resources | `resource_1`, `resource_2`, etc. (white UI friendly) |
+| **Flash Cards** | 8-12 flashcards with front/back | Easy, medium, hard difficulty mix |
+| **Gatekeeper Quiz** | 5-7 questions (70% to pass) | **BLOCKS next day** if failed |
+
+### Gatekeeper Flow
+
+```
+Daily Schedule Task
+       ↓
+Generate Content (AI)
+       ↓
+Student Studies (resources + flashcards)
+       ↓
+Gatekeeper Quiz (must pass 70%)
+       ↓
+┌──────┴──────┐
+│ PASS        │ FAIL
+│             │
+│ Unlock      │ Log quiz_result
+│ Tomorrow    │ (AI analyzes for reschedule)
+└─────────────┴─────────────────────────────
+```
+
+### CLI Usage
+
+```bash
+# Generate content for a specific user and date
+python -m src.tools.daily_content_generator --user demo_user_001 --date 2026-02-09
+
+# Process all active users (for scheduled Appwrite Function)
+python -m src.tools.daily_content_generator --all-users --date 2026-02-09
+```
+
+---
+
 ## 🧠 Bicameral Engine: Dual-Model Reasoning
 
 ```python

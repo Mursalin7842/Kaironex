@@ -73,7 +73,7 @@ class GeminiClient:
                 # 2. Configure Thinking
                 if model_type == "thinking":
                     # Note: Newer Thinking models support JSON schema.
-                    config_args["thinking_config"] = types.ThinkingConfig(thinking_budget=65536)
+                    config_args["thinking_config"] = types.ThinkingConfig(thinking_budget=65535)
 
                 # 3. JSON Enforcement
                 if json_mode:
@@ -136,7 +136,7 @@ class GeminiClient:
         try:
             config = types.GenerateContentConfig(
                 thinking_config=types.ThinkingConfig(
-                    thinking_budget=65536
+                    thinking_budget=65535
                 ),
                 temperature=0.7,
                 max_output_tokens=4096
@@ -205,7 +205,7 @@ Cite sources when possible.
         try:
             config = types.GenerateContentConfig(
                 thinking_config=types.ThinkingConfig(
-                    thinking_budget=65536
+                    thinking_budget=65535
                 ),
                 temperature=0.3,  # Lower for research accuracy
                 max_output_tokens=4096
@@ -274,7 +274,7 @@ Cite sources when possible.
                 }
                 
                 if use_thinking:
-                    config_args["thinking_config"] = types.ThinkingConfig(thinking_budget=65536)
+                    config_args["thinking_config"] = types.ThinkingConfig(thinking_budget=65535)
                 
                 if json_mode:
                     config_args["response_mime_type"] = "application/json"
@@ -339,7 +339,7 @@ Cite sources when possible.
             }
             
             if use_thinking:
-                config_args["thinking_config"] = types.ThinkingConfig(thinking_budget=65536)
+                config_args["thinking_config"] = types.ThinkingConfig(thinking_budget=65535)
             
             if json_mode:
                 config_args["response_mime_type"] = "application/json"
