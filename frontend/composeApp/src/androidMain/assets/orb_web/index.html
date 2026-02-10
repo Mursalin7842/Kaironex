@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>orb-web</title>
+    <script>
+      // Parse URL params for agent call configuration
+      (function() {
+        const params = new URLSearchParams(window.location.search);
+        const agentCall = params.get('agentCall') === 'true';
+        const agentType = params.get('agentType');
+        const agentName = params.get('agentName');
+
+        if (agentCall && agentType) {
+          // Build agent-specific system instruction
+          const agentRoles = {
+            'STUDY': 'You are the Study Agent. You manage study schedules, track progress, and optimize learning efficiency.',
+            'VITALITY': 'You are the Vitality Agent. You monitor wellness, manage budgets, suggest breaks, and ensure students stay healthy.',
+            'CAMPAIGN': 'You are the Campaign Agent. You handle long-term goals, GPA targets, career planning, and milestone tracking.',
+            'RADIUS': 'You are the Radius Agent. You help with cultural navigation, visa matters, housing, and local resources.',
+            'SUPERVISOR': 'You are the Supervisor Agent. You coordinate all agents and handle critical situations.'
+          };
+
+          const callReason = window.AGENT_CALL_CONFIG?.callReason || 'checking in with the student';
+
+          window.AGENT_SYSTEM_INSTRUCTION = `
+            ${agentRoles[agentType] || 'You are a Kaironex Agent.'}
+
+            You are CALLING the student on your own initiative because: ${callReason}
+
+            CRITICAL BEHAVIOR:
+            - You speak FIRST. Introduce yourself briefly and explain why you're calling.
+            - Be warm, direct, and conversational. Get to the point in 2-3 sentences.
+            - Listen to the student's response and provide helpful guidance.
+            - Keep the conversation natural and supportive.
+
+            Start the call now - introduce yourself and explain why you're calling.
+          `;
+
+          window.IS_AGENT_CALL = true;
+          window.AGENT_NAME = decodeURIComponent(agentName || 'Kaironex Agent');
+          console.log('📞 Agent Call Mode Enabled:', agentType, window.AGENT_NAME);
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-4sk39w0h.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Bi_KFmcA.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

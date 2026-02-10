@@ -1,55 +1,6 @@
-*.iml
-.kotlin
-.gradle
-**/build/
-xcuserdata
-!src/**/build/
-local.properties
-.idea
-.DS_Store
-captures
-.externalNativeBuild
-.cxx
-*.xcodeproj/*
-!*.xcodeproj/project.pbxproj
-!*.xcodeproj/xcshareddata/
-!*.xcodeproj/project.xcworkspace/
-!*.xcodeproj/project.xcworkspace/contents.xcworkspacedata
-!*.xcworkspace/contents.xcworkspacedata
-**/xcshareddata/WorkspaceSettings.xcsettings
-node_modules/
-
-
-# Log files
-*.log
-*.txt
-build_*.txt
-run_*.log
-
-# IDE
-.vscode/
-
-# System
-Thumbs.db
-Desktop.ini
-
-# KCEF / Desktop WebView
-**/jcef-bundle/
-
-# React / Node specific (Merged)
-dist/
-dist-ssr/
-*.local
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Python
-.venv
-venv
-__pycache__
-*.pyc
-*.pyo
-
+Kaironex-Brain/
+.idea/
+.gradle/
+build/
+*.env
+*.DS_Store

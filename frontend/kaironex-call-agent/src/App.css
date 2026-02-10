@@ -1,0 +1,241 @@
+:root {
+    --agent-color: #6366F1;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0D0D1A;
+    color: white;
+    overflow: hidden;
+}
+
+.caller-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.background-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 30%, var(--agent-color) 0%, transparent 50%),
+        linear-gradient(180deg, #0D0D1A 0%, #1A1A2E 50%, #16213E 100%);
+    opacity: 0.3;
+    z-index: 0;
+}
+
+/* Agent Avatar */
+.agent-avatar {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    z-index: 1;
+}
+
+.avatar-glow {
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    right: -20px;
+    bottom: -20px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--agent-color) 0%, transparent 70%);
+    opacity: 0.4;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.avatar-ring {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    border-radius: 50%;
+    border: 2px solid var(--agent-color);
+    opacity: 0.5;
+    animation: ring-pulse 1.5s ease-in-out infinite;
+}
+
+.avatar-core {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--agent-color) 0%, color-mix(in srgb, var(--agent-color) 70%, black) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.avatar-icon {
+    font-size: 64px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Avatar States */
+.agent-avatar.talking .avatar-glow {
+    opacity: 0.7;
+    animation: pulse-fast 0.5s ease-in-out infinite;
+}
+
+.agent-avatar.talking .avatar-core {
+    transform: scale(1.05);
+}
+
+.agent-avatar.connecting .avatar-ring {
+    animation: spin 2s linear infinite;
+}
+
+/* Agent Name */
+.agent-name {
+    margin-top: 32px;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    z-index: 1;
+}
+
+/* Call Status */
+.call-status {
+    margin-top: 8px;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.6);
+    z-index: 1;
+}
+
+/* Waveform */
+.waveform {
+    display: flex;
+    gap: 4px;
+    margin-top: 32px;
+    z-index: 1;
+}
+
+.wave-bar {
+    width: 4px;
+    height: 8px;
+    background: var(--agent-color);
+    border-radius: 2px;
+    transition: height 0.1s ease;
+}
+
+.wave-bar.active {
+    animation: wave 0.5s ease-in-out infinite alternate;
+}
+
+/* Error */
+.error-message {
+    margin-top: 16px;
+    color: #EF4444;
+    font-size: 14px;
+    z-index: 1;
+}
+
+/* End Call Button */
+.end-call-btn {
+    margin-top: 48px;
+    padding: 16px 48px;
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    background: #EF4444;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    z-index: 1;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.end-call-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+}
+
+.end-call-btn:active {
+    transform: scale(0.98);
+}
+
+/* Animations */
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.4;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.6;
+    }
+}
+
+@keyframes pulse-fast {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+}
+
+@keyframes ring-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 0.3;
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes wave {
+    from {
+        height: 8px;
+    }
+
+    to {
+        height: 32px;
+    }
+}
