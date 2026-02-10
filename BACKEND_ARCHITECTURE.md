@@ -31,7 +31,6 @@
 17. [Database Schema — 20 Living Collections](#17-database-schema--20-living-collections)
 18. [Project Structure](#18-project-structure)
 19. [Test Suite & Judge Testing Guide](#19-test-suite--judge-testing-guide)
-20. [Why This Wins](#20-why-this-wins)
 
 ---
 
@@ -1560,41 +1559,10 @@ If connected to the live Appwrite instance, inspect these collections:
 
 ---
 
-## 20. Why This Wins
-
-### Judging Criteria Alignment
-
-| Criterion | Weight | How Kaironex Scores |
-|-----------|--------|-------------------|
-| **Technical Execution** | 40% | Five autonomous agent brains all running at maximum 65,536 thinking tokens, BicameralEngine with dual-process reasoning, ThoughtSignature chains for marathon continuity, 20-collection Appwrite schema, 149 passing tests, function calling with 10 tool groups, Gemini Vision for fridge scanning, Google Search grounding for job discovery |
-| **Innovation / Wow Factor** | 30% | **Not a chatbot** — a marathon agent system that autonomously manages a student's entire life (study + survival + career + cultural integration) across hours and days. Closes the **Prompt Gap** — acts when students can't ask. Thought Signatures create an auditable reasoning chain. DEFCON survival protocol with real financial modeling. Cross-agent integration where getting a job literally changes your meal budget. |
-| **Potential Impact** | 20% | 260M tertiary students globally, 30% dropout rate, 43M "Some College, No Degree" in the U.S. alone. 60%+ work while studying, 6.9M are international with visa-level stakes. Even a 1–5% retention improvement scales to millions of saved trajectories and hundreds of millions in recovered tuition and lifetime earnings. |
-| **Presentation / Demo** | 10% | Full architecture documentation with Mermaid diagrams, comprehensive test suite judges can run, clear Gemini 3 integration mapping, working Kotlin Multiplatform app |
-
-### What Makes This Different From "Another Chatbot"
-
-> *"In the Action Era, if a single prompt can solve it, it is not an application."* — Hackathon brief
-
-Kaironex cannot be solved by a single prompt. It is:
-
-1. **An orchestrator**, not a wrapper — 5 specialized brains coordinated by a supervisor
-2. **A marathon agent** — operates autonomously across days via CRON-triggered morning routines, drift detection, and end-of-day summaries
-3. **A multi-model system** — `gemini-3-flash-preview` at two thinking levels plus `gemini-2.5-flash-native-audio-preview` for voice
-4. **A reasoning system** — ThoughtSignatures chain every decision with auditable traces
-5. **A Prompt Gap closer** — unlike reactive tools that wait for user input, Kaironex senses overload and acts *before* the student freezes
-6. **A survival system** — DEFCON financial protocol with real budget math, not generic advice
-7. **A cross-agent system** — agents communicate: your job status affects your meal budget, your exam schedule affects your meal complexity, your location triggers shopping alerts
-8. **A max-budget thinker** — every agent runs at 65,536 thinking tokens (the maximum), ensuring the deepest possible reasoning on every call
-
-**This is the Marathon Agent track, built for 260 million students who deserve more than a chatbot.**
-
----
-
 <div align="center">
 
 **Built with Gemini 3 Flash Preview + Gemini 2.5 Flash Native Audio**  
-**Kotlin Multiplatform (Mobile) + Python/Appwrite (Backend)**  
-**149 tests. 5 brains. 260M students. 1 mission.**
+**Kotlin Multiplatform (Mobile) + Python/Appwrite (Backend)**
 
 *Kaironex closes the Prompt Gap — acting when students can't ask, so short-term overload never becomes permanent loss.*
 
