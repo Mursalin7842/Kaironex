@@ -1,13 +1,11 @@
-# Temporary ignore for merge process
-Kaironex-Brain/
 
-# Android/Common
+# Kaironex Root
 .idea/
 .gradle/
 build/
 *.DS_Store
 
-# Python/Backend Ignores
+# From Brain Repo
 __pycache__/
 *.py[cod]
 *$py.class
