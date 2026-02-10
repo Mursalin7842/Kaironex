@@ -1,0 +1,391 @@
+# 🧠 KAIRONEX DEEP BRAIN
+
+> **Gemini 3 Hackathon Entry** | Track: **🏃 The Marathon Agent**
+
+**Kaironex is a Student Life Operating System** - an autonomous multi-agent orchestrator that manages the complete lifecycle of student success across academics, career, health, and environment.
+
+![Gemini 3](https://img.shields.io/badge/Gemini%203-Flash%20Preview-blue)
+![Marathon Agent](https://img.shields.io/badge/Track-Marathon%20Agent-green)
+![Agents](https://img.shields.io/badge/Agents-5%20Specialized-purple)
+
+### 📐 [Full Backend Architecture →](BACKEND_ARCHITECTURE.md)
+
+> Complete system documentation: continuous marathon loop, all 5 agent capabilities, **65,536 thinking tokens** on every agent, two-layer hierarchical scheduling, Bicameral Engine dual-process reasoning, Gemini Live API voice integration (native-audio model on mobile), 20-collection database schema, and the Thought Signature audit chain.
+
+---
+
+## 🎯 Why Kaironex is NOT a Generic Chatbot
+
+| ❌ What We're NOT | ✅ What We ARE |
+|-------------------|----------------|
+| Single-prompt wrapper | Multi-agent orchestrator with cross-agent context |
+| Basic RAG retrieval | Persistent Thought Signatures with state recovery |
+| Simple vision analyzer | Spatial-temporal decision engine (fridge analysis → meal planning → budget impact) |
+| Generic nutrition bot | **Survival & Growth Protocol** with Financial Defcon System |
+| Chat interface | Autonomous Marathon Agent running tasks over hours/days |
+
+---
+
+## 🏗️ Architecture: The Bicameral Engine
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    KAIRONEX DEEP BRAIN                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   STUDY     │  │  VITALITY   │  │  CAMPAIGN   │            │
+│  │   Agent     │  │   Agent     │  │   Agent     │            │
+│  │ (Cognitive  │  │ (Survival & │  │ (Career     │            │
+│  │  Supply)    │  │  Growth)    │  │  Marathons) │            │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘            │
+│         │                │                │                    │
+│         └────────────────┼────────────────┘                    │
+│                          ▼                                     │
+│              ┌───────────────────────┐                        │
+│              │   SUPERVISOR AGENT    │                        │
+│              │   (Meta-Controller)   │                        │
+│              └───────────┬───────────┘                        │
+│                          │                                     │
+│         ┌────────────────┼────────────────┐                   │
+│         ▼                ▼                ▼                   │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
+│  │  BICAMERAL  │  │  MARATHON   │  │  THOUGHT    │          │
+│  │   ENGINE    │  │   RUNNER    │  │   MANAGER   │          │
+│  │ REFLEX|DEEP │  │ Hours/Days  │  │ Signatures  │          │
+│  └─────────────┘  └─────────────┘  └─────────────┘          │
+│                                                               │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │               RADIUS AGENT (Spatial Context)             │ │
+│  │          Location-aware triggers & environment           │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                                                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🧬 Flagship Feature: Survival & Growth Protocol (Vitality Agent v2.0)
+
+The **Survival & Growth Protocol** transforms Vitality from a health tracker into a **Life Logistics Engine** that balances survival (food/money) with growth (career/study).
+
+### Financial Defcon System
+
+```python
+class DefconLevel(IntEnum):
+    DEFCON_1_SURVIVAL = 1   # < $8/day  → Austerity Mode
+    DEFCON_2_CRITICAL = 2   # $8-15/day → Essential spending only
+    DEFCON_3_CAUTION = 3    # $15-30/day → Value conscious
+    DEFCON_4_STABLE = 4     # $30-50/day → Balanced living
+    DEFCON_5_ABUNDANCE = 5  # > $50/day → Quality & enjoyment
+```
+
+### Gemini 3 Vision: Smart Fridge Analysis
+
+```python
+# Scans fridge contents using Gemini 3 Vision
+inventory = await survival_protocol.analyze_fridge(image_data)
+# Returns: ingredients, servings, days_remaining, needs_shopping
+```
+
+### Cook vs Order Decision Engine
+
+```
+INPUT: time_available, energy_level, budget, fridge_contents, schedule_pressure
+
+DECISION MATRIX:
+├─ Low Time + High Budget → ORDER (healthy delivery)
+├─ High Time + Low Budget → COOK (use fridge ingredients)
+├─ Low Time + Low Budget → EMERGENCY_FUEL (quick cheap options)
+├─ Low Energy (any budget) → ORDER (rest priority)
+└─ Exam Week → CONVENIENCE (brain fuel priority)
+```
+
+### Cross-Agent Context Engine
+
+```python
+# Vitality receives context from ALL agents:
+campaign_ctx = extract_campaign_financial_context(...)  # Urgent job hunt? → DEFCON 1
+study_ctx = extract_study_schedule_context(...)          # Exam week? → Convenience mode
+radius_ctx = extract_radius_location_context(...)        # Near grocery? → Shopping alert
+```
+
+---
+
+## 🏃 Marathon Agent Capabilities
+
+### What is a Marathon?
+
+A **Marathon** is a multi-step goal that requires autonomous execution over **hours or days**:
+
+```python
+@dataclass
+class MarathonGoal:
+    title: str                    # "Get a Job Interview at Google"
+    description: str              # Detailed goal context
+    success_criteria: List[str]   # Measurable completion criteria
+    deadline: Optional[datetime]  # Flexible timeline (hours to months)
+    priority: int                 # 1-10 scale
+```
+
+### State Persistence with Thought Signatures
+
+Every reasoning step creates a **Thought Signature** for state recovery:
+
+```python
+@dataclass
+class ThoughtSignature:
+    thought_id: str           # Unique identifier
+    timestamp: datetime       # When reasoning occurred
+    context_hash: str         # Cryptographic proof of context
+    reasoning_trace: List[str] # Step-by-step reasoning
+    confidence: float         # Self-assessed confidence
+    parent_signature: str     # Chain to previous thought
+```
+
+### Self-Correction Across Sessions
+
+```python
+# Marathon Runner checkpoints and recovers across server restarts
+class MarathonStatus(Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    PAUSED = "paused"
+    WAITING = "waiting"      # Waiting for user input
+    THINKING = "thinking"    # Deep reasoning in progress
+    ACTING = "acting"        # Executing an action
+    COMPLETE = "complete"
+```
+
+---
+
+## 📚 Just-in-Time Content Generation — Gatekeeper System
+
+The Study Agent generates AI-powered learning materials for every scheduled task:
+
+| Content Type | Description | Format |
+|--------------|-------------|--------|
+| **Resources** | 5-8 part-by-part text resources | `resource_1`, `resource_2`, etc. (white UI friendly) |
+| **Flash Cards** | 8-12 flashcards with front/back | Easy, medium, hard difficulty mix |
+| **Gatekeeper Quiz** | 5-7 questions (70% to pass) | **BLOCKS next day** if failed |
+
+### Gatekeeper Flow
+
+```
+Daily Schedule Task
+       ↓
+Generate Content (AI)
+       ↓
+Student Studies (resources + flashcards)
+       ↓
+Gatekeeper Quiz (must pass 70%)
+       ↓
+┌──────┴──────┐
+│ PASS        │ FAIL
+│             │
+│ Unlock      │ Log quiz_result
+│ Tomorrow    │ (AI analyzes for reschedule)
+└─────────────┴─────────────────────────────
+```
+
+### CLI Usage
+
+```bash
+# Generate content for a specific user and date
+python -m src.tools.daily_content_generator --user demo_user_001 --date 2026-02-09
+
+# Process all active users (for scheduled Appwrite Function)
+python -m src.tools.daily_content_generator --all-users --date 2026-02-09
+```
+
+---
+
+## 🧠 Bicameral Engine: Dual-Model Reasoning
+
+```python
+class ReasoningMode(Enum):
+    REFLEX = "reflex"       # Fast, pattern-based (MINIMAL thinking)
+    DEEP = "deep"           # Slow, thoughtful (65,536 thinking tokens)
+    HYBRID = "hybrid"       # Reflex first → escalate if confidence < 0.7
+    MARATHON = "marathon"   # Long-running with checkpoints (65,536 thinking tokens)
+```
+
+**Automatic routing** based on complexity, urgency, and pressure index.
+
+---
+
+## 📱 Mobile Integration
+
+Kaironex operates as the **backend brain** for a Kotlin Multiplatform (KMP) Android app:
+
+- **REFLEX responses** handled by mobile app — `gemini-3-flash-preview` at MINIMAL thinking (fast, under 200ms)
+- **DEEP reasoning** handled by this backend — `gemini-3-flash-preview` at HIGH thinking (65,536 tokens on every agent)
+- **Voice Engine** on mobile — `gemini-2.5-flash-native-audio-preview` via Gemini Live API WebSocket
+- **State sync** via Appwrite TablesDB — agents write, app reads reactively (no WebSockets for state)
+
+---
+
+## 🔧 Technical Stack
+
+| Component | Technology |
+|-----------|------------|
+| AI Model (Backend) | `gemini-3-flash-preview` — 1M input, 65K output, thinking: **65,536 tokens** on all agents |
+| AI Model (Voice) | `gemini-2.5-flash-native-audio-preview-12-2025` — Live API on mobile |
+| Vision | Gemini 3 Flash Preview native multimodal (fridge scan, resume PDF) |
+| Backend | Appwrite Functions (Python 3.13) |
+| State | Appwrite TablesDB (20 collections) |
+| Mobile | Kotlin Multiplatform (KMP) — Compose UI |
+
+---
+
+## 📊 Project Structure
+
+```
+kairo-brain/
+├── src/
+│   ├── agents/           # 5 Specialized Agents
+│   │   ├── campaign_agent.py    # Continuous career marathons
+│   │   ├── vitality_agent_v2.py # Survival & Growth Protocol
+│   │   ├── study_agent.py       # Cognitive supply chain
+│   │   ├── radius_agent.py      # Spatial context
+│   │   └── supervisor_agent.py  # Meta-controller
+│   ├── core/             # Engine Components
+│   │   ├── bicameral_engine.py  # REFLEX | DEEP routing
+│   │   ├── marathon_runner.py   # Long-running orchestration
+│   │   ├── thought_manager.py   # Signature persistence
+│   │   └── survival_protocol.py # Financial Defcon System
+│   ├── tools/            # Agent Capabilities
+│   └── utils/            # Shared utilities
+└── main.py               # Appwrite Functions entry
+```
+
+---
+
+## 🚀 Running the Project
+
+### Prerequisites
+- Python 3.13+
+- Appwrite Account
+- Gemini API Key (`gemini-3-flash-preview` access)
+
+### Setup
+```bash
+# Clone & setup
+git clone https://github.com/AliHaider0343/Kaironex-Brain.git
+cd Kaironex-Brain
+python -m venv .venv
+.venv\\Scripts\\activate  # Windows
+pip install -r requirements.txt
+
+# Configure
+cp .env.example .env
+# Edit .env with your API keys
+
+# Test (149 tests, all offline — no API keys needed)
+python tests/test_all_agents.py
+```
+
+### Deploy to Appwrite
+```bash
+appwrite deploy function
+```
+
+---
+
+## 🧪 Testing Guide for Judges
+
+### Option 1: Offline Tests (No API Key Required)
+
+All 149 tests run fully offline using mocked Gemini responses and in-memory database. This verifies all agent logic, routing, error handling, and state management.
+
+```bash
+# Run the complete test suite
+python tests/test_all_agents.py
+
+# Or run individual agent suites
+python tests/test_radius_brain.py      # 57 assertions — Cultural Survival
+python tests/test_vitality_brain.py    # 39 assertions — Life Logistics + DEFCON
+python tests/test_study_brain.py       # 26 assertions — Cognitive Supply Chain
+python tests/test_campaign_brain.py    # 27 assertions — Career Strategist
+
+# Other tests
+python tests/test_survival_protocol.py # Financial survival system
+python tests/test_endpoint.py          # Appwrite endpoint integration
+python tests/test_god_mode.py          # Database persistence
+python tests/test_schedule_generation.py # Semester schedule generation
+```
+
+**Expected output:** `149 passed, 0 failed`
+
+### Option 2: Live Testing with Gemini API
+
+API credentials are provided in the hackathon submission form. To test with real Gemini API calls:
+
+```bash
+# 1. Set up environment
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+pip install -r requirements.txt
+
+# 2. Set environment variables (credentials from submission)
+$env:GEMINI_API_KEY="<provided_in_submission>"
+$env:APPWRITE_ENDPOINT="<provided_in_submission>"
+$env:APPWRITE_PROJECT_ID="<provided_in_submission>"
+$env:APPWRITE_API_KEY="<provided_in_submission>"
+$env:APPWRITE_DATABASE_ID="<provided_in_submission>"
+
+# 3. Run live endpoint test
+python tests/test_endpoint.py
+
+# 4. Test individual agents with real Gemini reasoning
+python tests/test_resume_local.py      # Upload a resume → real ATS scoring
+python tests/test_schedule_generation.py  # Generate a real semester schedule
+```
+
+### What to Look For
+
+| Test | What It Proves |
+|------|----------------|
+| `test_all_agents.py` | All 5 brains route correctly, create ThoughtSignatures, handle errors gracefully |
+| `test_survival_protocol.py` | DEFCON system calculates budgets, fridge vision parses images, meal decisions factor time × money × energy |
+| `test_schedule_generation.py` | Two-layer hierarchical planning generates semester strategy + daily tasks in one API call at 65,536 thinking tokens |
+| `test_resume_local.py` | Campaign Agent scores resumes against job descriptions with real Gemini reasoning |
+| `test_endpoint.py` | Full Appwrite Function endpoint responds to HTTP requests, database events, and CRON triggers |
+
+---
+
+## 🏆 Hackathon Alignment
+
+### Track: Marathon Agent ✅
+
+| Requirement | Our Implementation |
+|-------------|-------------------|
+| Tasks spanning hours/days | ✅ Continuous career campaigns, semester-long study marathons |
+| Thought Signatures | ✅ Full thought chain with SHA-256 context hashes |
+| Thinking Levels | ✅ REFLEX (MINIMAL) / DEEP (65,536) / MARATHON (65,536 + checkpoints) |
+| Self-correction | ✅ MarathonRunner with checkpoints and recovery across restarts |
+| Multi-step tool calls | ✅ 10 tool groups, up to 5 iterative loops per reasoning step |
+| No human supervision | ✅ CRON-triggered morning/evening routines, autonomous drift detection |
+
+### Why We're Different
+
+1. **Not a chatbot** - Multi-agent orchestrator with persistent state
+2. **Not simple RAG** - Bicameral reasoning with context-aware routing
+3. **Not basic vision** - Full causal decision chain (see fridge → decide meal → calculate budget impact → trigger shopping alert if near store)
+4. **Real autonomy** - Tasks run continuously across days/weeks without user intervention
+
+---
+
+## 📝 License
+
+MIT License - See [LICENSE](LICENSE)
+
+---
+
+## 👥 Team
+
+Built for **Gemini 3 AI Hackathon** — February 2026
+
+---
+
+*"In the Action Era, if a single prompt can solve it, it is not an application."* - We build orchestrators.

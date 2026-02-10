@@ -1,6 +1,32 @@
+# Temporary ignore for merge process
 Kaironex-Brain/
+
+# Android/Common
 .idea/
 .gradle/
 build/
-*.env
 *.DS_Store
+
+# Python/Backend Ignores
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.env
+.venv
+env/
+venv/
+.rate_limit_cache.json
+.vscode/
+
+# Local only
+local_*.py
+
+# Debug files
+debug_*.txt
+debug_*.json
+*.debug
+
+# Test outputs
+test_output/
+*.test_output
