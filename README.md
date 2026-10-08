@@ -271,7 +271,7 @@ kairo-brain/
 ### Setup
 ```bash
 # Clone & setup
-git clone https://github.com/AliHaider0343/Kaironex-Brain.git
+git clone https://github.com/Mursalin7842/Kaironex-Brain.git
 cd Kaironex-Brain
 python -m venv .venv
 .venv\\Scripts\\activate  # Windows
